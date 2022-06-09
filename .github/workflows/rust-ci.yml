@@ -56,6 +56,12 @@ jobs:
           override: true
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v1
+      - name: Install diesel
+        run: cargo install diesel_cli
+        id: diesel-install
+      - name: Run diesel migration
+        run: diesel migration run
+        id: diesel-migration
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
