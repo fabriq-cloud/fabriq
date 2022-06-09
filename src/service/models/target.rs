@@ -12,7 +12,7 @@ pub struct Target {
 
 impl PersistableModel<Target, Target> for Target {
     fn new(new_target: Target) -> Self {
-        return new_target;
+        new_target
     }
 
     fn get_id(&self) -> String {
@@ -22,9 +22,9 @@ impl PersistableModel<Target, Target> for Target {
 
 impl From<Target> for TargetMessage {
     fn from(target: Target) -> Self {
-        return TargetMessage {
+        Self {
             id: target.id,
-            labels: target.labels.clone(),
-        };
+            labels: target.labels,
+        }
     }
 }

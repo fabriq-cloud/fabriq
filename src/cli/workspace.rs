@@ -31,8 +31,7 @@ pub async fn handlers(
     model_match: &clap::ArgMatches,
     context: &Context<'static>,
 ) -> anyhow::Result<()> {
-    // TODO: Can this be made generic?
-    let channel = Channel::from_static(&context.endpoint).connect().await?;
+    let channel = Channel::from_static(context.endpoint).connect().await?;
 
     let token: MetadataValue<_> = context.token.parse()?;
 
@@ -43,7 +42,7 @@ pub async fn handlers(
 
     match model_match.subcommand() {
         Some(("create", create_match)) => {
-            let id = create_match.value_of("ID").expect("Workspace id expected");
+            let id = create_match.value_of("ID").expect("workspace id expected");
 
             // validate that id has no spaces
 
@@ -56,7 +55,7 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("Workspace id expected");
+            let id = create_match.value_of("ID").expect("workspace id expected");
 
             println!("workspace delete '{id}'");
 
@@ -75,11 +74,11 @@ pub async fn handlers(
                 .into_inner()
                 .workspaces
                 .into_iter()
-                .map(|workspace| vec![workspace.id.to_string()])
+                .map(|workspace| vec![workspace.id])
                 .collect();
 
-            if table_data.len() == 0 {
-                println!("No workspaces found");
+            if table_data.is_empty() {
+                println!("no workspaces found");
 
                 return Ok(());
             }

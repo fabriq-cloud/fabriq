@@ -95,7 +95,7 @@ impl WorkspaceService {
 
         */
 
-        let deleted_count = self.persistence.delete(&workspace_id).await?;
+        let deleted_count = self.persistence.delete(workspace_id).await?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("workspace id {workspace_id} not found"));

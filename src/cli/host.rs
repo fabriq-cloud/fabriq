@@ -56,7 +56,7 @@ pub async fn handlers(
     context: &Context<'static>,
 ) -> anyhow::Result<()> {
     // TODO: Can this be made generic?
-    let channel = Channel::from_static(&context.endpoint).connect().await?;
+    let channel = Channel::from_static(context.endpoint).connect().await?;
 
     let token: MetadataValue<_> = context.token.parse()?;
 
@@ -126,14 +126,14 @@ pub async fn handlers(
                 .map(|host| {
                     vec![
                         host.id.to_string(),
-                        host.labels.clone().join(", "),
+                        host.labels.join(", "),
                         host.cpu_capacity.to_string(),
                         host.memory_capacity.to_string(),
                     ]
                 })
                 .collect();
 
-            if table_data.len() == 0 {
+            if table_data.is_empty() {
                 println!("No hosts found");
 
                 return Ok(());

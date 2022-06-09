@@ -13,7 +13,7 @@ pub struct Template {
 
 impl PersistableModel<Template, Template> for Template {
     fn new(new_template: Template) -> Self {
-        return new_template;
+        new_template
     }
 
     fn get_id(&self) -> String {
@@ -23,11 +23,11 @@ impl PersistableModel<Template, Template> for Template {
 
 impl From<Template> for TemplateMessage {
     fn from(template: Template) -> Self {
-        return TemplateMessage {
+        Self {
             id: template.id,
             repository: template.repository,
             branch: template.branch,
             path: template.path,
-        };
+        }
     }
 }

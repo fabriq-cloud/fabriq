@@ -18,7 +18,7 @@ pub struct Assignment {
 
 impl PersistableModel<Assignment, Assignment> for Assignment {
     fn new(new_assignment: Assignment) -> Assignment {
-        return new_assignment;
+        new_assignment
     }
 
     fn get_id(&self) -> String {
@@ -28,10 +28,10 @@ impl PersistableModel<Assignment, Assignment> for Assignment {
 
 impl From<Assignment> for AssignmentMessage {
     fn from(assignment: Assignment) -> Self {
-        return AssignmentMessage {
+        Self {
             id: assignment.id,
             deployment_id: assignment.deployment_id,
             host_id: assignment.host_id,
-        };
+        }
     }
 }

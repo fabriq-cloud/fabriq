@@ -30,7 +30,7 @@ impl DeploymentTrait for GrpcDeploymentService {
             id: request.get_ref().id.clone(),
             target_id: request.get_ref().target_id.clone(),
             workload_id: request.get_ref().workload_id.clone(),
-            replicas: request.get_ref().replicas.clone(),
+            replicas: request.get_ref().replicas,
         };
 
         let operation_id = match self.service.create(new_deployment, None).await {
@@ -86,7 +86,7 @@ impl DeploymentTrait for GrpcDeploymentService {
                 id: deployment.id.clone(),
                 target_id: deployment.target_id.clone(),
                 workload_id: deployment.workload_id.clone(),
-                replicas: deployment.replicas.clone(),
+                replicas: deployment.replicas,
             })
             .collect();
 

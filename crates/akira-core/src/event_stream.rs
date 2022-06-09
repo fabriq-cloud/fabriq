@@ -8,4 +8,5 @@ pub trait EventStream: Send + Sync {
     async fn receive(&self) -> anyhow::Result<Option<Event>>;
     async fn send(&self, event: &Event) -> anyhow::Result<()>;
     async fn len(&self) -> anyhow::Result<usize>;
+    async fn is_empty(&self) -> anyhow::Result<bool>;
 }

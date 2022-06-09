@@ -21,7 +21,7 @@ pub struct Deployment {
 
 impl PersistableModel<Deployment, Deployment> for Deployment {
     fn new(new_deployment: Deployment) -> Deployment {
-        return new_deployment;
+        new_deployment
     }
 
     fn get_id(&self) -> String {
@@ -31,11 +31,11 @@ impl PersistableModel<Deployment, Deployment> for Deployment {
 
 impl From<Deployment> for DeploymentMessage {
     fn from(deployment: Deployment) -> Self {
-        return DeploymentMessage {
+        Self {
             id: deployment.id,
             workload_id: deployment.workload_id,
             target_id: deployment.target_id,
             replicas: deployment.replicas,
-        };
+        }
     }
 }

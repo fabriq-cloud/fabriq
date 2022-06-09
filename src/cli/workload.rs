@@ -47,8 +47,7 @@ pub async fn handlers(
     model_match: &clap::ArgMatches,
     context: &Context<'static>,
 ) -> anyhow::Result<()> {
-    // TODO: Can this be made generic?
-    let channel = Channel::from_static(&context.endpoint).connect().await?;
+    let channel = Channel::from_static(context.endpoint).connect().await?;
 
     let token: MetadataValue<_> = context.token.parse()?;
 
@@ -85,7 +84,7 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("Workload id expected");
+            let id = create_match.value_of("ID").expect("workload id expected");
 
             println!("workload delete '{id}'");
 
@@ -108,12 +107,12 @@ pub async fn handlers(
                     vec![
                         workload.id.to_string(),
                         workload.workspace_id.clone(),
-                        workload.template_id.clone(),
+                        workload.template_id,
                     ]
                 })
                 .collect();
 
-            if table_data.len() == 0 {
+            if table_data.is_empty() {
                 println!("No workloads found");
 
                 return Ok(());

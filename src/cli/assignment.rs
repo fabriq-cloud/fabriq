@@ -44,8 +44,7 @@ pub async fn handlers(
     model_match: &clap::ArgMatches,
     context: &Context<'static>,
 ) -> anyhow::Result<()> {
-    // TODO: Can this be made generic?
-    let channel = Channel::from_static(&context.endpoint).connect().await?;
+    let channel = Channel::from_static(context.endpoint).connect().await?;
 
     let token: MetadataValue<_> = context.token.parse()?;
 
@@ -104,12 +103,12 @@ pub async fn handlers(
                     vec![
                         assignment.id.to_string(),
                         assignment.deployment_id.clone(),
-                        assignment.host_id.clone(),
+                        assignment.host_id,
                     ]
                 })
                 .collect();
 
-            if table_data.len() == 0 {
+            if table_data.is_empty() {
                 println!("No assignments found");
 
                 return Ok(());

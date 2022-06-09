@@ -55,8 +55,7 @@ pub async fn handlers(
     model_match: &clap::ArgMatches,
     context: &Context<'static>,
 ) -> anyhow::Result<()> {
-    // TODO: Can this be made generic?
-    let channel = Channel::from_static(&context.endpoint).connect().await?;
+    let channel = Channel::from_static(context.endpoint).connect().await?;
 
     let token: MetadataValue<_> = context.token.parse()?;
 
@@ -116,13 +115,13 @@ pub async fn handlers(
                         template.id.to_string(),
                         template.repository.clone(),
                         template.branch.clone(),
-                        template.path.clone(),
+                        template.path,
                     ]
                 })
                 .collect();
 
-            if table_data.len() == 0 {
-                println!("No templates found");
+            if table_data.is_empty() {
+                println!("no templates found");
 
                 return Ok(());
             }

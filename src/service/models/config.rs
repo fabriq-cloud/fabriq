@@ -20,7 +20,7 @@ pub struct Config {
 
 impl PersistableModel<Config, Config> for Config {
     fn new(new_config: Config) -> Self {
-        return new_config;
+        new_config
     }
 
     fn get_id(&self) -> String {

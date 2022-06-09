@@ -12,7 +12,7 @@ pub struct Workspace {
 
 impl PersistableModel<Workspace, Workspace> for Workspace {
     fn new(new_workspace: Workspace) -> Workspace {
-        return new_workspace;
+        new_workspace
     }
 
     fn get_id(&self) -> String {
@@ -22,6 +22,6 @@ impl PersistableModel<Workspace, Workspace> for Workspace {
 
 impl From<Workspace> for WorkspaceMessage {
     fn from(workload: Workspace) -> Self {
-        return WorkspaceMessage { id: workload.id };
+        Self { id: workload.id }
     }
 }

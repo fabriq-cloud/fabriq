@@ -47,6 +47,12 @@ impl EventStream for MemoryEventStream {
         Ok(events.len())
     }
 
+    async fn is_empty(&self) -> anyhow::Result<bool> {
+        let events = self.events.lock().await;
+
+        Ok(events.is_empty())
+    }
+
     async fn receive(&self) -> anyhow::Result<Option<Event>> {
         let mut events = self.events.lock().await;
 

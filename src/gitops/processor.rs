@@ -6,8 +6,8 @@ use tonic::transport::Channel;
 use crate::context::Context;
 
 pub struct GitOpsProcessor {
-    channel: Channel,
-    token: MetadataValue<Ascii>,
+    _channel: Channel,
+    _token: MetadataValue<Ascii>,
 }
 
 #[async_trait]
@@ -49,10 +49,10 @@ impl Processor for GitOpsProcessor {
 impl GitOpsProcessor {
     pub async fn new() -> anyhow::Result<Self> {
         let context = Context::default();
-        let channel = Channel::from_static(&context.endpoint).connect().await?;
+        let channel = Channel::from_static(context.endpoint).connect().await?;
         let token: MetadataValue<Ascii> = context.token.parse()?;
 
-        Ok(Self { channel, token })
+        Ok(Self { _channel: channel, _token: token })
     }
 
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {

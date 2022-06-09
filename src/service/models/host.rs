@@ -18,7 +18,7 @@ pub struct Host {
 
 impl PersistableModel<Host, Host> for Host {
     fn new(new_host: Host) -> Host {
-        return new_host;
+        new_host
     }
 
     fn get_id(&self) -> String {
@@ -28,11 +28,11 @@ impl PersistableModel<Host, Host> for Host {
 
 impl From<Host> for HostMessage {
     fn from(host: Host) -> Self {
-        return HostMessage {
+        Self {
             id: host.id,
             labels: host.labels.clone(),
             cpu_capacity: host.cpu_capacity,
             memory_capacity: host.memory_capacity,
-        };
+        }
     }
 }

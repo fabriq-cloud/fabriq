@@ -93,7 +93,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let health_grpc_service =
-        HealthServer::with_interceptor(GrpcHealthService::new(), acl::authorize);
+        HealthServer::with_interceptor(GrpcHealthService::default(), acl::authorize);
 
     let host_grpc_service = HostServer::with_interceptor(
         GrpcHostService::new(Arc::clone(&host_service)),
