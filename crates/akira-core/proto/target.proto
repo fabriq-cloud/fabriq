@@ -1,0 +1,25 @@
+syntax = "proto3";
+package akira.target;
+
+import "common.proto";
+
+service Target {
+    rpc Create(TargetMessage) returns (akira.common.OperationId);
+    rpc Delete(DeleteTargetRequest) returns (akira.common.OperationId);
+    rpc List(ListTargetsRequest) returns (ListTargetsResponse);
+}
+
+message DeleteTargetRequest {
+    string id = 1;
+}
+
+message ListTargetsRequest {}
+
+message ListTargetsResponse {
+    repeated TargetMessage targets = 1;
+}
+
+message TargetMessage {
+    string id = 1;
+    repeated string labels = 2;
+}

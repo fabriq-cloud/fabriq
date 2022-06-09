@@ -1,0 +1,27 @@
+syntax = "proto3";
+package akira.deployment;
+
+import "common.proto";
+
+service Deployment {
+    rpc Create(DeploymentMessage) returns (akira.common.OperationId);
+    rpc Delete(DeleteDeploymentRequest) returns (akira.common.OperationId);
+    rpc List(ListDeploymentsRequest) returns (ListDeploymentsResponse);
+}
+
+message DeleteDeploymentRequest {
+    string id = 1;
+}
+
+message ListDeploymentsRequest {}
+
+message ListDeploymentsResponse {
+    repeated DeploymentMessage deployments = 1;
+}
+
+message DeploymentMessage {
+    string id = 1;
+    string target_id = 2;
+    string workload_id = 3;
+    int32  replicas = 4;
+}

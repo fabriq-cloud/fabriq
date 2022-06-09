@@ -1,0 +1,26 @@
+syntax = "proto3";
+package akira.workload;
+
+import "common.proto";
+
+service Workload {
+    rpc Create(WorkloadMessage) returns (akira.common.OperationId);
+    rpc Delete(DeleteWorkloadRequest) returns (akira.common.OperationId);
+    rpc List(ListWorkloadsRequest) returns (ListWorkloadsResponse);
+}
+
+message ListWorkloadsRequest {}
+
+message ListWorkloadsResponse {
+    repeated WorkloadMessage workloads = 1;
+}
+
+message DeleteWorkloadRequest {
+    string id = 1;
+}
+
+message WorkloadMessage {
+    string id = 1;    
+    string template_id = 3;
+    string workspace_id = 4;
+}

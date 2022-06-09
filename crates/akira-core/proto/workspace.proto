@@ -1,0 +1,24 @@
+syntax = "proto3";
+package akira.workspace;
+
+import "common.proto";
+
+service Workspace {
+    rpc Create(WorkspaceMessage) returns (akira.common.OperationId);
+    rpc Delete(DeleteWorkspaceRequest) returns (akira.common.OperationId);
+    rpc List(ListWorkspacesRequest) returns (ListWorkspacesResponse);
+}
+
+message DeleteWorkspaceRequest {
+    string id = 1;
+}
+
+message ListWorkspacesRequest {}
+
+message ListWorkspacesResponse {
+    repeated WorkspaceMessage workspaces = 1;
+}
+
+message WorkspaceMessage {
+    string id = 1;
+}

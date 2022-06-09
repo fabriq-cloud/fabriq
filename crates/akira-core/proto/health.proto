@@ -1,0 +1,11 @@
+syntax = "proto3";
+package akira.health;
+
+service Health {
+    rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message HealthRequest {}
+message HealthResponse {
+    bool ok = 1;
+}

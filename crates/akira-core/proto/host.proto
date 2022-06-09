@@ -1,0 +1,27 @@
+syntax = "proto3";
+package akira.host;
+
+import "common.proto";
+
+service Host {
+    rpc Create(HostMessage) returns (akira.common.OperationId);
+    rpc Delete(DeleteHostRequest) returns (akira.common.OperationId);
+    rpc List(ListHostsRequest) returns (ListHostsResponse);
+}
+
+message DeleteHostRequest {
+    string id = 1;
+}
+
+message ListHostsRequest {}
+
+message ListHostsResponse {
+    repeated HostMessage hosts = 1;
+}
+
+message HostMessage {
+    string          id = 1;
+    repeated string labels = 2;
+    int64           memory_capacity = 3;
+    int32           cpu_capacity = 4;
+}
