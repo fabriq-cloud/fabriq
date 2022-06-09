@@ -10,7 +10,10 @@ use std::sync::Arc;
 use tonic::transport::Server;
 
 use akira::acl;
-use akira::api::{GrpcAssignmentService, GrpcDeploymentService, GrpcHostService, GrpcHealthService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService, GrpcWorkspaceService};
+use akira::api::{
+    GrpcAssignmentService, GrpcDeploymentService, GrpcHealthService, GrpcHostService,
+    GrpcTargetService, GrpcTemplateService, GrpcWorkloadService, GrpcWorkspaceService,
+};
 use akira::persistence::relational::{
     AssignmentRelationalPersistence, DeploymentRelationalPersistence, HostRelationalPersistence,
     TargetRelationalPersistence, WorkspaceRelationalPersistence,

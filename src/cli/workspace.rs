@@ -1,5 +1,5 @@
 use akira_core::workspace::workspace_client::WorkspaceClient;
-use akira_core::{DeleteWorkspaceRequest, WorkspaceMessage, ListWorkspacesRequest};
+use akira_core::{DeleteWorkspaceRequest, ListWorkspacesRequest, WorkspaceMessage};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Command};
 use tonic::metadata::MetadataValue;
@@ -43,25 +43,21 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("create", create_match)) => {
             let id = create_match.value_of("ID").expect("workspace id expected");
-
-            // validate that id has no spaces
-
-            println!("workspace create '{id}'");
-
             let request = tonic::Request::new(WorkspaceMessage { id: id.to_string() });
 
             client.create(request).await?;
+
+            tracing::info!("workspace '{id}' created");
 
             Ok(())
         }
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("workspace id expected");
-
-            println!("workspace delete '{id}'");
-
             let request = tonic::Request::new(DeleteWorkspaceRequest { id: id.to_string() });
 
             client.delete(request).await?;
+
+            tracing::info!("workspace '{id}' deleted");
 
             Ok(())
         }
@@ -78,7 +74,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                println!("no workspaces found");
+                tracing::info!("no workspaces found");
 
                 return Ok(());
             }

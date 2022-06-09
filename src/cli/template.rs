@@ -77,10 +77,8 @@ pub async fn handlers(
             let branch = add_match.value_of("branch").unwrap_or("main").to_string();
             let path = add_match.value_of("path").unwrap_or("./").to_string();
 
-            println!("template create '{id}'");
-
             let request = tonic::Request::new(TemplateMessage {
-                id,
+                id: id.clone(),
                 repository,
                 branch,
                 path,
@@ -88,16 +86,17 @@ pub async fn handlers(
 
             client.create(request).await?;
 
+            tracing::info!("template '{id}' created");
+
             Ok(())
         }
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("Template id expected");
-
-            println!("template delete '{id}'");
-
             let request = tonic::Request::new(DeleteTemplateRequest { id: id.to_string() });
 
             client.delete(request).await?;
+
+            tracing::info!("template '{id}' deleted");
 
             Ok(())
         }
@@ -121,7 +120,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                println!("no templates found");
+                tracing::info!("no templates found");
 
                 return Ok(());
             }

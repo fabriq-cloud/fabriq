@@ -9,7 +9,7 @@ pub trait Persistence<Model, NewModel>: Send + Sync {
 }
 
 pub trait PersistableModel<Model, NewModel> {
-    #[allow(clippy::all)] 
+    #[allow(clippy::all)]
     fn new(new_model: NewModel) -> Model;
     fn get_id(&self) -> String;
 }

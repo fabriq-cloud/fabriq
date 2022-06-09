@@ -90,10 +90,8 @@ pub async fn handlers(
                 .to_string()
                 .parse::<i64>()?;
 
-            println!("host create '{id}'");
-
             let request = tonic::Request::new(HostMessage {
-                id,
+                id: id.clone(),
                 labels,
                 cpu_capacity,
                 memory_capacity,
@@ -101,16 +99,17 @@ pub async fn handlers(
 
             client.create(request).await?;
 
+            tracing::info!("host '{id}' created");
+
             Ok(())
         }
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("Host id expected");
-
-            println!("host delete '{id}'");
-
             let request = tonic::Request::new(DeleteHostRequest { id: id.to_string() });
 
             client.delete(request).await?;
+
+            tracing::info!("host '{id}' deleted");
 
             Ok(())
         }
@@ -134,7 +133,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                println!("No hosts found");
+                tracing::info!("no hosts found");
 
                 return Ok(());
             }

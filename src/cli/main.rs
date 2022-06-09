@@ -12,8 +12,8 @@ mod workspace;
 use context::Context;
 
 fn cli() -> Command<'static> {
-    Command::new("tatami")
-        .about("declarative deployments")
+    Command::new("akira")
+        .about("scaled declarative deployments")
         .version("0.1.0")
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -29,6 +29,11 @@ fn cli() -> Command<'static> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     let matches = cli().get_matches();
 
     let context = Context::default();

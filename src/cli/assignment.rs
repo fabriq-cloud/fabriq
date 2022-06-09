@@ -67,26 +67,26 @@ pub async fn handlers(
 
             let id = format!("{}|{}", deployment_id, host_id);
 
-            println!("assignment create '{id}'");
-
             let request = tonic::Request::new(AssignmentMessage {
-                id,
+                id: id.clone(),
                 deployment_id,
                 host_id,
             });
 
             client.create(request).await?;
 
+            tracing::info!("assignment '{id}' created");
+
             Ok(())
         }
         Some(("delete", delete_match)) => {
             let id = delete_match.value_of("ID").expect("assignment id expected");
 
-            println!("assignment delete '{id}'");
-
             let request = tonic::Request::new(DeleteAssignmentRequest { id: id.to_string() });
 
             client.delete(request).await?;
+
+            tracing::info!("assignment '{id}' deleted");
 
             Ok(())
         }
@@ -109,7 +109,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                println!("No assignments found");
+                tracing::info!("no assignments found");
 
                 return Ok(());
             }

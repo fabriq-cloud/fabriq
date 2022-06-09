@@ -52,7 +52,10 @@ impl GitOpsProcessor {
         let channel = Channel::from_static(context.endpoint).connect().await?;
         let token: MetadataValue<Ascii> = context.token.parse()?;
 
-        Ok(Self { _channel: channel, _token: token })
+        Ok(Self {
+            _channel: channel,
+            _token: token,
+        })
     }
 
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {

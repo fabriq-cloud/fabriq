@@ -83,10 +83,8 @@ pub async fn handlers(
                 .expect("Replicas expected")
                 .parse::<i32>()?;
 
-            println!("deployment create '{id}'");
-
             let request = tonic::Request::new(DeploymentMessage {
-                id,
+                id: id.clone(),
                 workload_id,
                 target_id,
                 replicas,
@@ -94,16 +92,18 @@ pub async fn handlers(
 
             client.create(request).await?;
 
+            tracing::info!("deployment '{id}' created");
+
             Ok(())
         }
         Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("Deployment id expected");
-
-            println!("deployment delete '{id}'");
+            let id = create_match.value_of("ID").expect("deployment id expected");
 
             let request = tonic::Request::new(DeleteDeploymentRequest { id: id.to_string() });
 
             client.delete(request).await?;
+
+            tracing::info!("deployment '{id}' deleted");
 
             Ok(())
         }
@@ -127,7 +127,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                println!("No deployments found");
+                tracing::info!("no deployments found");
 
                 return Ok(());
             }

@@ -60,22 +60,25 @@ pub async fn handlers(
 
             let labels = labels.map(|s| s.to_string()).collect();
 
-            println!("target create '{id}' w/ labels: {:?}", labels);
-
-            let request = tonic::Request::new(TargetMessage { id, labels });
+            let request = tonic::Request::new(TargetMessage {
+                id: id.clone(),
+                labels,
+            });
 
             client.create(request).await?;
+
+            tracing::info!("target '{id}' created");
 
             Ok(())
         }
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("Target id expected");
 
-            println!("target delete '{id}'");
-
             let request = tonic::Request::new(DeleteTargetRequest { id: id.to_string() });
 
             client.delete(request).await?;
+
+            tracing::info!("target '{id}' deleted");
 
             Ok(())
         }
@@ -92,7 +95,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                println!("No targets found");
+                tracing::info!("no targets found");
 
                 return Ok(());
             }

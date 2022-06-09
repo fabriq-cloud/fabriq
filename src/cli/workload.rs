@@ -71,26 +71,25 @@ pub async fn handlers(
                 .expect("Template ID expected")
                 .to_string();
 
-            println!("workload create '{id}'");
-
             let request = tonic::Request::new(WorkloadMessage {
-                id,
+                id: id.clone(),
                 workspace_id,
                 template_id,
             });
 
             client.create(request).await?;
 
+            tracing::info!("workload '{id}' created");
+
             Ok(())
         }
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("workload id expected");
-
-            println!("workload delete '{id}'");
-
             let request = tonic::Request::new(DeleteWorkloadRequest { id: id.to_string() });
 
             client.delete(request).await?;
+
+            tracing::info!("workload '{id}' deleted");
 
             Ok(())
         }
@@ -113,7 +112,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                println!("No workloads found");
+                tracing::info!("No workloads found");
 
                 return Ok(());
             }
