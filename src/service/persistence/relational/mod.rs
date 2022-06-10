@@ -19,7 +19,10 @@ pub use workspace::WorkspaceRelationalPersistence;
 pub async fn ensure_fixtures() {
     use akira_core::Persistence;
 
-    use crate::models::{Deployment, Host, Target, Template, Workload, Workspace};
+    use crate::{
+        models::{Deployment, Host, Target, Template, Workload, Workspace},
+        persistence::HostPersistence,
+    };
 
     let deployment_fixture = Deployment {
         id: "deployment-fixture".to_string(),

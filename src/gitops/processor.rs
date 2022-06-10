@@ -1,10 +1,7 @@
 use akira_core::assignment::assignment_client::AssignmentClient;
 use akira_core::host::host_client::HostClient;
 use akira_core::target::target_client::TargetClient;
-use akira_core::{
-    DeploymentIdRequest, DeploymentMessage, Event, EventType, ListHostsRequest, ModelType,
-    Processor, TargetIdRequest,
-};
+use akira_core::{DeploymentMessage, Event, EventType, ModelType, Processor};
 use async_trait::async_trait;
 use prost::Message;
 use tonic::codegen::InterceptedService;
@@ -119,58 +116,11 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                let deployment = DeploymentMessage::decode(&*event.serialized_model)?;
+                let _deployment = DeploymentMessage::decode(&*event.serialized_model)?;
 
-                // fetch target for deployment
-
-                let mut target_client = self.create_target_client();
-                let target_request = Request::new(TargetIdRequest {
-                    target_id: deployment.target_id,
-                });
-
-                let _target = target_client.get_by_id(target_request).await?;
-
-                // fetch all hosts
-
-                let mut host_client = self.create_host_client();
-                let list_hosts_request = Request::new(ListHostsRequest {});
-
-                let _hosts = host_client.list(list_hosts_request).await?;
-
-                // fetch all current assignments for deployment
-
-                let mut assignment_client = self.create_assignment_client();
-                let deployment_assignments_request = Request::new(DeploymentIdRequest {
-                    deployment_id: deployment.id,
-                });
-
-                let _deployment_assignments = assignment_client
-                    .get_by_deployment_id(deployment_assignments_request)
-                    .await?;
-
-                /*
-
-                let assignments = self
-                    .workspace_service
-                    .get_by_deployment_id(&deployment.id)
-                    .await?;
-
-                for assignment in assignments {
-                    let host = self.host
-                }
-
-                */
-
-                // check current assignments and make sure still valid
-                // if not valid, delete them
-                // if valid, add them to valid list
-
-                // if valid list is short versus number of hosts requested, add
-
-                // Check assignments vs. target and adjust assignments as necessary.
-                // Create / delete these assignments (linking the host to the deployment will happen through Assignment Created event)
-                // Render deployment and commit in GitOps workloads folder
-                tracing::info!("deployment created (NOP): {:?}", event);
+                let _assignment_client = self.create_assignment_client();
+                let _host_client = self.create_host_client();
+                let _target_client = self.create_target_client();
             }
             event_type if event_type == EventType::Updated as i32 => {
                 // Render deployment and commit in GitOps folder

@@ -39,3 +39,14 @@ impl From<Deployment> for DeploymentMessage {
         }
     }
 }
+
+impl From<DeploymentMessage> for Deployment {
+    fn from(deployment: DeploymentMessage) -> Self {
+        Self {
+            id: deployment.id,
+            workload_id: deployment.workload_id,
+            target_id: deployment.target_id,
+            replicas: deployment.replicas,
+        }
+    }
+}

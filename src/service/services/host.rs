@@ -1,20 +1,23 @@
 use std::sync::Arc;
 use std::time::SystemTime;
 
-use akira_core::{Event, EventStream, EventType, HostMessage, ModelType, OperationId, Persistence};
+use akira_core::{Event, EventStream, EventType, HostMessage, ModelType, OperationId};
 use prost::Message;
 use prost_types::Timestamp;
 
-use crate::models::Host;
+use crate::{
+    models::{Host, Target},
+    persistence::HostPersistence,
+};
 
 pub struct HostService {
-    persistence: Box<dyn Persistence<Host, Host>>,
-    event_stream: Arc<Box<dyn EventStream + 'static>>,
+    persistence: Box<dyn HostPersistence>,
+    event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl HostService {
     pub fn new(
-        persistence: Box<dyn Persistence<Host, Host>>,
+        persistence: Box<dyn HostPersistence>,
         event_stream: Arc<Box<dyn EventStream>>,
     ) -> Self {
         Self {
@@ -62,6 +65,10 @@ impl HostService {
 
     pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
         self.persistence.get_by_id(host_id).await
+    }
+
+    pub async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
+        self.persistence.get_matching_target(target).await
     }
 
     pub async fn delete(
@@ -116,8 +123,9 @@ mod tests {
     use akira_memory_stream::MemoryEventStream;
     use dotenv::dotenv;
 
+    use crate::persistence::memory::HostMemoryPersistence;
+
     use super::*;
-    use crate::persistence::memory::MemoryPersistence;
 
     #[tokio::test]
     async fn test_create_get_delete() {
@@ -133,7 +141,7 @@ mod tests {
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let host_persistence = MemoryPersistence::<Host, Host>::default();
+        let host_persistence = HostMemoryPersistence::default();
 
         let cloned_event_stream = event_stream.clone();
         let host_service = HostService::new(Box::new(host_persistence), cloned_event_stream);

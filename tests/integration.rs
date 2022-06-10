@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use akira::{
     models::{Deployment, Host, Target, Template, Workload, Workspace},
-    persistence::memory::MemoryPersistence,
+    persistence::memory::{HostMemoryPersistence, MemoryPersistence},
     services::{
         DeploymentService, HostService, TargetService, TemplateService, WorkloadService,
         WorkspaceService,
@@ -16,7 +16,7 @@ async fn test_e2e() {
     let event_stream =
         Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-    let host_persistence = MemoryPersistence::<Host, Host>::default();
+    let host_persistence = HostMemoryPersistence::default();
 
     let cloned_event_stream = Arc::clone(&event_stream);
     let host_service = HostService::new(Box::new(host_persistence), cloned_event_stream);

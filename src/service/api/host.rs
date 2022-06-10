@@ -95,13 +95,12 @@ mod tests {
 
     use super::GrpcHostService;
 
-    use crate::models::Host;
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::persistence::memory::HostMemoryPersistence;
     use crate::services::HostService;
 
     #[tokio::test]
     async fn test_create_list_host() -> anyhow::Result<()> {
-        let host_persistence = Box::new(MemoryPersistence::<Host, Host>::default());
+        let host_persistence = Box::new(HostMemoryPersistence::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
