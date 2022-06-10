@@ -62,11 +62,15 @@ jobs:
       - name: Run diesel migration
         run: diesel migration run
         id: diesel-migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: "0.20.0"
           args: "--workspace --ignore-tests --skip-clean --exclude-files spikes/* --exclude-files samples/*"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Archive code coverage results
         uses: actions/upload-artifact@v1
         with:
@@ -76,6 +80,6 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         with:
           path: cobertura.xml
-          repo_token: ${{ secrets.ACCESS_TOKEN_GITHUB }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           minimum_coverage: 80
           only_changed_files: true
