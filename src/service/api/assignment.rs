@@ -5,8 +5,8 @@ use crate::models::Assignment;
 use crate::services::AssignmentService;
 
 use akira_core::{
-    AssignmentMessage, AssignmentTrait, DeleteAssignmentRequest, ListAssignmentsRequest,
-    ListAssignmentsResponse, OperationId,
+    common::AssignmentIdRequest, AssignmentMessage, AssignmentTrait, DeploymentIdRequest,
+    ListAssignmentsRequest, ListAssignmentsResponse, OperationId,
 };
 
 pub struct GrpcAssignmentService {
@@ -48,12 +48,16 @@ impl AssignmentTrait for GrpcAssignmentService {
 
     async fn delete(
         &self,
-        request: Request<DeleteAssignmentRequest>,
+        request: Request<AssignmentIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
         // TODO: check that no workloads are currently still using assignment
         // Query workload service for workloads by assignment_id, error if any exist
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
+        let operation_id = match self
+            .service
+            .delete(&request.into_inner().assignment_id, None)
+            .await
+        {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -64,6 +68,37 @@ impl AssignmentTrait for GrpcAssignmentService {
         };
 
         Ok(Response::new(operation_id))
+    }
+
+    async fn get_by_deployment_id(
+        &self,
+        request: Request<DeploymentIdRequest>,
+    ) -> Result<Response<ListAssignmentsResponse>, Status> {
+        let deployment_id = request.into_inner().deployment_id;
+        let assignments = match self.service.get_by_deployment_id(&deployment_id).await {
+            Ok(assignments) => assignments,
+            Err(err) => {
+                tracing::error!(
+                    "get assignments with deployment id {} failed: {}",
+                    deployment_id,
+                    err
+                );
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!(
+                        "get assignments with deployment id {} failed",
+                        deployment_id
+                    ),
+                ));
+            }
+        };
+
+        let assignments: Vec<AssignmentMessage> = assignments
+            .into_iter()
+            .map(|assignment| assignment.into())
+            .collect();
+        let response = ListAssignmentsResponse { assignments };
+        Ok(Response::new(response))
     }
 
     async fn list(
@@ -99,24 +134,20 @@ impl AssignmentTrait for GrpcAssignmentService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::common::AssignmentIdRequest;
     use std::sync::Arc;
     use tonic::Request;
 
-    use akira_core::{
-        AssignmentMessage, AssignmentTrait, DeleteAssignmentRequest, EventStream,
-        ListAssignmentsRequest,
-    };
+    use akira_core::{AssignmentMessage, AssignmentTrait, EventStream, ListAssignmentsRequest};
     use akira_memory_stream::MemoryEventStream;
 
     use crate::api::GrpcAssignmentService;
-    use crate::models::Assignment;
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::persistence::memory::AssignmentMemoryPersistence;
     use crate::services::AssignmentService;
 
     #[tokio::test]
     async fn test_create_list_assignment() -> anyhow::Result<()> {
-        let assignment_persistence =
-            Box::new(MemoryPersistence::<Assignment, Assignment>::default());
+        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
@@ -146,8 +177,8 @@ mod tests {
             .unwrap()
             .into_inner();
 
-        let request = Request::new(DeleteAssignmentRequest {
-            id: "assignment-grpc-test".to_string(),
+        let request = Request::new(AssignmentIdRequest {
+            assignment_id: "assignment-grpc-test".to_string(),
         });
         let response = assignment_grpc_service
             .delete(request)

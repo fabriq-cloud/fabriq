@@ -1,5 +1,5 @@
 use akira_core::target::target_client::TargetClient;
-use akira_core::{DeleteTargetRequest, ListTargetsRequest, TargetMessage};
+use akira_core::{ListTargetsRequest, TargetIdRequest, TargetMessage};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
 use tonic::metadata::MetadataValue;
@@ -74,7 +74,9 @@ pub async fn handlers(
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("Target id expected");
 
-            let request = tonic::Request::new(DeleteTargetRequest { id: id.to_string() });
+            let request = tonic::Request::new(TargetIdRequest {
+                target_id: id.to_string(),
+            });
 
             client.delete(request).await?;
 

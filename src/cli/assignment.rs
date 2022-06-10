@@ -1,5 +1,6 @@
 use akira_core::assignment::assignment_client::AssignmentClient;
-use akira_core::{AssignmentMessage, DeleteAssignmentRequest, ListAssignmentsRequest};
+use akira_core::common::AssignmentIdRequest;
+use akira_core::{AssignmentMessage, ListAssignmentsRequest};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
 use tonic::metadata::MetadataValue;
@@ -82,7 +83,9 @@ pub async fn handlers(
         Some(("delete", delete_match)) => {
             let id = delete_match.value_of("ID").expect("assignment id expected");
 
-            let request = tonic::Request::new(DeleteAssignmentRequest { id: id.to_string() });
+            let request = tonic::Request::new(AssignmentIdRequest {
+                assignment_id: id.to_string(),
+            });
 
             client.delete(request).await?;
 

@@ -1,20 +1,18 @@
 use std::{sync::Arc, time::SystemTime};
 
-use crate::models::Assignment;
-use akira_core::{
-    AssignmentMessage, Event, EventStream, EventType, ModelType, OperationId, Persistence,
-};
+use crate::{models::Assignment, persistence::AssignmentPersistence};
+use akira_core::{AssignmentMessage, Event, EventStream, EventType, ModelType, OperationId};
 use prost::Message;
 use prost_types::Timestamp;
 
 pub struct AssignmentService {
-    persistence: Box<dyn Persistence<Assignment, Assignment>>,
+    persistence: Box<dyn AssignmentPersistence>,
     event_stream: Arc<Box<dyn EventStream + 'static>>,
 }
 
 impl AssignmentService {
     pub fn new(
-        persistence: Box<dyn Persistence<Assignment, Assignment>>,
+        persistence: Box<dyn AssignmentPersistence>,
         event_stream: Arc<Box<dyn EventStream>>,
     ) -> Self {
         Self {
@@ -81,6 +79,13 @@ impl AssignmentService {
         self.persistence.get_by_id(host_id).await
     }
 
+    pub async fn get_by_deployment_id(
+        &self,
+        deployment_id: &str,
+    ) -> anyhow::Result<Vec<Assignment>> {
+        self.persistence.get_by_deployment_id(deployment_id).await
+    }
+
     pub async fn delete(
         &self,
         assignment_id: &str,
@@ -134,7 +139,7 @@ mod tests {
     use dotenv::dotenv;
 
     use super::*;
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::persistence::memory::AssignmentMemoryPersistence;
     use akira_memory_stream::MemoryEventStream;
 
     #[tokio::test]
@@ -147,7 +152,7 @@ mod tests {
             deployment_id: "deployment-fixture".to_owned(),
         };
 
-        let assignment_persistence = MemoryPersistence::<Assignment, Assignment>::default();
+        let assignment_persistence = AssignmentMemoryPersistence::default();
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 

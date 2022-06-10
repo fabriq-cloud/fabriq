@@ -1,5 +1,5 @@
 use akira_core::deployment::deployment_client::DeploymentClient;
-use akira_core::{DeleteDeploymentRequest, DeploymentMessage, ListDeploymentsRequest};
+use akira_core::{DeploymentIdRequest, DeploymentMessage, ListDeploymentsRequest};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
 use tonic::metadata::{Ascii, MetadataValue};
@@ -99,7 +99,9 @@ pub async fn handlers(
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("deployment id expected");
 
-            let request = tonic::Request::new(DeleteDeploymentRequest { id: id.to_string() });
+            let request = tonic::Request::new(DeploymentIdRequest {
+                deployment_id: id.to_string(),
+            });
 
             client.delete(request).await?;
 

@@ -1,5 +1,5 @@
 use akira_core::{
-    DeleteDeploymentRequest, DeploymentMessage, DeploymentTrait, ListDeploymentsRequest,
+    DeploymentIdRequest, DeploymentMessage, DeploymentTrait, ListDeploymentsRequest,
     ListDeploymentsResponse, OperationId,
 };
 use std::sync::Arc;
@@ -48,12 +48,16 @@ impl DeploymentTrait for GrpcDeploymentService {
 
     async fn delete(
         &self,
-        request: Request<DeleteDeploymentRequest>,
+        request: Request<DeploymentIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
         // TODO: check that no workloads are currently still using deployment
         // Query workload service for workloads by deployment_id, error if any exist
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
+        let operation_id = match self
+            .service
+            .delete(&request.into_inner().deployment_id, None)
+            .await
+        {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -101,7 +105,7 @@ impl DeploymentTrait for GrpcDeploymentService {
 #[cfg(test)]
 mod tests {
     use akira_core::{
-        DeleteDeploymentRequest, DeploymentMessage, DeploymentTrait, EventStream,
+        DeploymentIdRequest, DeploymentMessage, DeploymentTrait, EventStream,
         ListDeploymentsRequest,
     };
     use akira_memory_stream::MemoryEventStream;
@@ -148,8 +152,8 @@ mod tests {
             .unwrap()
             .into_inner();
 
-        let request = Request::new(DeleteDeploymentRequest {
-            id: "deployment-grpc-test".to_string(),
+        let request = Request::new(DeploymentIdRequest {
+            deployment_id: "deployment-grpc-test".to_string(),
         });
         let response = deployment_grpc_service
             .delete(request)

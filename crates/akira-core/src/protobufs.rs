@@ -4,7 +4,7 @@ pub mod common {
     tonic::include_proto!("akira.common");
 }
 
-pub use common::OperationId;
+pub use common::{DeploymentIdRequest, OperationId, TargetIdRequest};
 
 impl OperationId {
     pub fn create() -> Self {
@@ -28,9 +28,7 @@ pub mod assignment {
 }
 
 pub use assignment::assignment_server::{Assignment as AssignmentTrait, AssignmentServer};
-pub use assignment::{
-    AssignmentMessage, DeleteAssignmentRequest, ListAssignmentsRequest, ListAssignmentsResponse,
-};
+pub use assignment::{AssignmentMessage, ListAssignmentsRequest, ListAssignmentsResponse};
 
 // deployment protobufs
 
@@ -39,9 +37,7 @@ pub mod deployment {
 }
 
 pub use deployment::deployment_server::{Deployment as DeploymentTrait, DeploymentServer};
-pub use deployment::{
-    DeleteDeploymentRequest, DeploymentMessage, ListDeploymentsRequest, ListDeploymentsResponse,
-};
+pub use deployment::{DeploymentMessage, ListDeploymentsRequest, ListDeploymentsResponse};
 
 // event protobufs
 
@@ -102,7 +98,7 @@ pub mod target {
 }
 
 pub use target::target_server::{Target as TargetTrait, TargetServer};
-pub use target::{DeleteTargetRequest, ListTargetsRequest, ListTargetsResponse, TargetMessage};
+pub use target::{ListTargetsRequest, ListTargetsResponse, TargetMessage};
 
 // template protobufs
 

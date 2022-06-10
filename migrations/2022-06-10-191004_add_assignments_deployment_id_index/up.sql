@@ -1,0 +1,1 @@
+CREATE INDEX assignments_deployment_id ON assignments(deployment_id);

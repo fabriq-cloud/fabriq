@@ -1,6 +1,10 @@
+use akira_core::assignment::assignment_client::AssignmentClient;
+use akira_core::host::host_client::HostClient;
 use akira_core::target::target_client::TargetClient;
-use akira_core::target::GetTargetRequest;
-use akira_core::{DeploymentMessage, Event, EventType, ModelType, Processor};
+use akira_core::{
+    DeploymentIdRequest, DeploymentMessage, Event, EventType, ListHostsRequest, ModelType,
+    Processor, TargetIdRequest,
+};
 use async_trait::async_trait;
 use prost::Message;
 use tonic::codegen::InterceptedService;
@@ -61,6 +65,26 @@ impl GitOpsProcessor {
         Ok(Self { channel, token })
     }
 
+    pub fn create_assignment_client(
+        &self,
+    ) -> AssignmentClient<InterceptedService<Channel, impl Interceptor + '_>> {
+        AssignmentClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
+            req.metadata_mut()
+                .insert("authorization", self.token.clone());
+            Ok(req)
+        })
+    }
+
+    pub fn create_host_client(
+        &self,
+    ) -> HostClient<InterceptedService<Channel, impl Interceptor + '_>> {
+        HostClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
+            req.metadata_mut()
+                .insert("authorization", self.token.clone());
+            Ok(req)
+        })
+    }
+
     pub fn create_target_client(
         &self,
     ) -> TargetClient<InterceptedService<Channel, impl Interceptor + '_>> {
@@ -97,12 +121,32 @@ impl GitOpsProcessor {
             event_type if event_type == EventType::Created as i32 => {
                 let deployment = DeploymentMessage::decode(&*event.serialized_model)?;
 
+                // fetch target for deployment
+
                 let mut target_client = self.create_target_client();
-                let target_request = Request::new(GetTargetRequest {
-                    id: deployment.target_id,
+                let target_request = Request::new(TargetIdRequest {
+                    target_id: deployment.target_id,
                 });
 
                 let _target = target_client.get_by_id(target_request).await?;
+
+                // fetch all hosts
+
+                let mut host_client = self.create_host_client();
+                let list_hosts_request = Request::new(ListHostsRequest {});
+
+                let _hosts = host_client.list(list_hosts_request).await?;
+
+                // fetch all current assignments for deployment
+
+                let mut assignment_client = self.create_assignment_client();
+                let deployment_assignments_request = Request::new(DeploymentIdRequest {
+                    deployment_id: deployment.id,
+                });
+
+                let _deployment_assignments = assignment_client
+                    .get_by_deployment_id(deployment_assignments_request)
+                    .await?;
 
                 /*
 

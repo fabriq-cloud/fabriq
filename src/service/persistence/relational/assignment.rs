@@ -1,7 +1,7 @@
-use akira_core::Persistence;
 use async_trait::async_trait;
 use diesel::prelude::*;
 
+use crate::persistence::AssignmentPersistence;
 use crate::schema::assignments::table;
 use crate::{models::Assignment, schema::assignments, schema::assignments::dsl::*};
 
@@ -9,7 +9,7 @@ use crate::{models::Assignment, schema::assignments, schema::assignments::dsl::*
 pub struct AssignmentRelationalPersistence {}
 
 #[async_trait]
-impl Persistence<Assignment, Assignment> for AssignmentRelationalPersistence {
+impl AssignmentPersistence for AssignmentRelationalPersistence {
     async fn create(&self, assignment: Assignment) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -30,14 +30,6 @@ impl Persistence<Assignment, Assignment> for AssignmentRelationalPersistence {
         Ok(diesel::delete(assignments.filter(id.eq(model_id))).execute(&connection)?)
     }
 
-    async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
-        let connection = crate::db::get_connection()?;
-
-        let results = assignments.load::<Assignment>(&connection).unwrap();
-
-        Ok(results)
-    }
-
     async fn get_by_id(&self, assignment_id: &str) -> anyhow::Result<Option<Assignment>> {
         let connection = crate::db::get_connection()?;
 
@@ -48,6 +40,24 @@ impl Persistence<Assignment, Assignment> for AssignmentRelationalPersistence {
         let cloned_result = results.first().cloned();
 
         Ok(cloned_result)
+    }
+
+    async fn get_by_deployment_id(&self, deploy_id: &str) -> anyhow::Result<Vec<Assignment>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = assignments
+            .filter(deployment_id.eq(deploy_id))
+            .load::<Assignment>(&connection)?;
+
+        Ok(results)
+    }
+
+    async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = assignments.load::<Assignment>(&connection).unwrap();
+
+        Ok(results)
     }
 }
 
@@ -88,6 +98,13 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(fetched_assignment.id, new_assignment.id);
+
+        let deployment_assignments = assignment_persistence
+            .get_by_deployment_id(&new_assignment.deployment_id)
+            .await
+            .unwrap();
+
+        assert_eq!(deployment_assignments.len(), 1);
 
         let deleted_assignments = assignment_persistence
             .delete(&inserted_assignment_id)

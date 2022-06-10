@@ -1,6 +1,5 @@
-use akira_core::target::GetTargetRequest;
 use akira_core::{
-    DeleteTargetRequest, ListTargetsRequest, ListTargetsResponse, OperationId, TargetMessage,
+    ListTargetsRequest, ListTargetsResponse, OperationId, TargetIdRequest, TargetMessage,
     TargetTrait,
 };
 use std::sync::Arc;
@@ -46,12 +45,16 @@ impl TargetTrait for GrpcTargetService {
 
     async fn delete(
         &self,
-        request: Request<DeleteTargetRequest>,
+        request: Request<TargetIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
         // TODO: check that no workloads are currently still using target
         // Query workload service for workloads by target_id, error if any exist
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
+        let operation_id = match self
+            .service
+            .delete(&request.into_inner().target_id, None)
+            .await
+        {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -66,9 +69,9 @@ impl TargetTrait for GrpcTargetService {
 
     async fn get_by_id(
         &self,
-        request: Request<GetTargetRequest>,
+        request: Request<TargetIdRequest>,
     ) -> Result<Response<TargetMessage>, Status> {
-        let target_id = request.into_inner().id;
+        let target_id = request.into_inner().target_id;
         let target = match self.service.get_by_id(&target_id).await {
             Ok(target) => target,
             Err(err) => {
@@ -129,9 +132,8 @@ impl TargetTrait for GrpcTargetService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::target::GetTargetRequest;
     use akira_core::{
-        DeleteTargetRequest, EventStream, ListTargetsRequest, TargetMessage, TargetTrait,
+        EventStream, ListTargetsRequest, TargetIdRequest, TargetMessage, TargetTrait,
     };
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
@@ -175,8 +177,8 @@ mod tests {
 
         assert!(!list_response.targets.is_empty());
 
-        let request = Request::new(GetTargetRequest {
-            id: "target-grpc-test".to_string(),
+        let request = Request::new(TargetIdRequest {
+            target_id: "target-grpc-test".to_string(),
         });
         let get_response = target_grpc_service
             .get_by_id(request)
@@ -186,8 +188,8 @@ mod tests {
 
         assert_eq!(get_response.id, "target-grpc-test");
 
-        let request = Request::new(DeleteTargetRequest {
-            id: "target-grpc-test".to_string(),
+        let request = Request::new(TargetIdRequest {
+            target_id: "target-grpc-test".to_string(),
         });
         let response = target_grpc_service
             .delete(request)
