@@ -20,15 +20,7 @@ impl GrpcHostService {
 #[tonic::async_trait]
 impl HostTrait for GrpcHostService {
     async fn create(&self, request: Request<HostMessage>) -> Result<Response<OperationId>, Status> {
-        // TODO: Validate host id is valid
-
-        let new_host = Host {
-            id: request.get_ref().id.clone(),
-            labels: request.get_ref().labels.clone(),
-            cpu_capacity: request.get_ref().cpu_capacity,
-            memory_capacity: request.get_ref().memory_capacity,
-        };
-
+        let new_host: Host = request.into_inner().into();
         let operation_id = match self.service.create(new_host, None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
@@ -81,8 +73,8 @@ impl HostTrait for GrpcHostService {
             .map(|host| HostMessage {
                 id: host.id.clone(),
                 labels: host.labels.clone(),
-                cpu_capacity: host.cpu_capacity,
-                memory_capacity: host.memory_capacity,
+                //                cpu_capacity: host.cpu_capacity,
+                //                memory_capacity: host.memory_capacity,
             })
             .collect();
 
@@ -119,10 +111,7 @@ mod tests {
 
         let request = Request::new(HostMessage {
             id: "host-grpc-test".to_string(),
-            labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
-
-            cpu_capacity: 4000,
-            memory_capacity: 24000,
+            labels: vec!["region:eastus2".to_string(), "cloud:azure".to_string()],
         });
 
         let response = host_grpc_service

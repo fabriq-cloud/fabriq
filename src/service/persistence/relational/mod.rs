@@ -35,8 +35,8 @@ pub async fn ensure_fixtures() {
     let host_fixture = Host {
         id: "host-fixture".to_string(),
         labels: vec!["region:eastus2".to_string()],
-        cpu_capacity: 2,
-        memory_capacity: 4,
+        //        cpu_capacity: 2,
+        //        memory_capacity: 4,
     };
 
     let host_persistence = HostRelationalPersistence::default();

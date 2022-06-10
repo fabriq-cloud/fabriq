@@ -22,6 +22,4 @@ message ListHostsResponse {
 message HostMessage {
     string          id = 1;
     repeated string labels = 2;
-    int64           memory_capacity = 3;
-    int32           cpu_capacity = 4;
 }

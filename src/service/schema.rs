@@ -29,8 +29,6 @@ table! {
     hosts (id) {
         id -> Text,
         labels -> Array<Text>,
-        cpu_capacity -> Int4,
-        memory_capacity -> Int8,
     }
 }
 

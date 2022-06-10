@@ -88,9 +88,8 @@ mod tests {
         let new_host = Host {
             id: "azure-eastus2-1".to_owned(),
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
-
-            cpu_capacity: 4000,
-            memory_capacity: 24000,
+            //            cpu_capacity: 4000,
+            //            memory_capacity: 24000,
         };
 
         let host_persistence = MemoryPersistence::<Host, Host>::default();

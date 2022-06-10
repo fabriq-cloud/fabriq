@@ -15,22 +15,24 @@ pub fn args() -> Command<'static> {
         .subcommand(
             Command::new("create")
                 .about("create host")
-                .arg(
-                    Arg::new("cpu")
-                        .short('c')
-                        .long("cpu")
-                        .help("cpu capacity of host")
-                        .takes_value(true)
-                        .multiple_values(false),
-                )
-                .arg(
-                    Arg::new("memory")
-                        .short('m')
-                        .long("memory")
-                        .help("memory capacity of host")
-                        .takes_value(true)
-                        .multiple_values(false),
-                )
+                /*
+                                .arg(
+                                    Arg::new("cpu")
+                                        .short('c')
+                                        .long("cpu")
+                                        .help("cpu capacity of host")
+                                        .takes_value(true)
+                                        .multiple_values(false),
+                                )
+                                .arg(
+                                    Arg::new("memory")
+                                        .short('m')
+                                        .long("memory")
+                                        .help("memory capacity of host")
+                                        .takes_value(true)
+                                        .multiple_values(false),
+                                )
+                */
                 .arg(
                     Arg::new("label")
                         .short('l')
@@ -77,7 +79,7 @@ pub async fn handlers(
                 .expect("At least one label expected");
 
             let labels = labels.map(|s| s.to_string()).collect();
-
+            /*
             let cpu_capacity = add_match
                 .value_of("cpu")
                 .expect("cpu capacity expected")
@@ -89,12 +91,10 @@ pub async fn handlers(
                 .expect("memory capacity expected")
                 .to_string()
                 .parse::<i64>()?;
-
+                */
             let request = tonic::Request::new(HostMessage {
                 id: id.clone(),
                 labels,
-                cpu_capacity,
-                memory_capacity,
             });
 
             client.create(request).await?;
@@ -122,14 +122,7 @@ pub async fn handlers(
                 .into_inner()
                 .hosts
                 .into_iter()
-                .map(|host| {
-                    vec![
-                        host.id.to_string(),
-                        host.labels.join(", "),
-                        host.cpu_capacity.to_string(),
-                        host.memory_capacity.to_string(),
-                    ]
-                })
+                .map(|host| vec![host.id.to_string(), host.labels.join(", ")])
                 .collect();
 
             if table_data.is_empty() {
@@ -148,16 +141,6 @@ pub async fn handlers(
             ascii_table
                 .column(1)
                 .set_header("LABELS")
-                .set_align(Align::Left);
-
-            ascii_table
-                .column(2)
-                .set_header("CPU CAPACITY")
-                .set_align(Align::Left);
-
-            ascii_table
-                .column(3)
-                .set_header("MEMORY CAPACITY")
                 .set_align(Align::Left);
 
             ascii_table.print(table_data);

@@ -1,5 +1,5 @@
 use akira_core::{HostMessage, PersistableModel};
-use diesel::sql_types::{BigInt, Integer};
+// use diesel::sql_types::{BigInt, Integer};
 
 use crate::schema::hosts;
 
@@ -8,12 +8,6 @@ use crate::schema::hosts;
 pub struct Host {
     pub id: String,
     pub labels: Vec<String>,
-
-    #[sql_type = "Integer"]
-    pub cpu_capacity: i32, // in millicores
-
-    #[sql_type = "BigInt"]
-    pub memory_capacity: i64, // in KB
 }
 
 impl PersistableModel<Host, Host> for Host {
@@ -31,8 +25,15 @@ impl From<Host> for HostMessage {
         Self {
             id: host.id,
             labels: host.labels.clone(),
-            cpu_capacity: host.cpu_capacity,
-            memory_capacity: host.memory_capacity,
+        }
+    }
+}
+
+impl From<HostMessage> for Host {
+    fn from(host_message: HostMessage) -> Self {
+        Self {
+            id: host_message.id,
+            labels: host_message.labels,
         }
     }
 }

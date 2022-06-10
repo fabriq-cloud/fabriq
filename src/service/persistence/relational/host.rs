@@ -59,23 +59,20 @@ mod tests {
         let new_host = Host {
             id: "host-under-test".to_owned(),
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
-
-            cpu_capacity: 4000,
-            memory_capacity: 24000,
         };
 
         let host_persistence = HostRelationalPersistence::default();
 
         let _ = host_persistence.delete(&new_host.id).await.unwrap();
 
-        let inserted_host_id = host_persistence.create(new_host).await.unwrap();
+        let inserted_host_id = host_persistence.create(new_host.clone()).await.unwrap();
 
         let fetched_host = host_persistence
             .get_by_id(&inserted_host_id)
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_host.cpu_capacity, 4000);
+        assert_eq!(fetched_host.id, new_host.id);
 
         let deleted_hosts = host_persistence.delete(&inserted_host_id).await.unwrap();
         assert_eq!(deleted_hosts, 1);
