@@ -24,7 +24,7 @@ impl From<Host> for HostMessage {
     fn from(host: Host) -> Self {
         Self {
             id: host.id,
-            labels: host.labels.clone(),
+            labels: host.labels,
         }
     }
 }
