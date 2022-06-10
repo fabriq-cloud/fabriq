@@ -1,10 +1,10 @@
+use uuid::Uuid;
+
 pub mod common {
     tonic::include_proto!("akira.common");
 }
 
 pub use common::OperationId;
-
-use uuid::Uuid;
 
 impl OperationId {
     pub fn create() -> Self {
@@ -72,7 +72,7 @@ impl From<i32> for ModelType {
             4 => ModelType::Template,
             5 => ModelType::Workload,
             6 => ModelType::Workspace,
-            _ => panic!("invalid event type"),
+            _ => panic!("invalid model type"),
         }
     }
 }

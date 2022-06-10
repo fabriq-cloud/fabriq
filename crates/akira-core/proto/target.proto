@@ -6,7 +6,12 @@ import "common.proto";
 service Target {
     rpc Create(TargetMessage) returns (akira.common.OperationId);
     rpc Delete(DeleteTargetRequest) returns (akira.common.OperationId);
+    rpc GetById(GetTargetRequest) returns (TargetMessage);
     rpc List(ListTargetsRequest) returns (ListTargetsResponse);
+}
+
+message GetTargetRequest {
+    string id = 1;
 }
 
 message DeleteTargetRequest {

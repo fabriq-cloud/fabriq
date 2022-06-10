@@ -1,13 +1,19 @@
-use akira_core::{Event, EventType, ModelType, Processor};
+use akira_core::target::target_client::TargetClient;
+use akira_core::target::GetTargetRequest;
+use akira_core::{DeploymentMessage, Event, EventType, ModelType, Processor};
 use async_trait::async_trait;
+use prost::Message;
+use tonic::codegen::InterceptedService;
 use tonic::metadata::{Ascii, MetadataValue};
+use tonic::service::Interceptor;
 use tonic::transport::Channel;
+use tonic::Request;
 
 use crate::context::Context;
 
 pub struct GitOpsProcessor {
-    _channel: Channel,
-    _token: MetadataValue<Ascii>,
+    channel: Channel,
+    token: MetadataValue<Ascii>,
 }
 
 #[async_trait]
@@ -52,9 +58,16 @@ impl GitOpsProcessor {
         let channel = Channel::from_static(context.endpoint).connect().await?;
         let token: MetadataValue<Ascii> = context.token.parse()?;
 
-        Ok(Self {
-            _channel: channel,
-            _token: token,
+        Ok(Self { channel, token })
+    }
+
+    pub fn create_target_client(
+        &self,
+    ) -> TargetClient<InterceptedService<Channel, impl Interceptor + '_>> {
+        TargetClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
+            req.metadata_mut()
+                .insert("authorization", self.token.clone());
+            Ok(req)
         })
     }
 
@@ -82,13 +95,16 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
+                let deployment = DeploymentMessage::decode(&*event.serialized_model)?;
+
+                let mut target_client = self.create_target_client();
+                let target_request = Request::new(GetTargetRequest {
+                    id: deployment.target_id,
+                });
+
+                let _target = target_client.get_by_id(target_request).await?;
+
                 /*
-                let _ = match self.target_service.get_by_id(&deployment.target_id).await? {
-                    None => {
-                        return Err(anyhow::anyhow!("target {} not found", deployment.target_id))
-                    }
-                    Some(target) => target,
-                };
 
                 let assignments = self
                     .workspace_service

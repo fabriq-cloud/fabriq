@@ -1,3 +1,4 @@
+use akira_core::target::GetTargetRequest;
 use akira_core::{
     DeleteTargetRequest, ListTargetsRequest, ListTargetsResponse, OperationId, TargetMessage,
     TargetTrait,
@@ -63,6 +64,37 @@ impl TargetTrait for GrpcTargetService {
         Ok(Response::new(operation_id))
     }
 
+    async fn get_by_id(
+        &self,
+        request: Request<GetTargetRequest>,
+    ) -> Result<Response<TargetMessage>, Status> {
+        let target_id = request.into_inner().id;
+        let target = match self.service.get_by_id(&target_id).await {
+            Ok(target) => target,
+            Err(err) => {
+                tracing::error!("get target with id {}: failed: {}", target_id, err);
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    format!("get target with id {}: failed", &target_id),
+                ));
+            }
+        };
+
+        let target = match target {
+            Some(target) => target,
+            None => {
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!("get target with id {}: not found", &target_id),
+                ))
+            }
+        };
+
+        let target_message: TargetMessage = target.into();
+
+        Ok(Response::new(target_message))
+    }
+
     async fn list(
         &self,
         _request: Request<ListTargetsRequest>,
@@ -97,6 +129,7 @@ impl TargetTrait for GrpcTargetService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::target::GetTargetRequest;
     use akira_core::{
         DeleteTargetRequest, EventStream, ListTargetsRequest, TargetMessage, TargetTrait,
     };
@@ -134,11 +167,24 @@ mod tests {
         assert_eq!(response.id.len(), 36);
 
         let request = Request::new(ListTargetsRequest {});
-        let _ = target_grpc_service
+        let list_response = target_grpc_service
             .list(request)
             .await
             .unwrap()
             .into_inner();
+
+        assert!(!list_response.targets.is_empty());
+
+        let request = Request::new(GetTargetRequest {
+            id: "target-grpc-test".to_string(),
+        });
+        let get_response = target_grpc_service
+            .get_by_id(request)
+            .await
+            .unwrap()
+            .into_inner();
+
+        assert_eq!(get_response.id, "target-grpc-test");
 
         let request = Request::new(DeleteTargetRequest {
             id: "target-grpc-test".to_string(),
