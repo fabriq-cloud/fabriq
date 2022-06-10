@@ -27,7 +27,7 @@ impl DeploymentService {
     pub async fn create(
         &self,
         deployment: Deployment,
-        operation_id: Option<OperationId>,
+        operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         let deployment_id = self.persistence.create(deployment).await?;
 
@@ -72,7 +72,7 @@ impl DeploymentService {
     pub async fn delete(
         &self,
         deployment_id: &str,
-        operation_id: Option<OperationId>,
+        operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         let deployment = match self.get_by_id(deployment_id).await? {
             Some(deployment) => deployment,
@@ -145,7 +145,7 @@ mod tests {
         };
 
         let deployment_created_operation_id = deployment_service
-            .create(new_deployment.clone(), Some(OperationId::create()))
+            .create(new_deployment.clone(), &Some(OperationId::create()))
             .await
             .unwrap();
         assert_eq!(deployment_created_operation_id.id.len(), 36);
@@ -158,7 +158,7 @@ mod tests {
         assert_eq!(fetched_deployment.id, new_deployment.id);
 
         let deleted_operation_id = deployment_service
-            .delete(&new_deployment.id, None)
+            .delete(&new_deployment.id, &None)
             .await
             .unwrap();
         assert_eq!(deleted_operation_id.id.len(), 36);

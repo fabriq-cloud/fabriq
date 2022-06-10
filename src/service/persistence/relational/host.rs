@@ -14,7 +14,7 @@ pub struct HostRelationalPersistence {}
 
 #[async_trait]
 impl HostPersistence for HostRelationalPersistence {
-    async fn create(&self, host: Host) -> anyhow::Result<String> {
+    async fn create(&self, host: &Host) -> anyhow::Result<String> {
         let conn = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(hosts::table)
@@ -92,7 +92,7 @@ mod tests {
 
         let _ = host_persistence.delete(&new_host.id).await.unwrap();
 
-        let inserted_host_id = host_persistence.create(new_host.clone()).await.unwrap();
+        let inserted_host_id = host_persistence.create(&new_host).await.unwrap();
 
         let fetched_host = host_persistence
             .get_by_id(&inserted_host_id)

@@ -33,7 +33,7 @@ impl DeploymentTrait for GrpcDeploymentService {
             hosts: request.get_ref().hosts,
         };
 
-        let operation_id = match self.service.create(new_deployment, None).await {
+        let operation_id = match self.service.create(new_deployment, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -55,7 +55,7 @@ impl DeploymentTrait for GrpcDeploymentService {
 
         let operation_id = match self
             .service
-            .delete(&request.into_inner().deployment_id, None)
+            .delete(&request.into_inner().deployment_id, &None)
             .await
         {
             Ok(operation_id) => operation_id,

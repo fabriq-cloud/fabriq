@@ -23,8 +23,8 @@ impl AssignmentService {
 
     pub async fn create(
         &self,
-        assignment: Assignment,
-        operation_id: Option<OperationId>,
+        assignment: &Assignment,
+        operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         // TODO: Use an Error enumeration to return specific error
 
@@ -89,7 +89,7 @@ impl AssignmentService {
     pub async fn delete(
         &self,
         assignment_id: &str,
-        operation_id: Option<OperationId>,
+        operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         let assignment = match self.get_by_id(assignment_id).await? {
             Some(assignment) => assignment,
@@ -162,7 +162,7 @@ mod tests {
         };
 
         let create_operation_id = assignment_service
-            .create(new_assignment.clone(), None)
+            .create(&new_assignment, &None)
             .await
             .unwrap();
 
@@ -177,7 +177,7 @@ mod tests {
         assert_eq!(fetched_assignment.id, new_assignment.id);
 
         let delete_operation_id = assignment_service
-            .delete(&new_assignment.id, Some(create_operation_id))
+            .delete(&new_assignment.id, &Some(create_operation_id))
             .await
             .unwrap();
 

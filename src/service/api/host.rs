@@ -21,7 +21,7 @@ impl GrpcHostService {
 impl HostTrait for GrpcHostService {
     async fn create(&self, request: Request<HostMessage>) -> Result<Response<OperationId>, Status> {
         let new_host: Host = request.into_inner().into();
-        let operation_id = match self.service.create(new_host, None).await {
+        let operation_id = match self.service.create(&new_host, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(

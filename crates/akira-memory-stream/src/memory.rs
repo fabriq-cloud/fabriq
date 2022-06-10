@@ -82,7 +82,7 @@ mod tests {
         };
 
         let host_stream = MemoryEventStream::new().unwrap();
-        let operation_id = OperationId::unwrap_or_create(None);
+        let operation_id = OperationId::unwrap_or_create(&None);
 
         let timestamp = Timestamp {
             seconds: SystemTime::now()

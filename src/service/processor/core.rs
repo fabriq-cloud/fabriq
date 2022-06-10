@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use prost::Message;
 
 use crate::{
-    models::Deployment,
+    models::{Assignment, Deployment},
     services::{AssignmentService, HostService, TargetService},
 };
 
@@ -60,6 +60,7 @@ impl Processor for CoreProcessor {
 }
 
 impl CoreProcessor {
+    /*
     async fn reconcile_deployment(&self, deployment: &Deployment) -> anyhow::Result<()> {
         let target = self.target_service.get_by_id(&deployment.target_id).await?;
         let target = match target {
@@ -97,6 +98,7 @@ impl CoreProcessor {
 
         Ok(())
     }
+    */
 
     async fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
@@ -105,7 +107,39 @@ impl CoreProcessor {
                 let deployment: Deployment =
                     DeploymentMessage::decode(&*event.serialized_model)?.into();
 
-                self.reconcile_deployment(&deployment).await?;
+                let target = self.target_service.get_by_id(&deployment.target_id).await?;
+                let target = match target {
+                    Some(target) => target,
+                    None => {
+                        return Err(anyhow::anyhow!(
+                            "couldn't find target with id {}",
+                            deployment.target_id
+                        ))
+                    }
+                };
+
+                let mut matching_hosts = self.host_service.get_matching_target(&target).await?;
+                let hosts_usize = deployment.hosts as usize;
+
+                let deployment_hosts = match deployment.hosts {
+                    0 => matching_hosts,
+                    _ => matching_hosts.drain(0..hosts_usize).collect(),
+                };
+
+                let new_assignments: Vec<Assignment> = deployment_hosts
+                    .iter()
+                    .map(|host| Assignment {
+                        id: Assignment::make_id(&deployment.id, &host.id),
+                        deployment_id: deployment.id.clone(),
+                        host_id: host.id.clone(),
+                    })
+                    .collect();
+
+                for new_assignment in new_assignments.iter() {
+                    self.assignment_service
+                        .create(new_assignment, &event.operation_id)
+                        .await?;
+                }
 
                 tracing::info!("deployment created (NOP): {:?}", event);
             }

@@ -20,7 +20,7 @@ impl WorkspaceService {
     pub async fn create(
         &self,
         workspace: Workspace,
-        operation_id: Option<OperationId>,
+        operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         // TODO: Use an Error enumeration to return specific error
 
@@ -101,7 +101,7 @@ impl WorkspaceService {
             return Err(anyhow::anyhow!("workspace id {workspace_id} not found"));
         }
 
-        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let operation_id = OperationId::unwrap_or_create(&operation_id);
         let workspace_message: WorkspaceMessage = workspace.into();
 
         let timestamp = Timestamp {
@@ -168,7 +168,7 @@ mod tests {
         };
 
         let create_operation_id = workspace_service
-            .create(new_workspace.clone(), None)
+            .create(new_workspace.clone(), &None)
             .await
             .unwrap();
         assert_eq!(create_operation_id.id.len(), 36);

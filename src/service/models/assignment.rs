@@ -16,6 +16,12 @@ pub struct Assignment {
     pub host_id: String,
 }
 
+impl Assignment {
+    pub fn make_id(deployment_id: &str, host_id: &str) -> String {
+        format!("{}-{}", deployment_id, host_id)
+    }
+}
+
 impl PersistableModel<Assignment, Assignment> for Assignment {
     fn new(new_assignment: Assignment) -> Assignment {
         new_assignment

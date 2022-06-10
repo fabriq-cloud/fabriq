@@ -26,7 +26,7 @@ impl TargetService {
     pub async fn create(
         &self,
         target: Target,
-        operation_id: Option<OperationId>,
+        operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         let target_id = self.persistence.create(target).await?;
 
@@ -80,7 +80,7 @@ impl TargetService {
             return Err(anyhow::anyhow!("Target id {target_id} not found"));
         }
 
-        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let operation_id = OperationId::unwrap_or_create(&operation_id);
         let target_message: TargetMessage = target.into();
 
         let timestamp = Timestamp {
@@ -139,7 +139,7 @@ mod tests {
         };
 
         let created_target_operation_id = target_service
-            .create(new_target.clone(), Some(OperationId::create()))
+            .create(new_target.clone(), &Some(OperationId::create()))
             .await
             .unwrap();
         assert_eq!(created_target_operation_id.id.len(), 36);

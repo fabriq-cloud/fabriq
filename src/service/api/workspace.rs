@@ -29,7 +29,7 @@ impl WorkspaceTrait for GrpcWorkspaceService {
             id: request.get_ref().id.clone(),
         };
 
-        let operation_id = match self.service.create(new_workspace, None).await {
+        let operation_id = match self.service.create(new_workspace, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(

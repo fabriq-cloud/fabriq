@@ -7,7 +7,7 @@ pub mod relational;
 
 #[async_trait]
 pub trait AssignmentPersistence: Send + Sync {
-    async fn create(&self, assignment: Assignment) -> anyhow::Result<String>;
+    async fn create(&self, assignment: &Assignment) -> anyhow::Result<String>;
     async fn delete(&self, assignment_id: &str) -> anyhow::Result<usize>;
     async fn list(&self) -> anyhow::Result<Vec<Assignment>>;
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Assignment>>;
@@ -16,7 +16,7 @@ pub trait AssignmentPersistence: Send + Sync {
 
 #[async_trait]
 pub trait HostPersistence: Send + Sync {
-    async fn create(&self, host: Host) -> anyhow::Result<String>;
+    async fn create(&self, host: &Host) -> anyhow::Result<String>;
     async fn delete(&self, host_id: &str) -> anyhow::Result<usize>;
     async fn list(&self) -> anyhow::Result<Vec<Host>>;
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Host>>;

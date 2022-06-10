@@ -33,7 +33,7 @@ impl AssignmentTrait for GrpcAssignmentService {
             deployment_id: request.get_ref().deployment_id.clone(),
         };
 
-        let operation_id = match self.service.create(new_assignment, None).await {
+        let operation_id = match self.service.create(&new_assignment, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -55,7 +55,7 @@ impl AssignmentTrait for GrpcAssignmentService {
 
         let operation_id = match self
             .service
-            .delete(&request.into_inner().assignment_id, None)
+            .delete(&request.into_inner().assignment_id, &None)
             .await
         {
             Ok(operation_id) => operation_id,

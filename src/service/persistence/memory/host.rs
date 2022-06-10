@@ -14,7 +14,7 @@ pub struct HostMemoryPersistence {
 
 #[async_trait]
 impl HostPersistence for HostMemoryPersistence {
-    async fn create(&self, host: Host) -> anyhow::Result<String> {
+    async fn create(&self, host: &Host) -> anyhow::Result<String> {
         let mut locked_hosts = self.hosts.lock().await;
 
         locked_hosts.insert(host.get_id(), host.clone());
@@ -97,7 +97,7 @@ mod tests {
 
         let host_persistence = HostMemoryPersistence::default();
 
-        let inserted_host_id = host_persistence.create(new_host.clone()).await.unwrap();
+        let inserted_host_id = host_persistence.create(&new_host).await.unwrap();
         assert_eq!(inserted_host_id, new_host.id);
 
         let fetched_host = host_persistence

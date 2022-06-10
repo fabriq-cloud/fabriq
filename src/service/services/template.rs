@@ -52,7 +52,7 @@ impl TemplateService {
             }
         };
 
-        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let operation_id = OperationId::unwrap_or_create(&operation_id);
         let template_message: TemplateMessage = template.into();
 
         let timestamp = Timestamp {
@@ -96,7 +96,7 @@ impl TemplateService {
             return Err(anyhow::anyhow!("Template id {template_id} not found"));
         }
 
-        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let operation_id = OperationId::unwrap_or_create(&operation_id);
         let template_message: TemplateMessage = template.into();
 
         let timestamp = Timestamp {

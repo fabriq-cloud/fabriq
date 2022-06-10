@@ -10,7 +10,7 @@ pub struct AssignmentRelationalPersistence {}
 
 #[async_trait]
 impl AssignmentPersistence for AssignmentRelationalPersistence {
-    async fn create(&self, assignment: Assignment) -> anyhow::Result<String> {
+    async fn create(&self, assignment: &Assignment) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -88,7 +88,7 @@ mod tests {
             .unwrap();
 
         let inserted_assignment_id = assignment_persistence
-            .create(new_assignment.clone())
+            .create(&new_assignment)
             .await
             .unwrap();
 

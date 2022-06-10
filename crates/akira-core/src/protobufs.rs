@@ -13,9 +13,9 @@ impl OperationId {
         }
     }
 
-    pub fn unwrap_or_create(current_operation_id: Option<OperationId>) -> OperationId {
+    pub fn unwrap_or_create(current_operation_id: &Option<OperationId>) -> OperationId {
         match current_operation_id {
-            Some(current_operation_id) => current_operation_id,
+            Some(current_operation_id) => current_operation_id.clone(),
             None => OperationId::create(),
         }
     }

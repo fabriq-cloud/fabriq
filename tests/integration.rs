@@ -28,7 +28,7 @@ async fn test_e2e() {
     };
 
     host_service
-        .create(new_host, Some(OperationId::create()))
+        .create(&new_host, &Some(OperationId::create()))
         .await
         .unwrap();
 
@@ -44,7 +44,7 @@ async fn test_e2e() {
     };
 
     let create_target_operation_id = target_service
-        .create(new_target.clone(), None)
+        .create(new_target.clone(), &None)
         .await
         .unwrap();
 
@@ -91,7 +91,7 @@ async fn test_e2e() {
     };
 
     let create_workspace_operation_id = workspace_service
-        .create(new_workspace.clone(), None)
+        .create(new_workspace.clone(), &None)
         .await
         .unwrap();
 
@@ -126,7 +126,7 @@ async fn test_e2e() {
     };
 
     let _deployment_id = deployment_service
-        .create(new_deployment, None)
+        .create(new_deployment, &None)
         .await
         .unwrap();
 }

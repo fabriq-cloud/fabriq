@@ -42,7 +42,7 @@ pub async fn ensure_fixtures() {
 
     let host_persistence = HostRelationalPersistence::default();
 
-    let _ = host_persistence.create(host_fixture).await;
+    let _ = host_persistence.create(&host_fixture).await;
 
     let target_fixture = Target {
         id: "target-fixture".to_string(),

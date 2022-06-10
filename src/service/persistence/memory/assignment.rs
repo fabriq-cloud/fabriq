@@ -11,18 +11,18 @@ pub struct AssignmentMemoryPersistence {
 
 #[async_trait]
 impl AssignmentPersistence for AssignmentMemoryPersistence {
-    async fn create(&self, assignment: Assignment) -> anyhow::Result<String> {
-        let mut locked_hosts = self.assignments.lock().await;
+    async fn create(&self, assignment: &Assignment) -> anyhow::Result<String> {
+        let mut locked_assignments = self.assignments.lock().await;
 
-        locked_hosts.insert(assignment.get_id(), assignment.clone());
+        locked_assignments.insert(assignment.get_id(), assignment.clone());
 
         Ok(assignment.get_id())
     }
 
     async fn delete(&self, assignment_id: &str) -> anyhow::Result<usize> {
-        let mut locked_hosts = self.assignments.lock().await;
+        let mut locked_assignments = self.assignments.lock().await;
 
-        locked_hosts.remove_entry(&assignment_id.to_string());
+        locked_assignments.remove_entry(&assignment_id.to_string());
 
         Ok(1)
     }
@@ -80,36 +80,39 @@ mod tests {
     async fn test_create_get_delete() {
         dotenv().ok();
 
-        let new_host = Assignment {
+        let new_assignment = Assignment {
             id: "assignment-under-test".to_owned(),
             deployment_id: "deployment-fixture".to_owned(),
             host_id: "host-fixture".to_owned(),
         };
 
-        let host_persistence = AssignmentMemoryPersistence::default();
+        let assignment_persistence = AssignmentMemoryPersistence::default();
 
-        let inserted_assignment_id = host_persistence.create(new_host.clone()).await.unwrap();
-        assert_eq!(inserted_assignment_id, new_host.id);
+        let inserted_assignment_id = assignment_persistence
+            .create(&new_assignment)
+            .await
+            .unwrap();
+        assert_eq!(inserted_assignment_id, new_assignment.id);
 
-        let fetched_assignment = host_persistence
+        let fetched_assignment = assignment_persistence
             .get_by_id(&inserted_assignment_id)
             .await
             .unwrap()
             .unwrap();
 
-        assert_eq!(fetched_assignment.id, new_host.id);
+        assert_eq!(fetched_assignment.id, new_assignment.id);
 
-        let deployment_assignments = host_persistence
-            .get_by_deployment_id(&new_host.deployment_id)
+        let deployment_assignments = assignment_persistence
+            .get_by_deployment_id(&new_assignment.deployment_id)
             .await
             .unwrap();
 
         assert_eq!(deployment_assignments.len(), 1);
 
-        let deleted_hosts = host_persistence
+        let deleted_assignments = assignment_persistence
             .delete(&inserted_assignment_id)
             .await
             .unwrap();
-        assert_eq!(deleted_hosts, 1);
+        assert_eq!(deleted_assignments, 1);
     }
 }

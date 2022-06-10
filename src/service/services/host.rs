@@ -28,8 +28,8 @@ impl HostService {
 
     pub async fn create(
         &self,
-        host: Host,
-        operation_id: Option<OperationId>,
+        host: &Host,
+        operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         let host_id = self.persistence.create(host).await?;
 
@@ -87,7 +87,7 @@ impl HostService {
             return Err(anyhow::anyhow!("Host id {host_id} not found"));
         }
 
-        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let operation_id = OperationId::unwrap_or_create(&operation_id);
         let host_message: HostMessage = host.into();
 
         let timestamp = Timestamp {
@@ -145,7 +145,7 @@ mod tests {
         let host_service = HostService::new(Box::new(host_persistence), cloned_event_stream);
 
         let created_host_operation_id = host_service
-            .create(new_host.clone(), Some(OperationId::create()))
+            .create(&new_host, &Some(OperationId::create()))
             .await
             .unwrap();
         assert_eq!(created_host_operation_id.id.len(), 36);

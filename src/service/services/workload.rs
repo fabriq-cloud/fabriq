@@ -30,7 +30,7 @@ impl WorkloadService {
             }
         };
 
-        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let operation_id = OperationId::unwrap_or_create(&operation_id);
         let workload_message: WorkloadMessage = workload.into();
 
         let timestamp = Timestamp {
@@ -80,7 +80,7 @@ impl WorkloadService {
             return Err(anyhow::anyhow!("Workload id {workload_id} not found"));
         }
 
-        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let operation_id = OperationId::unwrap_or_create(&operation_id);
         let workload_message: WorkloadMessage = workload.into();
 
         let timestamp = Timestamp {
