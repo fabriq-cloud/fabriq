@@ -16,7 +16,7 @@ pub struct Deployment {
     pub target_id: String,
 
     #[sql_type = "Integer"]
-    pub replicas: i32,
+    pub hosts: i32,
 }
 
 impl PersistableModel<Deployment, Deployment> for Deployment {
@@ -35,7 +35,7 @@ impl From<Deployment> for DeploymentMessage {
             id: deployment.id,
             workload_id: deployment.workload_id,
             target_id: deployment.target_id,
-            replicas: deployment.replicas,
+            hosts: deployment.hosts,
         }
     }
 }
@@ -46,7 +46,7 @@ impl From<DeploymentMessage> for Deployment {
             id: deployment.id,
             workload_id: deployment.workload_id,
             target_id: deployment.target_id,
-            replicas: deployment.replicas,
+            hosts: deployment.hosts,
         }
     }
 }

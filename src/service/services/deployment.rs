@@ -132,7 +132,7 @@ mod tests {
             id: "foreign-exchange-api-prod".to_owned(),
             workload_id: "foreign-exchange-api".to_owned(),
             target_id: "azure-east".to_owned(),
-            replicas: 3,
+            hosts: 3,
         };
 
         let deployment_persistence = MemoryPersistence::<Deployment, Deployment>::default();

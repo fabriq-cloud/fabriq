@@ -67,7 +67,7 @@ mod tests {
             id: "deployment-under-test".to_owned(),
             workload_id: "workload-fixture".to_owned(),
             target_id: "target-fixture".to_owned(),
-            replicas: 2,
+            hosts: 2,
         };
 
         let deployment_persistence = DeploymentRelationalPersistence::default();

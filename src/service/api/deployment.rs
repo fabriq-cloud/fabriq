@@ -30,7 +30,7 @@ impl DeploymentTrait for GrpcDeploymentService {
             id: request.get_ref().id.clone(),
             target_id: request.get_ref().target_id.clone(),
             workload_id: request.get_ref().workload_id.clone(),
-            replicas: request.get_ref().replicas,
+            hosts: request.get_ref().hosts,
         };
 
         let operation_id = match self.service.create(new_deployment, None).await {
@@ -90,7 +90,7 @@ impl DeploymentTrait for GrpcDeploymentService {
                 id: deployment.id.clone(),
                 target_id: deployment.target_id.clone(),
                 workload_id: deployment.workload_id.clone(),
-                replicas: deployment.replicas,
+                hosts: deployment.hosts,
             })
             .collect();
 
@@ -134,7 +134,7 @@ mod tests {
             id: "deployment-grpc-test".to_string(),
             target_id: "target-fixture".to_string(),
             workload_id: "workload-fixture".to_string(),
-            replicas: 2,
+            hosts: 2,
         });
 
         let response = deployment_grpc_service

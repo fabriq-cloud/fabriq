@@ -21,7 +21,7 @@ table! {
         id -> Text,
         workload_id -> Text,
         target_id -> Text,
-        replicas -> Int4,
+        hosts -> Int4,
     }
 }
 

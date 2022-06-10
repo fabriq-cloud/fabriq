@@ -4,5 +4,5 @@ CREATE TABLE deployments (
   workload_id  TEXT    NOT NULL REFERENCES workloads(id),
   target_id    TEXT    NOT NULL REFERENCES targets(id),
   
-  replicas     INTEGER NOT NULL
+  hosts        INTEGER NOT NULL
 );

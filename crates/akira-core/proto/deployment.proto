@@ -19,5 +19,5 @@ message DeploymentMessage {
     string id = 1;
     string target_id = 2;
     string workload_id = 3;
-    int32  replicas = 4;
+    int32  hosts = 4;
 }

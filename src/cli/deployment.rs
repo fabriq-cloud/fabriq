@@ -32,10 +32,10 @@ pub fn args() -> Command<'static> {
                         .multiple_values(false),
                 )
                 .arg(
-                    Arg::new("replicas")
-                        .short('r')
-                        .long("replicas")
-                        .help("Replicas for deployment")
+                    Arg::new("hosts")
+                        .short('h')
+                        .long("hosts")
+                        .help("host count for deployment")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -78,16 +78,16 @@ pub async fn handlers(
                 .value_of("target")
                 .expect("Target ID expected")
                 .to_string();
-            let replicas = add_match
-                .value_of("replicas")
-                .expect("Replicas expected")
+            let hosts = add_match
+                .value_of("hosts")
+                .expect("hosts expected")
                 .parse::<i32>()?;
 
             let request = tonic::Request::new(DeploymentMessage {
                 id: id.clone(),
                 workload_id,
                 target_id,
-                replicas,
+                hosts,
             });
 
             client.create(request).await?;
@@ -123,7 +123,7 @@ pub async fn handlers(
                         deployment.id.to_string(),
                         deployment.workload_id.clone(),
                         deployment.target_id.clone(),
-                        deployment.replicas.to_string(),
+                        deployment.hosts.to_string(),
                     ]
                 })
                 .collect();

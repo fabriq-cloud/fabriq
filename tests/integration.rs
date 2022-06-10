@@ -122,7 +122,7 @@ async fn test_e2e() {
         id: "cribbage-api-prod".to_string(),
         workload_id: new_workload.id,
         target_id: new_target.id,
-        replicas: 3,
+        hosts: 3,
     };
 
     let _deployment_id = deployment_service

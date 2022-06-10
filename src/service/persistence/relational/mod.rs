@@ -28,7 +28,7 @@ pub async fn ensure_fixtures() {
         id: "deployment-fixture".to_string(),
         workload_id: "workload-fixture".to_string(),
         target_id: "target-fixture".to_string(),
-        replicas: 2,
+        hosts: 2,
     };
 
     let deployment_persistence = DeploymentRelationalPersistence::default();
