@@ -79,8 +79,6 @@ mod tests {
         let host = HostMessage {
             id: "azure-eastus2-1".to_owned(),
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
-            //            cpu_capacity: 4000,
-            //            memory_capacity: 24000,
         };
 
         let host_stream = MemoryEventStream::new().unwrap();

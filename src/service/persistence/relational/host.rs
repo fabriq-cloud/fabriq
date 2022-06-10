@@ -53,6 +53,7 @@ impl HostPersistence for HostRelationalPersistence {
     async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
         let connection = crate::db::get_connection()?;
 
+        // TODO: Can imagine labels of hosts being indexed and using a more efficient query
         let all_hosts = hosts.load::<Host>(&connection)?;
 
         let matching_hosts = all_hosts

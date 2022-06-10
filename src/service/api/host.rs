@@ -73,8 +73,6 @@ impl HostTrait for GrpcHostService {
             .map(|host| HostMessage {
                 id: host.id.clone(),
                 labels: host.labels.clone(),
-                //                cpu_capacity: host.cpu_capacity,
-                //                memory_capacity: host.memory_capacity,
             })
             .collect();
 

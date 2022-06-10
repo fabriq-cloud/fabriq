@@ -15,24 +15,6 @@ pub fn args() -> Command<'static> {
         .subcommand(
             Command::new("create")
                 .about("create host")
-                /*
-                                .arg(
-                                    Arg::new("cpu")
-                                        .short('c')
-                                        .long("cpu")
-                                        .help("cpu capacity of host")
-                                        .takes_value(true)
-                                        .multiple_values(false),
-                                )
-                                .arg(
-                                    Arg::new("memory")
-                                        .short('m')
-                                        .long("memory")
-                                        .help("memory capacity of host")
-                                        .takes_value(true)
-                                        .multiple_values(false),
-                                )
-                */
                 .arg(
                     Arg::new("label")
                         .short('l')
@@ -79,19 +61,7 @@ pub async fn handlers(
                 .expect("At least one label expected");
 
             let labels = labels.map(|s| s.to_string()).collect();
-            /*
-            let cpu_capacity = add_match
-                .value_of("cpu")
-                .expect("cpu capacity expected")
-                .to_string()
-                .parse::<i32>()?;
 
-            let memory_capacity = add_match
-                .value_of("memory")
-                .expect("memory capacity expected")
-                .to_string()
-                .parse::<i64>()?;
-                */
             let request = tonic::Request::new(HostMessage {
                 id: id.clone(),
                 labels,
