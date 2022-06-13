@@ -34,13 +34,17 @@ name = "akira"
 path = "src/service/lib.rs"
 
 [[bin]]
-name = "akira-cli"
+name = "cli"
 path = "src/cli/main.rs"
 
 [[bin]]
-name = "akira-gitops"
+name = "reconciler"
+path = "src/reconciler/main.rs"
+
+[[bin]]
+name = "gitops"
 path = "src/gitops/main.rs"
 
 [[bin]]
-name = "akira-service"
+name = "service"
 path = "src/service/main.rs"

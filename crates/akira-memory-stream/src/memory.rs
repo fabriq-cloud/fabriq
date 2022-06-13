@@ -26,22 +26,10 @@ impl EventStream for MemoryEventStream {
         Ok(())
     }
 
-    fn len(&self) -> anyhow::Result<usize> {
-        let events = self.events.lock().unwrap();
-
-        Ok(events.len())
-    }
-
-    fn is_empty(&self) -> anyhow::Result<bool> {
-        let events = self.events.lock().unwrap();
-
-        Ok(events.is_empty())
-    }
-
-    fn receive(&self) -> anyhow::Result<Option<Event>> {
+    fn receive(&self) -> Box<dyn Iterator<Item = Option<Event>> + '_> {
         let mut events = self.events.lock().unwrap();
 
-        Ok(events.pop_front())
+        Box::new(events.drain(..).map(Some).collect::<Vec<_>>().into_iter())
     }
 }
 
@@ -56,15 +44,15 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         let host = HostMessage {
             id: "azure-eastus2-1".to_owned(),
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
         };
 
         let host_stream = MemoryEventStream::new().unwrap();
-        let operation_id = OperationId::unwrap_or_create(&None);
+        let operation_id = OperationId::create();
 
         let timestamp = Timestamp {
             seconds: SystemTime::now()
@@ -84,10 +72,7 @@ mod tests {
 
         host_stream.send(&create_host_event).unwrap();
 
-        let events = host_stream.len().unwrap();
-        assert_eq!(events, 1);
-
-        let received_event = host_stream.receive().unwrap().unwrap();
+        let received_event = host_stream.receive().next().unwrap().unwrap();
 
         assert_eq!(received_event.event_type, EventType::Created as i32);
         assert_eq!(received_event.model_type, ModelType::Host as i32);

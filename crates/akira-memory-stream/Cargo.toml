@@ -4,11 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-akira-core = { path = "../akira-core", version = "0.1" }
+akira-core = { path = "../akira-core" }
 anyhow = "1.0"
-async-trait = "0.1"
 bytes = "1.1"
 prost = "0.10"
 prost-types = "0.10"
-tokio = { version = "1.14", features = ["macros", "rt", "rt-multi-thread"] }
 

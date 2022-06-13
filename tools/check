@@ -3,3 +3,4 @@
 cargo test
 cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings
 cargo fmt --all -- --check
+cargo +nightly udeps
