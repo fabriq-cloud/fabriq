@@ -1,4 +1,4 @@
-use async_trait::async_trait;
+use akira_core::Persistence;
 use diesel::prelude::*;
 
 use crate::persistence::AssignmentPersistence;
@@ -8,9 +8,8 @@ use crate::{models::Assignment, schema::assignments, schema::assignments::dsl::*
 #[derive(Default)]
 pub struct AssignmentRelationalPersistence {}
 
-#[async_trait]
-impl AssignmentPersistence for AssignmentRelationalPersistence {
-    async fn create(&self, assignment: &Assignment) -> anyhow::Result<String> {
+impl Persistence<Assignment> for AssignmentRelationalPersistence {
+    fn create(&self, assignment: Assignment) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -24,13 +23,13 @@ impl AssignmentPersistence for AssignmentRelationalPersistence {
         }
     }
 
-    async fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
+    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(assignments.filter(id.eq(model_id))).execute(&connection)?)
     }
 
-    async fn get_by_id(&self, assignment_id: &str) -> anyhow::Result<Option<Assignment>> {
+    fn get_by_id(&self, assignment_id: &str) -> anyhow::Result<Option<Assignment>> {
         let connection = crate::db::get_connection()?;
 
         let results = assignments
@@ -42,17 +41,7 @@ impl AssignmentPersistence for AssignmentRelationalPersistence {
         Ok(cloned_result)
     }
 
-    async fn get_by_deployment_id(&self, deploy_id: &str) -> anyhow::Result<Vec<Assignment>> {
-        let connection = crate::db::get_connection()?;
-
-        let results = assignments
-            .filter(deployment_id.eq(deploy_id))
-            .load::<Assignment>(&connection)?;
-
-        Ok(results)
-    }
-
-    async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
+    fn list(&self) -> anyhow::Result<Vec<Assignment>> {
         let connection = crate::db::get_connection()?;
 
         let results = assignments.load::<Assignment>(&connection).unwrap();
@@ -61,6 +50,17 @@ impl AssignmentPersistence for AssignmentRelationalPersistence {
     }
 }
 
+impl AssignmentPersistence for AssignmentRelationalPersistence {
+    fn get_by_deployment_id(&self, deploy_id: &str) -> anyhow::Result<Vec<Assignment>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = assignments
+            .filter(deployment_id.eq(deploy_id))
+            .load::<Assignment>(&connection)?;
+
+        Ok(results)
+    }
+}
 #[cfg(test)]
 mod tests {
     use dotenv::dotenv;
@@ -68,10 +68,10 @@ mod tests {
     use super::*;
     use crate::models::Assignment;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
-        crate::persistence::relational::ensure_fixtures().await;
+        crate::persistence::relational::ensure_fixtures();
 
         let new_assignment = Assignment {
             id: "assignment-under-test".to_owned(),
@@ -82,33 +82,26 @@ mod tests {
         let assignment_persistence = AssignmentRelationalPersistence::default();
 
         // delete assignment if it exists
-        let _ = assignment_persistence
-            .delete(&new_assignment.id)
-            .await
-            .unwrap();
+        let _ = assignment_persistence.delete(&new_assignment.id).unwrap();
 
         let inserted_assignment_id = assignment_persistence
-            .create(&new_assignment)
-            .await
+            .create(new_assignment.clone())
             .unwrap();
 
         let fetched_assignment = assignment_persistence
             .get_by_id(&inserted_assignment_id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_assignment.id, new_assignment.id);
 
         let deployment_assignments = assignment_persistence
             .get_by_deployment_id(&new_assignment.deployment_id)
-            .await
             .unwrap();
 
         assert_eq!(deployment_assignments.len(), 1);
 
         let deleted_assignments = assignment_persistence
             .delete(&inserted_assignment_id)
-            .await
             .unwrap();
         assert_eq!(deleted_assignments, 1);
     }

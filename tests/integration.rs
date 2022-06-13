@@ -18,8 +18,10 @@ async fn test_e2e() {
 
     let host_persistence = HostMemoryPersistence::default();
 
-    let cloned_event_stream = Arc::clone(&event_stream);
-    let host_service = HostService::new(Box::new(host_persistence), cloned_event_stream);
+    let host_service = HostService {
+        persistence: Box::new(host_persistence),
+        event_stream: Arc::clone(&event_stream),
+    };
 
     // create a host
     let new_host = Host {
@@ -28,14 +30,16 @@ async fn test_e2e() {
     };
 
     host_service
-        .create(&new_host, &Some(OperationId::create()))
-        .await
+        .create(new_host, &Some(OperationId::create()))
         .unwrap();
 
-    let target_persistence = MemoryPersistence::<Target, Target>::default();
+    let target_persistence = MemoryPersistence::<Target>::default();
 
     let cloned_event_stream = Arc::clone(&event_stream);
-    let target_service = TargetService::new(Box::new(target_persistence), cloned_event_stream);
+    let target_service = TargetService {
+        persistence: Box::new(target_persistence),
+        event_stream: Arc::clone(&event_stream),
+    };
 
     // create target that matches host
     let new_target = Target {
@@ -43,16 +47,12 @@ async fn test_e2e() {
         labels: vec!["location:eastus2".to_string()],
     };
 
-    let create_target_operation_id = target_service
-        .create(new_target.clone(), &None)
-        .await
-        .unwrap();
+    let create_target_operation_id = target_service.create(new_target.clone(), &None).unwrap();
 
     assert_eq!(create_target_operation_id.id.len(), 36);
 
-    let template_persistence = MemoryPersistence::<Template, Template>::default();
+    let template_persistence = MemoryPersistence::<Template>::default();
 
-    let cloned_event_stream = Arc::clone(&event_stream);
     let template_service =
         TemplateService::new(Box::new(template_persistence), cloned_event_stream);
 
@@ -66,18 +66,17 @@ async fn test_e2e() {
 
     let create_template_operation_id = template_service
         .create(new_template.clone(), Some(OperationId::create()))
-        .await
         .unwrap();
 
     assert_eq!(create_template_operation_id.id.len(), 36);
 
-    let workload_persistence = Box::new(MemoryPersistence::<Workload, Workload>::default());
+    let workload_persistence = Box::new(MemoryPersistence::<Workload>::default());
     let workload_service = Arc::new(WorkloadService {
         persistence: workload_persistence,
         event_stream: Arc::clone(&event_stream),
     });
 
-    let workspace_persistence = Box::new(MemoryPersistence::<Workspace, Workspace>::default());
+    let workspace_persistence = Box::new(MemoryPersistence::<Workspace>::default());
     let workspace_service = WorkspaceService {
         persistence: workspace_persistence,
         event_stream: Arc::clone(&event_stream),
@@ -92,7 +91,6 @@ async fn test_e2e() {
 
     let create_workspace_operation_id = workspace_service
         .create(new_workspace.clone(), &None)
-        .await
         .unwrap();
 
     assert_eq!(create_workspace_operation_id.id.len(), 36);
@@ -106,16 +104,16 @@ async fn test_e2e() {
 
     let create_workload_operation_id = workload_service
         .create(new_workload.clone(), Some(OperationId::create()))
-        .await
         .unwrap();
 
     assert_eq!(create_workload_operation_id.id.len(), 36);
 
-    let deployment_persistence = MemoryPersistence::<Deployment, Deployment>::default();
-    let cloned_event_stream = Arc::clone(&event_stream);
+    let deployment_persistence = MemoryPersistence::<Deployment>::default();
 
-    let deployment_service =
-        DeploymentService::new(Box::new(deployment_persistence), cloned_event_stream);
+    let deployment_service = DeploymentService {
+        persistence: Box::new(deployment_persistence),
+        event_stream: Arc::clone(&event_stream),
+    };
 
     // create deployment
     let new_deployment = Deployment {
@@ -125,8 +123,5 @@ async fn test_e2e() {
         hosts: 3,
     };
 
-    let _deployment_id = deployment_service
-        .create(new_deployment, &None)
-        .await
-        .unwrap();
+    let _deployment_id = deployment_service.create(new_deployment, &None).unwrap();
 }

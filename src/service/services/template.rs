@@ -8,13 +8,13 @@ use std::{sync::Arc, time::SystemTime};
 use crate::models::Template;
 
 pub struct TemplateService {
-    persistence: Box<dyn Persistence<Template, Template>>,
-    event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub persistence: Box<dyn Persistence<Template>>,
+    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
 }
 
 impl TemplateService {
     pub fn new(
-        persistence: Box<dyn Persistence<Template, Template>>,
+        persistence: Box<dyn Persistence<Template>>,
         event_stream: Arc<Box<dyn EventStream>>,
     ) -> Self {
         Self {
@@ -23,14 +23,14 @@ impl TemplateService {
         }
     }
 
-    pub async fn create(
+    pub fn create(
         &self,
         template: Template,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         // TODO: Use an Error enumeration to return specific error
 
-        match self.get_by_id(&template.id).await? {
+        match self.get_by_id(&template.id)? {
             Some(template) => {
                 return Err(anyhow::anyhow!(
                     "Template id {} already exists",
@@ -40,9 +40,9 @@ impl TemplateService {
             None => {}
         };
 
-        let template_id = self.persistence.create(template).await?;
+        let template_id = self.persistence.create(template)?;
 
-        let template = self.get_by_id(&template_id).await?;
+        let template = self.get_by_id(&template_id)?;
         let template = match template {
             Some(template) => template,
             None => {
@@ -71,26 +71,26 @@ impl TemplateService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&create_template_event).await?;
+        self.event_stream.send(&create_template_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Template>> {
-        self.persistence.get_by_id(host_id).await
+    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Template>> {
+        self.persistence.get_by_id(host_id)
     }
 
-    pub async fn delete(
+    pub fn delete(
         &self,
         template_id: &str,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let template = match self.get_by_id(template_id).await? {
+        let template = match self.get_by_id(template_id)? {
             Some(template) => template,
             None => return Err(anyhow::anyhow!("Template id {template_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(template_id).await?;
+        let deleted_count = self.persistence.delete(template_id)?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Template id {template_id} not found"));
@@ -115,13 +115,13 @@ impl TemplateService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&delete_template_event).await?;
+        self.event_stream.send(&delete_template_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn list(&self) -> anyhow::Result<Vec<Template>> {
-        let results = self.persistence.list().await?;
+    pub fn list(&self) -> anyhow::Result<Vec<Template>> {
+        let results = self.persistence.list()?;
 
         Ok(results)
     }
@@ -135,8 +135,8 @@ mod tests {
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let new_template = Template {
@@ -146,7 +146,7 @@ mod tests {
             path: "external-service".to_owned(),
         };
 
-        let template_persistence = MemoryPersistence::<Template, Template>::default();
+        let template_persistence = MemoryPersistence::<Template>::default();
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
@@ -155,16 +155,12 @@ mod tests {
             event_stream,
         };
 
-        let create_operation_id = template_service
-            .create(new_template.clone(), None)
-            .await
-            .unwrap();
+        let create_operation_id = template_service.create(new_template.clone(), None).unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 
         let fetched_template = template_service
             .get_by_id(&new_template.id)
-            .await
             .unwrap()
             .unwrap();
 
@@ -172,7 +168,6 @@ mod tests {
 
         let delete_operation_id = template_service
             .delete(&new_template.id, Some(create_operation_id))
-            .await
             .unwrap();
 
         assert_eq!(delete_operation_id.id.len(), 36);

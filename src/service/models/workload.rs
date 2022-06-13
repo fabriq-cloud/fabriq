@@ -16,7 +16,7 @@ pub struct Workload {
     pub template_id: String,
 }
 
-impl PersistableModel<Workload, Workload> for Workload {
+impl PersistableModel<Workload> for Workload {
     fn new(new_workload: Workload) -> Workload {
         new_workload
     }

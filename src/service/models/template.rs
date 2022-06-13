@@ -11,7 +11,7 @@ pub struct Template {
     pub path: String,
 }
 
-impl PersistableModel<Template, Template> for Template {
+impl PersistableModel<Template> for Template {
     fn new(new_template: Template) -> Self {
         new_template
     }

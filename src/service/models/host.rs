@@ -10,7 +10,7 @@ pub struct Host {
     pub labels: Vec<String>,
 }
 
-impl PersistableModel<Host, Host> for Host {
+impl PersistableModel<Host> for Host {
     fn new(new_host: Host) -> Host {
         new_host
     }

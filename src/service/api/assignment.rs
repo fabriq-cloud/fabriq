@@ -33,7 +33,7 @@ impl AssignmentTrait for GrpcAssignmentService {
             deployment_id: request.get_ref().deployment_id.clone(),
         };
 
-        let operation_id = match self.service.create(&new_assignment, &None).await {
+        let operation_id = match self.service.create(new_assignment, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -56,7 +56,6 @@ impl AssignmentTrait for GrpcAssignmentService {
         let operation_id = match self
             .service
             .delete(&request.into_inner().assignment_id, &None)
-            .await
         {
             Ok(operation_id) => operation_id,
             Err(err) => {
@@ -75,7 +74,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         request: Request<DeploymentIdRequest>,
     ) -> Result<Response<ListAssignmentsResponse>, Status> {
         let deployment_id = request.into_inner().deployment_id;
-        let assignments = match self.service.get_by_deployment_id(&deployment_id).await {
+        let assignments = match self.service.get_by_deployment_id(&deployment_id) {
             Ok(assignments) => assignments,
             Err(err) => {
                 tracing::error!(
@@ -105,7 +104,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         &self,
         _request: Request<ListAssignmentsRequest>,
     ) -> Result<Response<ListAssignmentsResponse>, Status> {
-        let assignments = match self.service.list().await {
+        let assignments = match self.service.list() {
             Ok(assignments) => assignments,
             Err(err) => {
                 return Err(Status::new(
@@ -151,8 +150,10 @@ mod tests {
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let assignment_service =
-            Arc::new(AssignmentService::new(assignment_persistence, event_stream));
+        let assignment_service = Arc::new(AssignmentService {
+            persistence: assignment_persistence,
+            event_stream,
+        });
 
         let assignment_grpc_service = GrpcAssignmentService::new(Arc::clone(&assignment_service));
 

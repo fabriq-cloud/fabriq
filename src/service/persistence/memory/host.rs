@@ -1,7 +1,8 @@
-use akira_core::PersistableModel;
-use async_trait::async_trait;
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use akira_core::{PersistableModel, Persistence};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 use crate::{
     models::{Host, Target},
@@ -9,29 +10,47 @@ use crate::{
 };
 
 pub struct HostMemoryPersistence {
-    hosts: Arc<Mutex<HashMap<String, Host>>>,
+    models: Arc<Mutex<HashMap<String, Host>>>,
 }
 
-#[async_trait]
-impl HostPersistence for HostMemoryPersistence {
-    async fn create(&self, host: &Host) -> anyhow::Result<String> {
-        let mut locked_hosts = self.hosts.lock().await;
+impl Persistence<Host> for HostMemoryPersistence {
+    fn create(&self, host: Host) -> anyhow::Result<String> {
+        let mut locked_hosts = self.get_models_locked()?;
 
         locked_hosts.insert(host.get_id(), host.clone());
 
         Ok(host.get_id())
     }
 
-    async fn delete(&self, host_id: &str) -> anyhow::Result<usize> {
-        let mut locked_hosts = self.hosts.lock().await;
+    fn delete(&self, host_id: &str) -> anyhow::Result<usize> {
+        let mut locked_hosts = self.get_models_locked()?;
 
         locked_hosts.remove_entry(&host_id.to_string());
 
         Ok(1)
     }
 
-    async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
-        let locked_hosts = self.hosts.lock().await;
+    fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
+        let locked_hosts = self.get_models_locked()?;
+
+        match locked_hosts.get(host_id) {
+            Some(fetched_host) => Ok(Some(fetched_host.clone())),
+            None => Ok(None),
+        }
+    }
+
+    fn list(&self) -> anyhow::Result<Vec<Host>> {
+        let locked_hosts = self.get_models_locked()?;
+
+        let hosts = locked_hosts.values().cloned().collect();
+
+        Ok(hosts)
+    }
+}
+
+impl HostPersistence for HostMemoryPersistence {
+    fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
+        let locked_hosts = self.get_models_locked()?;
 
         let mut hosts_for_target = Vec::new();
         for host in (*locked_hosts).values() {
@@ -49,33 +68,21 @@ impl HostPersistence for HostMemoryPersistence {
 
         Ok(hosts_for_target)
     }
-
-    async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
-        let locked_hosts = self.hosts.lock().await;
-
-        match locked_hosts.get(host_id) {
-            Some(fetched_host) => Ok(Some(fetched_host.clone())),
-            None => Ok(None),
-        }
-    }
-
-    async fn list(&self) -> anyhow::Result<Vec<Host>> {
-        let locked_hosts = self.hosts.lock().await;
-
-        let mut hosts = Vec::new();
-
-        for (_, host) in locked_hosts.iter() {
-            hosts.push(host.clone());
-        }
-
-        Ok(hosts)
-    }
 }
 
 impl Default for HostMemoryPersistence {
     fn default() -> Self {
         Self {
-            hosts: Arc::new(Mutex::new(HashMap::new())),
+            models: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
+impl HostMemoryPersistence {
+    fn get_models_locked(&self) -> anyhow::Result<MutexGuard<HashMap<String, Host>>> {
+        match self.models.lock() {
+            Ok(locked_assignments) => Ok(locked_assignments),
+            Err(_) => Err(anyhow::anyhow!("failed to acquire lock")),
         }
     }
 }
@@ -86,8 +93,8 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let new_host = Host {
@@ -97,12 +104,11 @@ mod tests {
 
         let host_persistence = HostMemoryPersistence::default();
 
-        let inserted_host_id = host_persistence.create(&new_host).await.unwrap();
+        let inserted_host_id = host_persistence.create(new_host.clone()).unwrap();
         assert_eq!(inserted_host_id, new_host.id);
 
         let fetched_host = host_persistence
             .get_by_id(&inserted_host_id)
-            .await
             .unwrap()
             .unwrap();
 
@@ -113,11 +119,11 @@ mod tests {
             labels: vec!["cloud:azure".to_owned()],
         };
 
-        let hosts_for_target = host_persistence.get_matching_target(&target).await.unwrap();
+        let hosts_for_target = host_persistence.get_matching_target(&target).unwrap();
 
         assert_eq!(hosts_for_target.len(), 1);
 
-        let deleted_hosts = host_persistence.delete(&inserted_host_id).await.unwrap();
+        let deleted_hosts = host_persistence.delete(&inserted_host_id).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }

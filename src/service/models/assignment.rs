@@ -22,7 +22,7 @@ impl Assignment {
     }
 }
 
-impl PersistableModel<Assignment, Assignment> for Assignment {
+impl PersistableModel<Assignment> for Assignment {
     fn new(new_assignment: Assignment) -> Assignment {
         new_assignment
     }

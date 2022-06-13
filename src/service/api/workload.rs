@@ -32,7 +32,7 @@ impl WorkloadTrait for GrpcWorkloadService {
             workspace_id: request.get_ref().workspace_id.clone(),
         };
 
-        let operation_id = match self.service.create(new_workload, None).await {
+        let operation_id = match self.service.create(new_workload, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -52,7 +52,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         // TODO: Check that no workloads are currently still using workload
         // Query workload service for workloads by workload_id
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
+        let operation_id = match self.service.delete(&request.into_inner().id, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -69,7 +69,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         &self,
         _request: Request<ListWorkloadsRequest>,
     ) -> Result<Response<ListWorkloadsResponse>, Status> {
-        let workloads = match self.service.list().await {
+        let workloads = match self.service.list() {
             Ok(workloads) => workloads,
             Err(err) => {
                 return Err(Status::new(
@@ -111,7 +111,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_workload() -> anyhow::Result<()> {
-        let workload_persistence = Box::new(MemoryPersistence::<Workload, Workload>::default());
+        let workload_persistence = Box::new(MemoryPersistence::<Workload>::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 

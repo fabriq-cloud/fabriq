@@ -10,21 +10,21 @@ use crate::models::Workspace;
 use super::WorkloadService;
 
 pub struct WorkspaceService {
-    pub persistence: Box<dyn Persistence<Workspace, Workspace>>,
+    pub persistence: Box<dyn Persistence<Workspace>>,
     pub event_stream: Arc<Box<dyn EventStream + 'static>>,
 
     pub workload_service: Arc<WorkloadService>,
 }
 
 impl WorkspaceService {
-    pub async fn create(
+    pub fn create(
         &self,
         workspace: Workspace,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         // TODO: Use an Error enumeration to return specific error
 
-        match self.get_by_id(&workspace.id).await? {
+        match self.get_by_id(&workspace.id)? {
             Some(workspace) => {
                 return Err(anyhow::anyhow!(
                     "Deployment id {} already exists",
@@ -34,9 +34,9 @@ impl WorkspaceService {
             None => {}
         };
 
-        let workspace_id = self.persistence.create(workspace).await?;
+        let workspace_id = self.persistence.create(workspace)?;
 
-        let workspace = self.get_by_id(&workspace_id).await?;
+        let workspace = self.get_by_id(&workspace_id)?;
         let workspace = match workspace {
             Some(workspace) => workspace,
             None => {
@@ -66,21 +66,21 @@ impl WorkspaceService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&create_workspace_event).await?;
+        self.event_stream.send(&create_workspace_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workspace>> {
-        self.persistence.get_by_id(host_id).await
+    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workspace>> {
+        self.persistence.get_by_id(host_id)
     }
 
-    pub async fn delete(
+    pub fn delete(
         &self,
         workspace_id: &str,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let workspace = match self.get_by_id(workspace_id).await? {
+        let workspace = match self.get_by_id(workspace_id)? {
             Some(workspace) => workspace,
             None => return Err(anyhow::anyhow!("deployment id {workspace_id} not found")),
         };
@@ -95,7 +95,7 @@ impl WorkspaceService {
 
         */
 
-        let deleted_count = self.persistence.delete(workspace_id).await?;
+        let deleted_count = self.persistence.delete(workspace_id)?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("workspace id {workspace_id} not found"));
@@ -120,13 +120,13 @@ impl WorkspaceService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&delete_workspace_event).await?;
+        self.event_stream.send(&delete_workspace_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn list(&self) -> anyhow::Result<Vec<Workspace>> {
-        let results = self.persistence.list().await?;
+    pub fn list(&self) -> anyhow::Result<Vec<Workspace>> {
+        let results = self.persistence.list()?;
 
         Ok(results)
     }
@@ -142,20 +142,20 @@ mod tests {
         models::Workload, persistence::memory::MemoryPersistence, services::WorkloadService,
     };
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let workload_persistence = MemoryPersistence::<Workload, Workload>::default();
+        let workload_persistence = MemoryPersistence::<Workload>::default();
         let workload_service = Arc::new(WorkloadService {
             persistence: Box::new(workload_persistence),
             event_stream: event_stream.clone(),
         });
 
-        let workspace_persistence = MemoryPersistence::<Workspace, Workspace>::default();
+        let workspace_persistence = MemoryPersistence::<Workspace>::default();
         let workspace_service = WorkspaceService {
             persistence: Box::new(workspace_persistence),
             event_stream,
@@ -169,23 +169,20 @@ mod tests {
 
         let create_operation_id = workspace_service
             .create(new_workspace.clone(), &None)
-            .await
             .unwrap();
         assert_eq!(create_operation_id.id.len(), 36);
 
         let fetched_workspace = workspace_service
             .get_by_id(&new_workspace.id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_workspace.id, new_workspace.id);
 
-        let all_workspaces = workspace_service.list().await.unwrap();
+        let all_workspaces = workspace_service.list().unwrap();
         assert_eq!(all_workspaces.len(), 1);
 
         let delete_operation_id = workspace_service
             .delete(&new_workspace.id, Some(OperationId::create()))
-            .await
             .unwrap();
         assert_eq!(delete_operation_id.id.len(), 36);
     }

@@ -33,7 +33,7 @@ impl DeploymentTrait for GrpcDeploymentService {
             hosts: request.get_ref().hosts,
         };
 
-        let operation_id = match self.service.create(new_deployment, &None).await {
+        let operation_id = match self.service.create(new_deployment, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -56,7 +56,6 @@ impl DeploymentTrait for GrpcDeploymentService {
         let operation_id = match self
             .service
             .delete(&request.into_inner().deployment_id, &None)
-            .await
         {
             Ok(operation_id) => operation_id,
             Err(err) => {
@@ -74,7 +73,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         &self,
         _request: Request<ListDeploymentsRequest>,
     ) -> Result<Response<ListDeploymentsResponse>, Status> {
-        let deployments = match self.service.list().await {
+        let deployments = match self.service.list() {
             Ok(deployments) => deployments,
             Err(err) => {
                 return Err(Status::new(
@@ -120,13 +119,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_deployment() -> anyhow::Result<()> {
-        let deployment_persistence =
-            Box::new(MemoryPersistence::<Deployment, Deployment>::default());
+        let deployment_persistence = Box::new(MemoryPersistence::<Deployment>::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let deployment_service =
-            Arc::new(DeploymentService::new(deployment_persistence, event_stream));
+        let deployment_service = Arc::new(DeploymentService {
+            persistence: deployment_persistence,
+            event_stream,
+        });
 
         let deployment_grpc_service = GrpcDeploymentService::new(Arc::clone(&deployment_service));
 

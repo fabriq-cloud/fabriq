@@ -69,7 +69,7 @@ impl CoreProcessor {
             deployment.hosts as usize
         };
 
-        let target = self.target_service.get_by_id(&deployment.target_id).await?;
+        let target = self.target_service.get_by_id(&deployment.target_id)?;
         let target = match target {
             Some(target) => target,
             None => {
@@ -80,12 +80,11 @@ impl CoreProcessor {
             }
         };
 
-        let mut available_hosts = self.host_service.get_matching_target(&target).await?;
+        let mut available_hosts = self.host_service.get_matching_target(&target)?;
 
         let mut current_assignments = self
             .assignment_service
-            .get_by_deployment_id(&deployment.id)
-            .await?;
+            .get_by_deployment_id(&deployment.id)?;
 
         let mut assignments_to_create = Vec::new();
         let mut assignments_to_delete = Vec::new();
@@ -128,14 +127,12 @@ impl CoreProcessor {
 
         for assignment in assignments_to_create {
             self.assignment_service
-                .create(&assignment, &event.operation_id)
-                .await?;
+                .create(assignment, &event.operation_id)?;
         }
 
         for assignment in assignments_to_delete {
             self.assignment_service
-                .delete(&assignment, &event.operation_id)
-                .await?;
+                .delete(&assignment, &event.operation_id)?;
         }
 
         Ok(())

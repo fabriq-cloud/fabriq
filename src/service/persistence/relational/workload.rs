@@ -9,8 +9,8 @@ use crate::{models::Workload, schema::workloads, schema::workloads::dsl::*};
 pub struct WorkloadRelationalPersistence {}
 
 #[async_trait]
-impl Persistence<Workload, Workload> for WorkloadRelationalPersistence {
-    async fn create(&self, workload: Workload) -> anyhow::Result<String> {
+impl Persistence<Workload> for WorkloadRelationalPersistence {
+    fn create(&self, workload: Workload) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -24,13 +24,13 @@ impl Persistence<Workload, Workload> for WorkloadRelationalPersistence {
         }
     }
 
-    async fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
+    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(workloads.filter(id.eq(model_id))).execute(&connection)?)
     }
 
-    async fn list(&self) -> anyhow::Result<Vec<Workload>> {
+    fn list(&self) -> anyhow::Result<Vec<Workload>> {
         let connection = crate::db::get_connection()?;
 
         let results = workloads.load::<Workload>(&connection).unwrap();
@@ -38,7 +38,7 @@ impl Persistence<Workload, Workload> for WorkloadRelationalPersistence {
         Ok(results)
     }
 
-    async fn get_by_id(&self, workload_id: &str) -> anyhow::Result<Option<Workload>> {
+    fn get_by_id(&self, workload_id: &str) -> anyhow::Result<Option<Workload>> {
         let connection = crate::db::get_connection()?;
 
         let results = workloads
@@ -58,11 +58,11 @@ mod tests {
     use super::*;
     use crate::models::Workload;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
-        crate::persistence::relational::ensure_fixtures().await;
+        crate::persistence::relational::ensure_fixtures();
 
         let new_workload = Workload {
             id: "workload-under-test".to_owned(),
@@ -73,24 +73,17 @@ mod tests {
         let workload_persistence = WorkloadRelationalPersistence::default();
 
         // delete workload if it exists
-        let _ = workload_persistence.delete(&new_workload.id).await.unwrap();
+        let _ = workload_persistence.delete(&new_workload.id).unwrap();
 
-        let inserted_workload_id = workload_persistence
-            .create(new_workload.clone())
-            .await
-            .unwrap();
+        let inserted_workload_id = workload_persistence.create(new_workload.clone()).unwrap();
 
         let fetched_workload = workload_persistence
             .get_by_id(&inserted_workload_id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_workload.id, new_workload.id);
 
-        let deleted_workloads = workload_persistence
-            .delete(&inserted_workload_id)
-            .await
-            .unwrap();
+        let deleted_workloads = workload_persistence.delete(&inserted_workload_id).unwrap();
         assert_eq!(deleted_workloads, 1);
     }
 }

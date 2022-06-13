@@ -9,8 +9,8 @@ use crate::{models::Workspace, schema::workspaces, schema::workspaces::dsl::*};
 pub struct WorkspaceRelationalPersistence {}
 
 #[async_trait]
-impl Persistence<Workspace, Workspace> for WorkspaceRelationalPersistence {
-    async fn create(&self, workspace: Workspace) -> anyhow::Result<String> {
+impl Persistence<Workspace> for WorkspaceRelationalPersistence {
+    fn create(&self, workspace: Workspace) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -24,13 +24,13 @@ impl Persistence<Workspace, Workspace> for WorkspaceRelationalPersistence {
         }
     }
 
-    async fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
+    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(workspaces.filter(id.eq(model_id))).execute(&connection)?)
     }
 
-    async fn list(&self) -> anyhow::Result<Vec<Workspace>> {
+    fn list(&self) -> anyhow::Result<Vec<Workspace>> {
         let connection = crate::db::get_connection()?;
 
         let results = workspaces.load::<Workspace>(&connection).unwrap();
@@ -38,7 +38,7 @@ impl Persistence<Workspace, Workspace> for WorkspaceRelationalPersistence {
         Ok(results)
     }
 
-    async fn get_by_id(&self, workspace_id: &str) -> anyhow::Result<Option<Workspace>> {
+    fn get_by_id(&self, workspace_id: &str) -> anyhow::Result<Option<Workspace>> {
         let connection = crate::db::get_connection()?;
 
         let results = workspaces
@@ -69,26 +69,18 @@ mod tests {
         let workspace_persistence = WorkspaceRelationalPersistence::default();
 
         // delete workspace if it exists
-        let _ = workspace_persistence
-            .delete(&new_workspace.id)
-            .await
-            .unwrap();
+        let _ = workspace_persistence.delete(&new_workspace.id).unwrap();
 
-        let inserted_workspace_id = workspace_persistence
-            .create(new_workspace.clone())
-            .await
-            .unwrap();
+        let inserted_workspace_id = workspace_persistence.create(new_workspace.clone()).unwrap();
 
         let fetched_workspace = workspace_persistence
             .get_by_id(&inserted_workspace_id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_workspace.id, new_workspace.id);
 
         let deleted_workspaces = workspace_persistence
             .delete(&inserted_workspace_id)
-            .await
             .unwrap();
         assert_eq!(deleted_workspaces, 1);
     }

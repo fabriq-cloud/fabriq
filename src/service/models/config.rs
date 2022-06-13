@@ -18,7 +18,7 @@ pub struct Config {
     pub value: String,
 }
 
-impl PersistableModel<Config, Config> for Config {
+impl PersistableModel<Config> for Config {
     fn new(new_config: Config) -> Self {
         new_config
     }

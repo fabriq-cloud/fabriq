@@ -32,7 +32,7 @@ impl TemplateTrait for GrpcTemplateService {
             path: request.get_ref().path.clone(),
         };
 
-        let operation_id = match self.service.create(new_template, None).await {
+        let operation_id = match self.service.create(new_template, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -52,7 +52,7 @@ impl TemplateTrait for GrpcTemplateService {
         // TODO: Check that no workloads are currently still using template
         // Query workload service for workloads by template_id
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
+        let operation_id = match self.service.delete(&request.into_inner().id, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -69,7 +69,7 @@ impl TemplateTrait for GrpcTemplateService {
         &self,
         _request: Request<ListTemplatesRequest>,
     ) -> Result<Response<ListTemplatesResponse>, Status> {
-        let templates = match self.service.list().await {
+        let templates = match self.service.list() {
             Ok(templates) => templates,
             Err(err) => {
                 return Err(Status::new(
@@ -112,7 +112,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_template() -> anyhow::Result<()> {
-        let template_persistence = Box::new(MemoryPersistence::<Template, Template>::default());
+        let template_persistence = Box::new(MemoryPersistence::<Template>::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 

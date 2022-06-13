@@ -19,7 +19,7 @@ pub struct Deployment {
     pub hosts: i32,
 }
 
-impl PersistableModel<Deployment, Deployment> for Deployment {
+impl PersistableModel<Deployment> for Deployment {
     fn new(new_deployment: Deployment) -> Deployment {
         new_deployment
     }

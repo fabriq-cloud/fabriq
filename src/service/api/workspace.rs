@@ -29,7 +29,7 @@ impl WorkspaceTrait for GrpcWorkspaceService {
             id: request.get_ref().id.clone(),
         };
 
-        let operation_id = match self.service.create(new_workspace, &None).await {
+        let operation_id = match self.service.create(new_workspace, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -46,7 +46,7 @@ impl WorkspaceTrait for GrpcWorkspaceService {
         &self,
         request: Request<DeleteWorkspaceRequest>,
     ) -> Result<Response<OperationId>, Status> {
-        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
+        let operation_id = match self.service.delete(&request.into_inner().id, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -63,7 +63,7 @@ impl WorkspaceTrait for GrpcWorkspaceService {
         &self,
         _request: Request<ListWorkspacesRequest>,
     ) -> Result<Response<ListWorkspacesResponse>, Status> {
-        let workspaces = match self.service.list().await {
+        let workspaces = match self.service.list() {
             Ok(workspaces) => workspaces,
             Err(err) => {
                 return Err(Status::new(
@@ -105,11 +105,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_workspace() -> anyhow::Result<()> {
-        let workspace_persistence = Box::new(MemoryPersistence::<Workspace, Workspace>::default());
+        let workspace_persistence = Box::new(MemoryPersistence::<Workspace>::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let workload_persistence = MemoryPersistence::<Workload, Workload>::default();
+        let workload_persistence = MemoryPersistence::<Workload>::default();
         let workload_service = Arc::new(WorkloadService {
             persistence: Box::new(workload_persistence),
             event_stream: event_stream.clone(),

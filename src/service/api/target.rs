@@ -30,7 +30,7 @@ impl TargetTrait for GrpcTargetService {
             labels: request.get_ref().labels.clone(),
         };
 
-        let operation_id = match self.service.create(new_target, &None).await {
+        let operation_id = match self.service.create(new_target, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -50,11 +50,7 @@ impl TargetTrait for GrpcTargetService {
         // TODO: check that no workloads are currently still using target
         // Query workload service for workloads by target_id, error if any exist
 
-        let operation_id = match self
-            .service
-            .delete(&request.into_inner().target_id, None)
-            .await
-        {
+        let operation_id = match self.service.delete(&request.into_inner().target_id, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -72,7 +68,7 @@ impl TargetTrait for GrpcTargetService {
         request: Request<TargetIdRequest>,
     ) -> Result<Response<TargetMessage>, Status> {
         let target_id = request.into_inner().target_id;
-        let target = match self.service.get_by_id(&target_id).await {
+        let target = match self.service.get_by_id(&target_id) {
             Ok(target) => target,
             Err(err) => {
                 tracing::error!("get target with id {}: failed: {}", target_id, err);
@@ -102,7 +98,7 @@ impl TargetTrait for GrpcTargetService {
         &self,
         _request: Request<ListTargetsRequest>,
     ) -> Result<Response<ListTargetsResponse>, Status> {
-        let targets = match self.service.list().await {
+        let targets = match self.service.list() {
             Ok(targets) => targets,
             Err(err) => {
                 return Err(Status::new(
@@ -147,11 +143,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_target() -> anyhow::Result<()> {
-        let target_persistence = Box::new(MemoryPersistence::<Target, Target>::default());
+        let target_persistence = Box::new(MemoryPersistence::<Target>::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let target_service = Arc::new(TargetService::new(target_persistence, event_stream));
+        let target_service = Arc::new(TargetService {
+            persistence: target_persistence,
+            event_stream,
+        });
 
         let target_grpc_service = GrpcTargetService::new(Arc::clone(&target_service));
 

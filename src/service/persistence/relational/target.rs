@@ -9,8 +9,8 @@ use crate::{models::Target, schema::targets, schema::targets::dsl::*};
 pub struct TargetRelationalPersistence {}
 
 #[async_trait]
-impl Persistence<Target, Target> for TargetRelationalPersistence {
-    async fn create(&self, target: Target) -> anyhow::Result<String> {
+impl Persistence<Target> for TargetRelationalPersistence {
+    fn create(&self, target: Target) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -24,13 +24,13 @@ impl Persistence<Target, Target> for TargetRelationalPersistence {
         }
     }
 
-    async fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
+    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(targets.filter(id.eq(model_id))).execute(&connection)?)
     }
 
-    async fn list(&self) -> anyhow::Result<Vec<Target>> {
+    fn list(&self) -> anyhow::Result<Vec<Target>> {
         let connection = crate::db::get_connection()?;
 
         let results = targets.load::<Target>(&connection).unwrap();
@@ -38,7 +38,7 @@ impl Persistence<Target, Target> for TargetRelationalPersistence {
         Ok(results)
     }
 
-    async fn get_by_id(&self, target_id: &str) -> anyhow::Result<Option<Target>> {
+    fn get_by_id(&self, target_id: &str) -> anyhow::Result<Option<Target>> {
         let connection = crate::db::get_connection()?;
 
         let results = targets
@@ -70,21 +70,17 @@ mod tests {
         let target_persistence = TargetRelationalPersistence::default();
 
         // delete target if it exists
-        let _ = target_persistence.delete(&new_target.id).await.unwrap();
+        let _ = target_persistence.delete(&new_target.id).unwrap();
 
-        let inserted_target_id = target_persistence.create(new_target.clone()).await.unwrap();
+        let inserted_target_id = target_persistence.create(new_target.clone()).unwrap();
 
         let fetched_target = target_persistence
             .get_by_id(&inserted_target_id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_target.id, new_target.id);
 
-        let deleted_targets = target_persistence
-            .delete(&inserted_target_id)
-            .await
-            .unwrap();
+        let deleted_targets = target_persistence.delete(&inserted_target_id).unwrap();
         assert_eq!(deleted_targets, 1);
     }
 }

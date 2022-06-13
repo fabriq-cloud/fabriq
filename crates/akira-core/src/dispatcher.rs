@@ -22,7 +22,7 @@ impl Dispatcher {
 
     pub async fn start(&self) -> anyhow::Result<()> {
         loop {
-            let event = self.event_stream.receive().await?;
+            let event = self.event_stream.receive()?;
 
             if let Some(event) = event {
                 tracing::info!("processing event: {:?}", event);

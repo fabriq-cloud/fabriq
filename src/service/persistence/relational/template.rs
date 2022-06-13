@@ -9,8 +9,8 @@ use crate::{models::Template, schema::templates, schema::templates::dsl::*};
 pub struct TemplateRelationalPersistence {}
 
 #[async_trait]
-impl Persistence<Template, Template> for TemplateRelationalPersistence {
-    async fn create(&self, template: Template) -> anyhow::Result<String> {
+impl Persistence<Template> for TemplateRelationalPersistence {
+    fn create(&self, template: Template) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -24,13 +24,13 @@ impl Persistence<Template, Template> for TemplateRelationalPersistence {
         }
     }
 
-    async fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
+    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(templates.filter(id.eq(model_id))).execute(&connection)?)
     }
 
-    async fn list(&self) -> anyhow::Result<Vec<Template>> {
+    fn list(&self) -> anyhow::Result<Vec<Template>> {
         let connection = crate::db::get_connection()?;
 
         let results = templates.load::<Template>(&connection).unwrap();
@@ -38,7 +38,7 @@ impl Persistence<Template, Template> for TemplateRelationalPersistence {
         Ok(results)
     }
 
-    async fn get_by_id(&self, template_id: &str) -> anyhow::Result<Option<Template>> {
+    fn get_by_id(&self, template_id: &str) -> anyhow::Result<Option<Template>> {
         let connection = crate::db::get_connection()?;
 
         let results = templates
@@ -72,25 +72,18 @@ mod tests {
         let template_persistence = TemplateRelationalPersistence::default();
 
         // delete template if it exists
-        let _ = template_persistence.delete(&new_template.id).await.unwrap();
+        let _ = template_persistence.delete(&new_template.id).unwrap();
 
-        let inserted_template_id = template_persistence
-            .create(new_template.clone())
-            .await
-            .unwrap();
+        let inserted_template_id = template_persistence.create(new_template.clone()).unwrap();
 
         let fetched_template = template_persistence
             .get_by_id(&inserted_template_id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_template.id, new_template.id);
         assert_eq!(fetched_template.repository, new_template.repository);
 
-        let deleted_templates = template_persistence
-            .delete(&inserted_template_id)
-            .await
-            .unwrap();
+        let deleted_templates = template_persistence.delete(&inserted_template_id).unwrap();
         assert_eq!(deleted_templates, 1);
     }
 }

@@ -8,29 +8,19 @@ use std::{sync::Arc, time::SystemTime};
 use crate::models::Target;
 
 pub struct TargetService {
-    persistence: Box<dyn Persistence<Target, Target>>,
-    event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub persistence: Box<dyn Persistence<Target>>,
+    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
 }
 
 impl TargetService {
-    pub fn new(
-        persistence: Box<dyn Persistence<Target, Target>>,
-        event_stream: Arc<Box<dyn EventStream>>,
-    ) -> Self {
-        Self {
-            persistence,
-            event_stream,
-        }
-    }
-
-    pub async fn create(
+    pub fn create(
         &self,
         target: Target,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let target_id = self.persistence.create(target).await?;
+        let target_id = self.persistence.create(target)?;
 
-        let target = self.get_by_id(&target_id).await?;
+        let target = self.get_by_id(&target_id)?;
         let target = match target {
             Some(target) => target,
             None => return Err(anyhow::anyhow!("Couldn't find created target id returned")),
@@ -55,26 +45,26 @@ impl TargetService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&create_target_event).await?;
+        self.event_stream.send(&create_target_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn get_by_id(&self, target_id: &str) -> anyhow::Result<Option<Target>> {
-        self.persistence.get_by_id(target_id).await
+    pub fn get_by_id(&self, target_id: &str) -> anyhow::Result<Option<Target>> {
+        self.persistence.get_by_id(target_id)
     }
 
-    pub async fn delete(
+    pub fn delete(
         &self,
         target_id: &str,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let target = match self.get_by_id(target_id).await? {
+        let target = match self.get_by_id(target_id)? {
             Some(target) => target,
             None => return Err(anyhow::anyhow!("Target id {target_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(target_id).await?;
+        let deleted_count = self.persistence.delete(target_id)?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Target id {target_id} not found"));
@@ -99,13 +89,13 @@ impl TargetService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&delete_target_event).await?;
+        self.event_stream.send(&delete_target_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn list(&self) -> anyhow::Result<Vec<Target>> {
-        let results = self.persistence.list().await?;
+    pub fn list(&self) -> anyhow::Result<Vec<Target>> {
+        let results = self.persistence.list()?;
 
         Ok(results)
     }
@@ -119,8 +109,8 @@ mod tests {
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let new_target = Target {
@@ -128,7 +118,7 @@ mod tests {
             labels: vec!["location:eastus2".to_string()],
         };
 
-        let target_persistence = MemoryPersistence::<Target, Target>::default();
+        let target_persistence = MemoryPersistence::<Target>::default();
 
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
@@ -140,19 +130,13 @@ mod tests {
 
         let created_target_operation_id = target_service
             .create(new_target.clone(), &Some(OperationId::create()))
-            .await
             .unwrap();
         assert_eq!(created_target_operation_id.id.len(), 36);
 
-        let fetched_target = target_service
-            .get_by_id(&new_target.id)
-            .await
-            .unwrap()
-            .unwrap();
+        let fetched_target = target_service.get_by_id(&new_target.id).unwrap().unwrap();
         assert_eq!(fetched_target.id, new_target.id);
 
-        let deleted_target_operation_id =
-            target_service.delete(&new_target.id, None).await.unwrap();
+        let deleted_target_operation_id = target_service.delete(&new_target.id, None).unwrap();
         assert_eq!(deleted_target_operation_id.id.len(), 36);
     }
 }

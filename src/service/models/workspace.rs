@@ -10,7 +10,7 @@ pub struct Workspace {
     pub id: String, // cribbage-team
 }
 
-impl PersistableModel<Workspace, Workspace> for Workspace {
+impl PersistableModel<Workspace> for Workspace {
     fn new(new_workspace: Workspace) -> Workspace {
         new_workspace
     }

@@ -10,7 +10,7 @@ pub struct Target {
     pub labels: Vec<String>,
 }
 
-impl PersistableModel<Target, Target> for Target {
+impl PersistableModel<Target> for Target {
     fn new(new_target: Target) -> Self {
         new_target
     }

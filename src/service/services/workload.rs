@@ -8,19 +8,19 @@ use std::{sync::Arc, time::SystemTime};
 use crate::models::Workload;
 
 pub struct WorkloadService {
-    pub persistence: Box<dyn Persistence<Workload, Workload>>,
+    pub persistence: Box<dyn Persistence<Workload>>,
     pub event_stream: Arc<Box<dyn EventStream + 'static>>,
 }
 
 impl WorkloadService {
-    pub async fn create(
+    pub fn create(
         &self,
         workload: Workload,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let workload_id = self.persistence.create(workload).await?;
+        let workload_id = self.persistence.create(workload)?;
 
-        let workload = self.get_by_id(&workload_id).await?;
+        let workload = self.get_by_id(&workload_id)?;
         let workload = match workload {
             Some(workload) => workload,
             None => {
@@ -49,13 +49,13 @@ impl WorkloadService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&create_workload_event).await?;
+        self.event_stream.send(&create_workload_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workload>> {
-        self.persistence.get_by_id(host_id).await
+    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workload>> {
+        self.persistence.get_by_id(host_id)
     }
 
     /*
@@ -64,17 +64,17 @@ impl WorkloadService {
     }
     */
 
-    pub async fn delete(
+    pub fn delete(
         &self,
         workload_id: &str,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let workload = match self.get_by_id(workload_id).await? {
+        let workload = match self.get_by_id(workload_id)? {
             Some(workload) => workload,
             None => return Err(anyhow::anyhow!("Workload id {workload_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(workload_id).await?;
+        let deleted_count = self.persistence.delete(workload_id)?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Workload id {workload_id} not found"));
@@ -99,13 +99,13 @@ impl WorkloadService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&delete_workload_event).await?;
+        self.event_stream.send(&delete_workload_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn list(&self) -> anyhow::Result<Vec<Workload>> {
-        let results = self.persistence.list().await?;
+    pub fn list(&self) -> anyhow::Result<Vec<Workload>> {
+        let results = self.persistence.list()?;
 
         Ok(results)
     }
@@ -119,8 +119,8 @@ mod tests {
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let new_workload = Workload {
@@ -130,7 +130,7 @@ mod tests {
             workspace_id: "cribbage-team".to_owned(),
         };
 
-        let workload_persistence = MemoryPersistence::<Workload, Workload>::default();
+        let workload_persistence = MemoryPersistence::<Workload>::default();
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
@@ -141,21 +141,16 @@ mod tests {
 
         let create_operation_id = workload_service
             .create(new_workload.clone(), Some(OperationId::create()))
-            .await
             .unwrap();
         assert_eq!(create_operation_id.id.len(), 36);
 
         let fetched_workload = workload_service
             .get_by_id(&new_workload.id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_workload.id, new_workload.id);
 
-        let delete_operation_id = workload_service
-            .delete(&new_workload.id, None)
-            .await
-            .unwrap();
+        let delete_operation_id = workload_service.delete(&new_workload.id, None).unwrap();
         assert_eq!(delete_operation_id.id.len(), 36);
     }
 }

@@ -1,4 +1,4 @@
-use async_trait::async_trait;
+use akira_core::Persistence;
 use diesel::prelude::*;
 
 use crate::{
@@ -12,9 +12,8 @@ use crate::{
 #[derive(Default)]
 pub struct HostRelationalPersistence {}
 
-#[async_trait]
-impl HostPersistence for HostRelationalPersistence {
-    async fn create(&self, host: &Host) -> anyhow::Result<String> {
+impl Persistence<Host> for HostRelationalPersistence {
+    fn create(&self, host: Host) -> anyhow::Result<String> {
         let conn = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(hosts::table)
@@ -28,19 +27,19 @@ impl HostPersistence for HostRelationalPersistence {
         }
     }
 
-    async fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
+    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(hosts.filter(id.eq(model_id))).execute(&connection)?)
     }
 
-    async fn list(&self) -> anyhow::Result<Vec<Host>> {
+    fn list(&self) -> anyhow::Result<Vec<Host>> {
         let connection = crate::db::get_connection()?;
 
         Ok(hosts.load::<Host>(&connection)?)
     }
 
-    async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
+    fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
         let connection = crate::db::get_connection()?;
 
         let results = hosts.filter(id.eq(host_id)).load::<Host>(&connection)?;
@@ -49,8 +48,10 @@ impl HostPersistence for HostRelationalPersistence {
 
         Ok(cloned_result)
     }
+}
 
-    async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
+impl HostPersistence for HostRelationalPersistence {
+    fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
         let connection = crate::db::get_connection()?;
 
         // TODO: Can imagine labels of hosts being indexed and using a more efficient query
@@ -90,40 +91,35 @@ mod tests {
 
         let host_persistence = HostRelationalPersistence::default();
 
-        let _ = host_persistence.delete(&new_host.id).await.unwrap();
+        let _ = host_persistence.delete(&new_host.id).unwrap();
 
-        let inserted_host_id = host_persistence.create(&new_host).await.unwrap();
+        let inserted_host_id = host_persistence.create(new_host.clone()).unwrap();
 
         let fetched_host = host_persistence
             .get_by_id(&inserted_host_id)
-            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_host.id, new_host.id);
 
-        let deleted_hosts = host_persistence.delete(&inserted_host_id).await.unwrap();
+        let deleted_hosts = host_persistence.delete(&inserted_host_id).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 
-    #[tokio::test]
-    async fn test_get_by_id() {
+    #[test]
+    fn test_get_by_id() {
         dotenv().ok();
-        crate::persistence::relational::ensure_fixtures().await;
+        crate::persistence::relational::ensure_fixtures();
 
         let host_persistence = HostRelationalPersistence::default();
 
-        let fetched_host = host_persistence
-            .get_by_id("host-fixture")
-            .await
-            .unwrap()
-            .unwrap();
+        let fetched_host = host_persistence.get_by_id("host-fixture").unwrap().unwrap();
         assert_eq!(fetched_host.id, "host-fixture");
     }
 
-    #[tokio::test]
-    async fn test_get_matching_target() {
+    #[test]
+    fn test_get_matching_target() {
         dotenv().ok();
-        crate::persistence::relational::ensure_fixtures().await;
+        crate::persistence::relational::ensure_fixtures();
 
         let host_persistence = HostRelationalPersistence::default();
 
@@ -134,7 +130,6 @@ mod tests {
 
         let matching_hosts = host_persistence
             .get_matching_target(&matching_target)
-            .await
             .unwrap();
 
         assert_eq!(matching_hosts.len(), 1);
@@ -146,7 +141,6 @@ mod tests {
 
         let non_matching_hosts = host_persistence
             .get_matching_target(&non_matching_target)
-            .await
             .unwrap();
 
         assert!(non_matching_hosts.is_empty());

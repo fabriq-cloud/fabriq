@@ -6,29 +6,19 @@ use prost::Message;
 use prost_types::Timestamp;
 
 pub struct AssignmentService {
-    persistence: Box<dyn AssignmentPersistence>,
-    event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub persistence: Box<dyn AssignmentPersistence>,
+    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
 }
 
 impl AssignmentService {
-    pub fn new(
-        persistence: Box<dyn AssignmentPersistence>,
-        event_stream: Arc<Box<dyn EventStream>>,
-    ) -> Self {
-        Self {
-            persistence,
-            event_stream,
-        }
-    }
-
-    pub async fn create(
+    pub fn create(
         &self,
-        assignment: &Assignment,
+        assignment: Assignment,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         // TODO: Use an Error enumeration to return specific error
 
-        match self.get_by_id(&assignment.id).await? {
+        match self.get_by_id(&assignment.id)? {
             Some(assignment) => {
                 return Err(anyhow::anyhow!(
                     "Assignment id {} already exists",
@@ -38,9 +28,9 @@ impl AssignmentService {
             None => {}
         };
 
-        let assignment_id = self.persistence.create(assignment).await?;
+        let assignment_id = self.persistence.create(assignment)?;
 
-        let assignment = self.get_by_id(&assignment_id).await?;
+        let assignment = self.get_by_id(&assignment_id)?;
         let assignment = match assignment {
             Some(assignment) => assignment,
             None => {
@@ -70,33 +60,30 @@ impl AssignmentService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&create_assignment_event).await?;
+        self.event_stream.send(&create_assignment_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
-        self.persistence.get_by_id(host_id).await
+    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
+        self.persistence.get_by_id(host_id)
     }
 
-    pub async fn get_by_deployment_id(
-        &self,
-        deployment_id: &str,
-    ) -> anyhow::Result<Vec<Assignment>> {
-        self.persistence.get_by_deployment_id(deployment_id).await
+    pub fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
+        self.persistence.get_by_deployment_id(deployment_id)
     }
 
-    pub async fn delete(
+    pub fn delete(
         &self,
         assignment_id: &str,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let assignment = match self.get_by_id(assignment_id).await? {
+        let assignment = match self.get_by_id(assignment_id)? {
             Some(assignment) => assignment,
             None => return Err(anyhow::anyhow!("Deployment id {assignment_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(assignment_id).await?;
+        let deleted_count = self.persistence.delete(assignment_id)?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Assignment id {assignment_id} not found"));
@@ -122,13 +109,13 @@ impl AssignmentService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&delete_assignment_event).await?;
+        self.event_stream.send(&delete_assignment_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
-        let results = self.persistence.list().await?;
+    pub fn list(&self) -> anyhow::Result<Vec<Assignment>> {
+        let results = self.persistence.list()?;
 
         Ok(results)
     }
@@ -142,8 +129,8 @@ mod tests {
     use crate::persistence::memory::AssignmentMemoryPersistence;
     use akira_memory_stream::MemoryEventStream;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let new_assignment = Assignment {
@@ -162,15 +149,13 @@ mod tests {
         };
 
         let create_operation_id = assignment_service
-            .create(&new_assignment, &None)
-            .await
+            .create(new_assignment.clone(), &None)
             .unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 
         let fetched_assignment = assignment_service
             .get_by_id(&new_assignment.id)
-            .await
             .unwrap()
             .unwrap();
 
@@ -178,7 +163,6 @@ mod tests {
 
         let delete_operation_id = assignment_service
             .delete(&new_assignment.id, &Some(create_operation_id))
-            .await
             .unwrap();
 
         assert_eq!(delete_operation_id.id.len(), 36);

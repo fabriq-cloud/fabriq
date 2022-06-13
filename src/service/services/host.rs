@@ -11,29 +11,19 @@ use crate::{
 };
 
 pub struct HostService {
-    persistence: Box<dyn HostPersistence>,
-    event_stream: Arc<Box<dyn EventStream>>,
+    pub persistence: Box<dyn HostPersistence>,
+    pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl HostService {
-    pub fn new(
-        persistence: Box<dyn HostPersistence>,
-        event_stream: Arc<Box<dyn EventStream>>,
-    ) -> Self {
-        Self {
-            persistence,
-            event_stream,
-        }
-    }
-
-    pub async fn create(
+    pub fn create(
         &self,
-        host: &Host,
+        host: Host,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let host_id = self.persistence.create(host).await?;
+        let host_id = self.persistence.create(host)?;
 
-        let host = self.get_by_id(&host_id).await?;
+        let host = self.get_by_id(&host_id)?;
         let host = match host {
             Some(host) => host,
             None => return Err(anyhow::anyhow!("Couldn't find created host id returned")),
@@ -58,30 +48,30 @@ impl HostService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&create_host_event).await?;
+        self.event_stream.send(&create_host_event)?;
 
         Ok(operation_id)
     }
 
-    pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
-        self.persistence.get_by_id(host_id).await
+    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
+        self.persistence.get_by_id(host_id)
     }
 
-    pub async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
-        self.persistence.get_matching_target(target).await
+    pub fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
+        self.persistence.get_matching_target(target)
     }
 
-    pub async fn delete(
+    pub fn delete(
         &self,
         host_id: &str,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let host = match self.get_by_id(host_id).await? {
+        let host = match self.get_by_id(host_id)? {
             Some(host) => host,
             None => return Err(anyhow::anyhow!("Deployment id {host_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(host_id).await?;
+        let deleted_count = self.persistence.delete(host_id)?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Host id {host_id} not found"));
@@ -106,13 +96,13 @@ impl HostService {
             timestamp: Some(timestamp),
         };
 
-        self.event_stream.send(&delete_host_event).await?;
+        self.event_stream.send(&delete_host_event)?;
 
         Ok(operation_id)
     }
 
     pub async fn list(&self) -> anyhow::Result<Vec<Host>> {
-        let results = self.persistence.list().await?;
+        let results = self.persistence.list()?;
 
         Ok(results)
     }
@@ -127,8 +117,8 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let new_host = Host {
@@ -139,21 +129,22 @@ mod tests {
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let host_persistence = HostMemoryPersistence::default();
+        let host_persistence = Box::new(HostMemoryPersistence::default());
 
-        let cloned_event_stream = event_stream.clone();
-        let host_service = HostService::new(Box::new(host_persistence), cloned_event_stream);
+        let host_service = HostService {
+            persistence: host_persistence,
+            event_stream,
+        };
 
         let created_host_operation_id = host_service
-            .create(&new_host, &Some(OperationId::create()))
-            .await
+            .create(new_host.clone(), &Some(OperationId::create()))
             .unwrap();
         assert_eq!(created_host_operation_id.id.len(), 36);
 
-        let fetched_host = host_service.get_by_id(&new_host.id).await.unwrap().unwrap();
+        let fetched_host = host_service.get_by_id(&new_host.id).unwrap().unwrap();
         assert_eq!(fetched_host.id, new_host.id);
 
-        let deleted_host_operation_id = host_service.delete(&new_host.id, None).await.unwrap();
+        let deleted_host_operation_id = host_service.delete(&new_host.id, None).unwrap();
         assert_eq!(deleted_host_operation_id.id.len(), 36);
     }
 }

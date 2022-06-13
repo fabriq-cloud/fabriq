@@ -21,7 +21,7 @@ impl GrpcHostService {
 impl HostTrait for GrpcHostService {
     async fn create(&self, request: Request<HostMessage>) -> Result<Response<OperationId>, Status> {
         let new_host: Host = request.into_inner().into();
-        let operation_id = match self.service.create(&new_host, &None).await {
+        let operation_id = match self.service.create(new_host, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -41,7 +41,7 @@ impl HostTrait for GrpcHostService {
         // TODO: check that no workloads are currently still using host
         // Query workload service for workloads by host_id, error if any exist
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
+        let operation_id = match self.service.delete(&request.into_inner().id, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -102,7 +102,10 @@ mod tests {
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let host_service = Arc::new(HostService::new(host_persistence, event_stream));
+        let host_service = Arc::new(HostService {
+            persistence: host_persistence,
+            event_stream,
+        });
 
         let host_grpc_service = GrpcHostService::new(Arc::clone(&host_service));
 
