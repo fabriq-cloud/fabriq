@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "akira-core",
  "akira-memory-stream",
+ "akira-mqtt-stream",
  "anyhow",
  "ascii_table",
  "async-trait",

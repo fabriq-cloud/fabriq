@@ -36,6 +36,12 @@ jobs:
         id: diesel-migration
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - name: Start Mosquitto MQTT Broker
+        uses: namoshek/mosquitto-github-action@v1
+        with:
+          version: "1.6"
+          ports: "1883:1883 8883:8883"
+          container-name: "mqtt"
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:

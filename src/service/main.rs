@@ -3,7 +3,7 @@ use akira_core::{
     AssignmentServer, DeploymentServer, HealthServer, HostServer, TargetServer, TemplateServer,
     WorkloadServer, WorkspaceServer,
 };
-use akira_memory_stream::MemoryEventStream;
+use akira_mqtt_stream::MqttEventStream;
 use dotenv::dotenv;
 use std::env;
 use std::sync::Arc;
@@ -27,6 +27,8 @@ use akira::services::{
     WorkloadService, WorkspaceService,
 };
 
+const DEFAULT_RECONCILER_CLIENT_ID: &str = "reconciler";
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
@@ -36,7 +38,13 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MemoryEventStream::new()?));
+    let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
+    let reconciler_client_id = env::var("RECONCILER_CLIENT_ID")
+        .unwrap_or_else(|_| DEFAULT_RECONCILER_CLIENT_ID.to_string());
+
+    let mqtt_event_stream = MqttEventStream::new(&mqtt_broker_uri, &reconciler_client_id, true)?;
+
+    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(mqtt_event_stream));
 
     let assignment_persistence = Box::new(AssignmentRelationalPersistence::default());
     let assignment_service = Arc::new(AssignmentService {

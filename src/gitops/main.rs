@@ -1,15 +1,25 @@
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 mod context;
 mod processor;
 
 use akira_core::EventStream;
-use akira_memory_stream::MemoryEventStream;
+use akira_mqtt_stream::MqttEventStream;
 use processor::GitOpsProcessor;
+
+const DEFAULT_GITOPS_CLIENT_ID: &str = "reconciler";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let _event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MemoryEventStream::new()?));
+    let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
+    let gitops_client_id =
+        env::var("RECONCILER_CLIENT_ID").unwrap_or_else(|_| DEFAULT_GITOPS_CLIENT_ID.to_string());
+
+    let _event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MqttEventStream::new(
+        &mqtt_broker_uri,
+        &gitops_client_id,
+        true,
+    )?));
 
     let _gitops_processor = Box::new(GitOpsProcessor::new().await?);
 

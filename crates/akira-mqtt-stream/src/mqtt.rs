@@ -79,7 +79,7 @@ impl EventStream for MqttEventStream {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
+    use std::{env, time::SystemTime};
 
     use akira_core::{Event, EventType, HostMessage, ModelType, OperationId};
     use prost::Message;
@@ -87,7 +87,7 @@ mod tests {
 
     use super::*;
 
-    const DEFAULT_BROKER_URI: &str = "tcp://localhost:1883";
+    const DEFAULT_MQTT_BROKER_URI: &str = "tcp://localhost:1883";
 
     #[test]
     fn test_create_get_delete() {
@@ -96,8 +96,10 @@ mod tests {
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
         };
 
-        let host_stream =
-            MqttEventStream::new(DEFAULT_BROKER_URI, "mqtt-stream-test", true).unwrap();
+        let mqtt_broker_uri =
+            env::var("MQTT_BROKER_URI").unwrap_or_else(|_| DEFAULT_MQTT_BROKER_URI.to_owned());
+
+        let host_stream = MqttEventStream::new(&mqtt_broker_uri, "mqtt-stream-test", true).unwrap();
         let operation_id = OperationId::create();
 
         let timestamp = Timestamp {
