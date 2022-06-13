@@ -49,7 +49,6 @@ impl EventStream for MemoryEventStream {
 mod tests {
     use std::time::SystemTime;
 
-    use dotenv::dotenv;
     use prost::Message;
 
     use akira_core::{Event, EventType, HostMessage, ModelType, OperationId};
@@ -59,8 +58,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_get_delete() {
-        dotenv().ok();
-
         let host = HostMessage {
             id: "azure-eastus2-1".to_owned(),
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],

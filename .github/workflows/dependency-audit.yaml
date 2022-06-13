@@ -20,4 +20,5 @@ jobs:
           toolchain: stable
           override: true
           components: clippy, rustfmt
+      - run: rustup toolchain install nightly
       - run: cargo +nightly udeps
