@@ -1,4 +1,4 @@
-name: Security Audit
+name: Dependency Audit
 on:
   push:
     paths:
@@ -14,3 +14,10 @@ jobs:
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy, rustfmt
+      - run: cargo +nightly udeps
