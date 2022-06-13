@@ -4,7 +4,7 @@ on:
     paths:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
-      - ".github/workflows/dependency-audit.yml"
+      - ".github/workflows/dependency-audit.yaml"
   schedule:
     - cron: "0 0 * * *" # once a day at midnight UTC
 jobs:
@@ -22,4 +22,5 @@ jobs:
           override: true
           components: clippy, rustfmt
       - run: rustup toolchain install nightly
+      - run: cargo install udeps
       - run: cargo +nightly udeps
