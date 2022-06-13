@@ -22,5 +22,5 @@ jobs:
           override: true
           components: clippy, rustfmt
       - run: rustup toolchain install nightly
-      - run: cargo install udeps
+      - run: cargo install cargo-udeps --locked
       - run: cargo +nightly udeps
