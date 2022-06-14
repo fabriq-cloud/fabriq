@@ -1,6 +1,7 @@
-use akira_core::{PersistableModel, WorkloadMessage};
+use akira_core::WorkloadMessage;
 
 use crate::models::{Template, Workspace};
+use crate::persistence::PersistableModel;
 use crate::schema::workloads;
 
 #[derive(
@@ -17,10 +18,6 @@ pub struct Workload {
 }
 
 impl PersistableModel<Workload> for Workload {
-    fn new(new_workload: Workload) -> Workload {
-        new_workload
-    }
-
     fn get_id(&self) -> String {
         self.id.clone()
     }

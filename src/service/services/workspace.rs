@@ -1,11 +1,9 @@
-use akira_core::{
-    Event, EventStream, EventType, ModelType, OperationId, Persistence, WorkspaceMessage,
-};
+use akira_core::{Event, EventStream, EventType, ModelType, OperationId, WorkspaceMessage};
 use prost::Message;
 use prost_types::Timestamp;
 use std::{sync::Arc, time::SystemTime};
 
-use crate::models::Workspace;
+use crate::{models::Workspace, persistence::Persistence};
 
 use super::WorkloadService;
 
@@ -34,7 +32,7 @@ impl WorkspaceService {
             None => {}
         };
 
-        let workspace_id = self.persistence.create(workspace)?;
+        let workspace_id = self.persistence.create(&workspace)?;
 
         let workspace = self.get_by_id(&workspace_id)?;
         let workspace = match workspace {

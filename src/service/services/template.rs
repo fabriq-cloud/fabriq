@@ -1,11 +1,9 @@
-use akira_core::{
-    Event, EventStream, EventType, ModelType, OperationId, Persistence, TemplateMessage,
-};
+use akira_core::{Event, EventStream, EventType, ModelType, OperationId, TemplateMessage};
 use prost::Message;
 use prost_types::Timestamp;
 use std::{sync::Arc, time::SystemTime};
 
-use crate::models::Template;
+use crate::{models::Template, persistence::Persistence};
 
 pub struct TemplateService {
     pub persistence: Box<dyn Persistence<Template>>,
@@ -40,7 +38,7 @@ impl TemplateService {
             None => {}
         };
 
-        let template_id = self.persistence.create(template)?;
+        let template_id = self.persistence.create(&template)?;
 
         let template = self.get_by_id(&template_id)?;
         let template = match template {

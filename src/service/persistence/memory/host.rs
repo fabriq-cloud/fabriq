@@ -1,4 +1,3 @@
-use akira_core::{PersistableModel, Persistence};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, MutexGuard},
@@ -6,7 +5,7 @@ use std::{
 
 use crate::{
     models::{Host, Target},
-    persistence::HostPersistence,
+    persistence::{HostPersistence, PersistableModel, Persistence},
 };
 
 pub struct HostMemoryPersistence {
@@ -14,12 +13,22 @@ pub struct HostMemoryPersistence {
 }
 
 impl Persistence<Host> for HostMemoryPersistence {
-    fn create(&self, host: Host) -> anyhow::Result<String> {
+    fn create(&self, host: &Host) -> anyhow::Result<String> {
         let mut locked_hosts = self.get_models_locked()?;
 
         locked_hosts.insert(host.get_id(), host.clone());
 
         Ok(host.get_id())
+    }
+
+    fn create_many(&self, hosts: &[Host]) -> anyhow::Result<Vec<String>> {
+        let mut host_ids = Vec::new();
+        for (_, host) in hosts.iter().enumerate() {
+            let host_id = self.create(host)?;
+            host_ids.push(host_id);
+        }
+
+        Ok(host_ids)
     }
 
     fn delete(&self, host_id: &str) -> anyhow::Result<usize> {
@@ -28,6 +37,14 @@ impl Persistence<Host> for HostMemoryPersistence {
         locked_hosts.remove_entry(&host_id.to_string());
 
         Ok(1)
+    }
+
+    fn delete_many(&self, host_ids: &[&str]) -> anyhow::Result<usize> {
+        for (_, host_id) in host_ids.iter().enumerate() {
+            self.delete(host_id)?;
+        }
+
+        Ok(host_ids.len())
     }
 
     fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
@@ -81,7 +98,7 @@ impl Default for HostMemoryPersistence {
 impl HostMemoryPersistence {
     fn get_models_locked(&self) -> anyhow::Result<MutexGuard<HashMap<String, Host>>> {
         match self.models.lock() {
-            Ok(locked_assignments) => Ok(locked_assignments),
+            Ok(locked_hosts) => Ok(locked_hosts),
             Err(_) => Err(anyhow::anyhow!("failed to acquire lock")),
         }
     }
@@ -104,7 +121,7 @@ mod tests {
 
         let host_persistence = HostMemoryPersistence::default();
 
-        let inserted_host_id = host_persistence.create(new_host.clone()).unwrap();
+        let inserted_host_id = host_persistence.create(&new_host).unwrap();
         assert_eq!(inserted_host_id, new_host.id);
 
         let fetched_host = host_persistence
@@ -124,6 +141,25 @@ mod tests {
         assert_eq!(hosts_for_target.len(), 1);
 
         let deleted_hosts = host_persistence.delete(&inserted_host_id).unwrap();
+        assert_eq!(deleted_hosts, 1);
+    }
+
+    #[test]
+    fn test_create_get_delete_many() {
+        dotenv().ok();
+
+        let new_host = Host {
+            id: "host-under-test".to_owned(),
+            labels: vec!["cloud:azure".to_owned(), "region:eastus2".to_owned()],
+        };
+
+        let host_persistence = HostMemoryPersistence::default();
+
+        let inserted_host_ids = host_persistence.create_many(&[new_host.clone()]).unwrap();
+        assert_eq!(inserted_host_ids.len(), 1);
+        assert_eq!(inserted_host_ids[0], new_host.id);
+
+        let deleted_hosts = host_persistence.delete_many(&[&new_host.id]).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }

@@ -1,11 +1,9 @@
-use akira_core::{
-    Event, EventStream, EventType, ModelType, OperationId, Persistence, WorkloadMessage,
-};
+use akira_core::{Event, EventStream, EventType, ModelType, OperationId, WorkloadMessage};
 use prost::Message;
 use prost_types::Timestamp;
 use std::{sync::Arc, time::SystemTime};
 
-use crate::models::Workload;
+use crate::{models::Workload, persistence::Persistence};
 
 pub struct WorkloadService {
     pub persistence: Box<dyn Persistence<Workload>>,
@@ -18,7 +16,7 @@ impl WorkloadService {
         workload: Workload,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let workload_id = self.persistence.create(workload)?;
+        let workload_id = self.persistence.create(&workload)?;
 
         let workload = self.get_by_id(&workload_id)?;
         let workload = match workload {

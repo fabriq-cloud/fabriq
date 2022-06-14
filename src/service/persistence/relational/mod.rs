@@ -17,9 +17,10 @@ pub use workspace::WorkspaceRelationalPersistence;
 #[cfg(test)]
 
 pub fn ensure_fixtures() {
-    use akira_core::Persistence;
-
-    use crate::models::{Deployment, Host, Target, Template, Workload, Workspace};
+    use crate::{
+        models::{Deployment, Host, Target, Template, Workload, Workspace},
+        persistence::Persistence,
+    };
 
     let deployment_fixture = Deployment {
         id: "deployment-fixture".to_string(),
@@ -30,7 +31,7 @@ pub fn ensure_fixtures() {
 
     let deployment_persistence = DeploymentRelationalPersistence::default();
 
-    let _ = deployment_persistence.create(deployment_fixture);
+    let _ = deployment_persistence.create(&deployment_fixture);
 
     let host_fixture = Host {
         id: "host-fixture".to_string(),
@@ -39,7 +40,7 @@ pub fn ensure_fixtures() {
 
     let host_persistence = HostRelationalPersistence::default();
 
-    let _ = host_persistence.create(host_fixture);
+    let _ = host_persistence.create(&host_fixture);
 
     let target_fixture = Target {
         id: "target-fixture".to_string(),
@@ -48,7 +49,7 @@ pub fn ensure_fixtures() {
 
     let target_persistence = TargetRelationalPersistence::default();
 
-    let _ = target_persistence.create(target_fixture);
+    let _ = target_persistence.create(&target_fixture);
 
     let template_fixture = Template {
         id: "template-fixture".to_string(),
@@ -58,7 +59,7 @@ pub fn ensure_fixtures() {
     };
 
     let template_persistence = TemplateRelationalPersistence::default();
-    let _ = template_persistence.create(template_fixture);
+    let _ = template_persistence.create(&template_fixture);
 
     let workload_fixture = Workload {
         id: "workload-fixture".to_string(),
@@ -67,12 +68,12 @@ pub fn ensure_fixtures() {
     };
 
     let workload_persistence = WorkloadRelationalPersistence::default();
-    let _ = workload_persistence.create(workload_fixture);
+    let _ = workload_persistence.create(&workload_fixture);
 
     let workspace_fixture = Workspace {
         id: "workspace-fixture".to_string(),
     };
 
     let workspace_persistence = WorkspaceRelationalPersistence::default();
-    let _ = workspace_persistence.create(workspace_fixture);
+    let _ = workspace_persistence.create(&workspace_fixture);
 }

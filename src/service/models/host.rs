@@ -1,7 +1,6 @@
-use akira_core::{HostMessage, PersistableModel};
-// use diesel::sql_types::{BigInt, Integer};
+use akira_core::HostMessage;
 
-use crate::schema::hosts;
+use crate::{persistence::PersistableModel, schema::hosts};
 
 #[derive(Clone, Debug, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
 #[table_name = "hosts"]
@@ -11,10 +10,6 @@ pub struct Host {
 }
 
 impl PersistableModel<Host> for Host {
-    fn new(new_host: Host) -> Host {
-        new_host
-    }
-
     fn get_id(&self) -> String {
         self.id.clone()
     }

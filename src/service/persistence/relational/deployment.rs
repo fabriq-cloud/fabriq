@@ -1,6 +1,6 @@
-use akira_core::Persistence;
 use diesel::prelude::*;
 
+use crate::persistence::Persistence;
 use crate::schema::deployments::table;
 use crate::{models::Deployment, schema::deployments, schema::deployments::dsl::*};
 
@@ -8,7 +8,7 @@ use crate::{models::Deployment, schema::deployments, schema::deployments::dsl::*
 pub struct DeploymentRelationalPersistence {}
 
 impl Persistence<Deployment> for DeploymentRelationalPersistence {
-    fn create(&self, deployment: Deployment) -> anyhow::Result<String> {
+    fn create(&self, deployment: &Deployment) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -22,10 +22,29 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         }
     }
 
+    fn create_many(&self, models: &[Deployment]) -> anyhow::Result<Vec<String>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = diesel::insert_into(table)
+            .values(models)
+            .returning(deployments::id)
+            .get_results(&connection)?;
+
+        Ok(results)
+    }
+
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(deployments.filter(id.eq(model_id))).execute(&connection)?)
+    }
+
+    fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
+        for (_, model_id) in model_ids.iter().enumerate() {
+            self.delete(model_id)?;
+        }
+
+        Ok(model_ids.len())
     }
 
     fn list(&self) -> anyhow::Result<Vec<Deployment>> {
@@ -73,9 +92,7 @@ mod tests {
         // delete deployment if it exists
         let _ = deployment_persistence.delete(&new_deployment.id).unwrap();
 
-        let inserted_deployment_id = deployment_persistence
-            .create(new_deployment.clone())
-            .unwrap();
+        let inserted_deployment_id = deployment_persistence.create(&new_deployment).unwrap();
 
         let fetched_deployment = deployment_persistence
             .get_by_id(&inserted_deployment_id)
@@ -85,6 +102,31 @@ mod tests {
 
         let deleted_deployments = deployment_persistence
             .delete(&inserted_deployment_id)
+            .unwrap();
+        assert_eq!(deleted_deployments, 1);
+    }
+
+    #[test]
+    fn test_create_get_delete_many() {
+        dotenv().ok();
+
+        let new_deployment = Deployment {
+            id: "deployment-under-many-test".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            target_id: "target-fixture".to_owned(),
+            hosts: 2,
+        };
+
+        let deployment_persistence = DeploymentRelationalPersistence::default();
+
+        let inserted_deployment_ids = deployment_persistence
+            .create_many(&[new_deployment.clone()])
+            .unwrap();
+        assert_eq!(inserted_deployment_ids.len(), 1);
+        assert_eq!(inserted_deployment_ids[0], new_deployment.id);
+
+        let deleted_deployments = deployment_persistence
+            .delete_many(&[&new_deployment.id])
             .unwrap();
         assert_eq!(deleted_deployments, 1);
     }

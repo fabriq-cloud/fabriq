@@ -21,7 +21,17 @@ async fn main() -> anyhow::Result<()> {
         true,
     )?));
 
-    let _gitops_processor = Box::new(GitOpsProcessor::new().await?);
+    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MqttEventStream::new(
+        &mqtt_broker_uri,
+        &gitops_client_id,
+        true,
+    )?));
+
+    let gitops_processor = Box::new(GitOpsProcessor::new().await?);
+
+    for event in event_stream.receive().into_iter().flatten() {
+        gitops_processor.process(&event).await?;
+    }
 
     Ok(())
 }

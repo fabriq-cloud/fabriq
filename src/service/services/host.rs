@@ -21,7 +21,7 @@ impl HostService {
         host: Host,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let host_id = self.persistence.create(host)?;
+        let host_id = self.persistence.create(&host)?;
 
         let host = self.get_by_id(&host_id)?;
         let host = match host {

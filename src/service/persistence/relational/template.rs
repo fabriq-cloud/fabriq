@@ -1,16 +1,14 @@
-use akira_core::Persistence;
-use async_trait::async_trait;
 use diesel::prelude::*;
 
+use crate::persistence::Persistence;
 use crate::schema::templates::table;
 use crate::{models::Template, schema::templates, schema::templates::dsl::*};
 
 #[derive(Default)]
 pub struct TemplateRelationalPersistence {}
 
-#[async_trait]
 impl Persistence<Template> for TemplateRelationalPersistence {
-    fn create(&self, template: Template) -> anyhow::Result<String> {
+    fn create(&self, template: &Template) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
         let results: Vec<String> = diesel::insert_into(table)
@@ -24,10 +22,29 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         }
     }
 
+    fn create_many(&self, models: &[Template]) -> anyhow::Result<Vec<String>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = diesel::insert_into(table)
+            .values(models)
+            .returning(templates::id)
+            .get_results(&connection)?;
+
+        Ok(results)
+    }
+
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(templates.filter(id.eq(model_id))).execute(&connection)?)
+    }
+
+    fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
+        for (_, model_id) in model_ids.iter().enumerate() {
+            self.delete(model_id)?;
+        }
+
+        Ok(model_ids.len())
     }
 
     fn list(&self) -> anyhow::Result<Vec<Template>> {
@@ -58,8 +75,8 @@ mod tests {
     use super::*;
     use crate::models::Template;
 
-    #[tokio::test]
-    async fn test_create_get_delete() {
+    #[test]
+    fn test_create_get_delete() {
         dotenv().ok();
 
         let new_template = Template {
@@ -74,7 +91,7 @@ mod tests {
         // delete template if it exists
         let _ = template_persistence.delete(&new_template.id).unwrap();
 
-        let inserted_template_id = template_persistence.create(new_template.clone()).unwrap();
+        let inserted_template_id = template_persistence.create(&new_template).unwrap();
 
         let fetched_template = template_persistence
             .get_by_id(&inserted_template_id)
@@ -84,6 +101,31 @@ mod tests {
         assert_eq!(fetched_template.repository, new_template.repository);
 
         let deleted_templates = template_persistence.delete(&inserted_template_id).unwrap();
+        assert_eq!(deleted_templates, 1);
+    }
+
+    #[test]
+    fn test_create_get_delete_many() {
+        dotenv().ok();
+
+        let new_template = Template {
+            id: "template-under-many-test".to_owned(),
+            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
+            branch: "main".to_owned(),
+            path: "external-service".to_owned(),
+        };
+
+        let template_persistence = TemplateRelationalPersistence::default();
+
+        let inserted_template_ids = template_persistence
+            .create_many(&[new_template.clone()])
+            .unwrap();
+        assert_eq!(inserted_template_ids.len(), 1);
+        assert_eq!(inserted_template_ids[0], new_template.id);
+
+        let deleted_templates = template_persistence
+            .delete_many(&[&new_template.id])
+            .unwrap();
         assert_eq!(deleted_templates, 1);
     }
 }

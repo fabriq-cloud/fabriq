@@ -1,22 +1,22 @@
-use akira_core::Persistence;
 use diesel::prelude::*;
 
 use crate::{
     diesel::RunQueryDsl,
     models::{Host, Target},
-    persistence::HostPersistence,
+    persistence::{HostPersistence, Persistence},
     schema::hosts,
     schema::hosts::dsl::*,
+    schema::hosts::table,
 };
 
 #[derive(Default)]
 pub struct HostRelationalPersistence {}
 
 impl Persistence<Host> for HostRelationalPersistence {
-    fn create(&self, host: Host) -> anyhow::Result<String> {
+    fn create(&self, host: &Host) -> anyhow::Result<String> {
         let conn = crate::db::get_connection()?;
 
-        let results: Vec<String> = diesel::insert_into(hosts::table)
+        let results: Vec<String> = diesel::insert_into(table)
             .values(host)
             .returning(hosts::id)
             .get_results(&conn)?;
@@ -27,10 +27,29 @@ impl Persistence<Host> for HostRelationalPersistence {
         }
     }
 
+    fn create_many(&self, models: &[Host]) -> anyhow::Result<Vec<String>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = diesel::insert_into(table)
+            .values(models)
+            .returning(hosts::id)
+            .get_results(&connection)?;
+
+        Ok(results)
+    }
+
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(hosts.filter(id.eq(model_id))).execute(&connection)?)
+    }
+
+    fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
+        for (_, model_id) in model_ids.iter().enumerate() {
+            self.delete(model_id)?;
+        }
+
+        Ok(model_ids.len())
     }
 
     fn list(&self) -> anyhow::Result<Vec<Host>> {
@@ -93,7 +112,7 @@ mod tests {
 
         let _ = host_persistence.delete(&new_host.id).unwrap();
 
-        let inserted_host_id = host_persistence.create(new_host.clone()).unwrap();
+        let inserted_host_id = host_persistence.create(&new_host).unwrap();
 
         let fetched_host = host_persistence
             .get_by_id(&inserted_host_id)
@@ -144,5 +163,24 @@ mod tests {
             .unwrap();
 
         assert!(non_matching_hosts.is_empty());
+    }
+
+    #[test]
+    fn test_create_get_delete_many() {
+        dotenv().ok();
+
+        let new_host = Host {
+            id: "host-under-many-test".to_owned(),
+            labels: vec!["cloud:azure".to_owned(), "region:eastus2".to_owned()],
+        };
+
+        let host_persistence = HostRelationalPersistence::default();
+
+        let inserted_host_ids = host_persistence.create_many(&[new_host.clone()]).unwrap();
+        assert_eq!(inserted_host_ids.len(), 1);
+        assert_eq!(inserted_host_ids[0], new_host.id);
+
+        let deleted_hosts = host_persistence.delete_many(&[&new_host.id]).unwrap();
+        assert_eq!(deleted_hosts, 1);
     }
 }

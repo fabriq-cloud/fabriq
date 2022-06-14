@@ -1,12 +1,10 @@
 use std::{sync::Arc, time::SystemTime};
 
-use akira_core::{
-    DeploymentMessage, Event, EventStream, EventType, ModelType, OperationId, Persistence,
-};
+use akira_core::{DeploymentMessage, Event, EventStream, EventType, ModelType, OperationId};
 use prost::Message;
 use prost_types::Timestamp;
 
-use crate::models::Deployment;
+use crate::{models::Deployment, persistence::Persistence};
 
 pub struct DeploymentService {
     pub persistence: Box<dyn Persistence<Deployment>>,
@@ -19,7 +17,7 @@ impl DeploymentService {
         deployment: Deployment,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let deployment_id = self.persistence.create(deployment)?;
+        let deployment_id = self.persistence.create(&deployment)?;
 
         let deployment = self.get_by_id(&deployment_id)?;
         let deployment = match deployment {

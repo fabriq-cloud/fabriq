@@ -1,6 +1,6 @@
-use akira_core::{PersistableModel, TargetMessage};
+use akira_core::TargetMessage;
 
-use crate::schema::targets;
+use crate::{persistence::PersistableModel, schema::targets};
 
 #[derive(Clone, Debug, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
 #[table_name = "targets"]
@@ -11,10 +11,6 @@ pub struct Target {
 }
 
 impl PersistableModel<Target> for Target {
-    fn new(new_target: Target) -> Self {
-        new_target
-    }
-
     fn get_id(&self) -> String {
         self.id.clone()
     }

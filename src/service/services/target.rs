@@ -1,11 +1,9 @@
-use akira_core::{
-    Event, EventStream, EventType, ModelType, OperationId, Persistence, TargetMessage,
-};
+use akira_core::{Event, EventStream, EventType, ModelType, OperationId, TargetMessage};
 use prost::Message;
 use prost_types::Timestamp;
 use std::{sync::Arc, time::SystemTime};
 
-use crate::models::Target;
+use crate::{models::Target, persistence::Persistence};
 
 pub struct TargetService {
     pub persistence: Box<dyn Persistence<Target>>,
@@ -18,7 +16,7 @@ impl TargetService {
         target: Target,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let target_id = self.persistence.create(target)?;
+        let target_id = self.persistence.create(&target)?;
 
         let target = self.get_by_id(&target_id)?;
         let target = match target {

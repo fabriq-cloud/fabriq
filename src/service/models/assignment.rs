@@ -1,6 +1,7 @@
-use akira_core::{AssignmentMessage, PersistableModel};
+use akira_core::AssignmentMessage;
 
 use crate::models::{Deployment, Host};
+use crate::persistence::PersistableModel;
 use crate::schema::assignments;
 
 #[derive(
@@ -23,10 +24,6 @@ impl Assignment {
 }
 
 impl PersistableModel<Assignment> for Assignment {
-    fn new(new_assignment: Assignment) -> Assignment {
-        new_assignment
-    }
-
     fn get_id(&self) -> String {
         self.id.clone()
     }

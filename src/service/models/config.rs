@@ -1,7 +1,6 @@
-use akira_core::PersistableModel;
 use diesel::sql_types::SmallInt;
 
-use crate::schema::configs;
+use crate::{persistence::PersistableModel, schema::configs};
 
 #[derive(
     Associations, Clone, Debug, Eq, Identifiable, Insertable, PartialEq, Queryable, QueryableByName,
@@ -19,10 +18,6 @@ pub struct Config {
 }
 
 impl PersistableModel<Config> for Config {
-    fn new(new_config: Config) -> Self {
-        new_config
-    }
-
     fn get_id(&self) -> String {
         self.id.clone()
     }

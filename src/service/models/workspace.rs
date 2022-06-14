@@ -1,6 +1,6 @@
-use akira_core::{PersistableModel, WorkspaceMessage};
+use akira_core::WorkspaceMessage;
 
-use crate::schema::workspaces;
+use crate::{persistence::PersistableModel, schema::workspaces};
 
 #[derive(
     Associations, Clone, Debug, Eq, Identifiable, Insertable, PartialEq, Queryable, QueryableByName,
@@ -11,10 +11,6 @@ pub struct Workspace {
 }
 
 impl PersistableModel<Workspace> for Workspace {
-    fn new(new_workspace: Workspace) -> Workspace {
-        new_workspace
-    }
-
     fn get_id(&self) -> String {
         self.id.clone()
     }

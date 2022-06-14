@@ -1,8 +1,8 @@
-use akira_core::{DeploymentMessage, PersistableModel};
+use akira_core::DeploymentMessage;
 use diesel::sql_types::Integer;
 
 use super::{Target, Workload};
-use crate::schema::deployments;
+use crate::{persistence::PersistableModel, schema::deployments};
 
 #[derive(
     Associations, Clone, Debug, Eq, Identifiable, Insertable, PartialEq, Queryable, QueryableByName,
@@ -20,10 +20,6 @@ pub struct Deployment {
 }
 
 impl PersistableModel<Deployment> for Deployment {
-    fn new(new_deployment: Deployment) -> Deployment {
-        new_deployment
-    }
-
     fn get_id(&self) -> String {
         self.id.clone()
     }

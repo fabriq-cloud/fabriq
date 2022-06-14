@@ -28,7 +28,7 @@ impl AssignmentService {
             None => {}
         };
 
-        let assignment_id = self.persistence.create(assignment)?;
+        let assignment_id = self.persistence.create(&assignment)?;
 
         let assignment = self.get_by_id(&assignment_id)?;
         let assignment = match assignment {

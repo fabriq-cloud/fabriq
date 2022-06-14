@@ -1,8 +1,7 @@
 use akira_core::assignment::assignment_client::AssignmentClient;
 use akira_core::host::host_client::HostClient;
 use akira_core::target::target_client::TargetClient;
-use akira_core::{DeploymentMessage, Event, EventType, ModelType, Processor};
-use async_trait::async_trait;
+use akira_core::{DeploymentMessage, Event, EventType, ModelType};
 use prost::Message;
 use tonic::codegen::InterceptedService;
 use tonic::metadata::{Ascii, MetadataValue};
@@ -17,9 +16,16 @@ pub struct GitOpsProcessor {
     token: MetadataValue<Ascii>,
 }
 
-#[async_trait]
-impl Processor for GitOpsProcessor {
-    async fn process(&self, event: &Event) -> anyhow::Result<()> {
+impl GitOpsProcessor {
+    pub async fn new() -> anyhow::Result<Self> {
+        let context = Context::default();
+        let channel = Channel::from_static(context.endpoint).connect().await?;
+        let token: MetadataValue<Ascii> = context.token.parse()?;
+
+        Ok(Self { channel, token })
+    }
+
+    pub async fn process(&self, event: &Event) -> anyhow::Result<()> {
         println!("Processing event: {:?}", event);
 
         let model_type = event.model_type;
@@ -50,16 +56,6 @@ impl Processor for GitOpsProcessor {
                 panic!("unsupported model type: {:?}", event);
             }
         }
-    }
-}
-
-impl GitOpsProcessor {
-    pub async fn new() -> anyhow::Result<Self> {
-        let context = Context::default();
-        let channel = Channel::from_static(context.endpoint).connect().await?;
-        let token: MetadataValue<Ascii> = context.token.parse()?;
-
-        Ok(Self { channel, token })
     }
 
     pub fn create_assignment_client(
