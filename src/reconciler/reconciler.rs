@@ -67,42 +67,71 @@ impl Reconciler {
         }
     }
 
-    fn compute_assignment_changes(
+    pub fn compute_assignment_changes(
         deployment: &Deployment,
-        current_assignments: &mut Vec<Assignment>,
-        available_hosts: &mut Vec<Host>,
+        existing_assignments: &Vec<Assignment>,
+        target_matching_hosts: &Vec<Host>,
         desired_hosts: usize,
-    ) -> anyhow::Result<(Vec<Assignment>, Vec<String>)> {
-        let mut assignments_to_create = Vec::new();
-        let mut assignments_to_delete = Vec::new();
+    ) -> anyhow::Result<(Vec<Assignment>, Vec<Assignment>)> {
+        let mut assignments_to_create: Vec<Assignment> = Vec::new();
+        let mut assignments_to_delete: Vec<Assignment> = Vec::new();
 
-        for assignment in current_assignments.iter() {
-            if available_hosts
-                .iter()
-                .filter(|host| host.id == assignment.host_id)
-                .count()
-                == 0
-            {
-                assignments_to_delete.push(assignment.id.clone());
-            } else {
-                // host still matches target, so remove it from matching_hosts so we don't double assign it.
-                available_hosts.retain(|host| host.id == assignment.host_id);
-            }
-        }
+        let host_deleted_assignments: Vec<Assignment> = existing_assignments
+            .iter()
+            .filter(|assignment| {
+                target_matching_hosts
+                    .iter()
+                    .find(|host| host.id == assignment.host_id)
+                    .is_none()
+            })
+            .cloned()
+            .collect();
 
-        if current_assignments.len() > desired_hosts {
-            let delete_count = current_assignments.len() - desired_hosts;
+        let mut assignments_after_host_check: Vec<Assignment> = existing_assignments
+            .iter()
+            .filter(|assignment| {
+                // if this assignment was any of the deleted, remove it.
+                for deleted_assignment in &host_deleted_assignments {
+                    if deleted_assignment.id == assignment.id {
+                        return false;
+                    }
+                }
 
-            let delete_assignment_ids: Vec<String> = current_assignments
+                true
+            })
+            .cloned()
+            .collect();
+
+        let mut hosts_available: Vec<Host> = target_matching_hosts
+            .iter()
+            .filter(|host| {
+                // if this host is already used in any of the assignments, don't reuse
+                for assignment in &assignments_after_host_check {
+                    if assignment.host_id == host.id {
+                        return false;
+                    }
+                }
+
+                true
+            })
+            .cloned()
+            .collect();
+
+        assignments_to_delete.extend(host_deleted_assignments);
+
+        if assignments_after_host_check.len() > desired_hosts {
+            let delete_count = assignments_after_host_check.len() - desired_hosts;
+
+            let deleted_scale_down_assignments: Vec<Assignment> = assignments_after_host_check
                 .drain(0..delete_count)
-                .map(|assignment| assignment.id)
                 .collect();
 
-            assignments_to_delete.extend(delete_assignment_ids);
+            assignments_to_delete.extend(deleted_scale_down_assignments);
         } else {
-            let create_count = desired_hosts - current_assignments.len();
+            let create_count = desired_hosts - assignments_after_host_check.len();
 
-            assignments_to_create = available_hosts
+            // remove create_count hosts from available lists and use them to create assignments
+            assignments_to_create = hosts_available
                 .drain(0..create_count)
                 .map(|host| Assignment {
                     id: Assignment::make_id(&deployment.id, &host.id),
@@ -153,16 +182,208 @@ impl Reconciler {
 
         // persist changes
 
-        for assignment in assignments_to_create {
-            self.assignment_service
-                .create(assignment, &event.operation_id)?;
-        }
+        self.assignment_service
+            .create_many(&assignments_to_create, &event.operation_id)?;
 
-        for assignment in assignments_to_delete {
-            self.assignment_service
-                .delete(&assignment, &event.operation_id)?;
-        }
+        self.assignment_service
+            .delete_many(&assignments_to_delete, &event.operation_id)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_deployment() {
+        let deployment = Deployment {
+            id: "created-deployment".to_string(),
+            target_id: "target-id".to_string(),
+            hosts: 1,
+            workload_id: "workload-id".to_string(),
+        };
+
+        let mut current_assignments: Vec<Assignment> = Vec::new();
+        let mut available_hosts = vec![
+            Host {
+                id: "host1-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+            Host {
+                id: "host2-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+            Host {
+                id: "host3-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+        ];
+
+        let desired_hosts = 1;
+
+        let (assignments_to_create, assignments_to_delete) =
+            Reconciler::compute_assignment_changes(
+                &deployment,
+                &mut current_assignments,
+                &mut available_hosts,
+                desired_hosts,
+            )
+            .unwrap();
+
+        assert_eq!(assignments_to_create.len(), 1);
+        assert_eq!(assignments_to_delete.len(), 0);
+
+        let assignment = assignments_to_create.first().unwrap();
+        assert_eq!(assignment.deployment_id, deployment.id);
+        assert_eq!(assignment.host_id, "host1-id");
+    }
+
+    #[test]
+    fn test_scale_up_deployment() {
+        let deployment = Deployment {
+            id: "created-deployment".to_string(),
+            target_id: "target-id".to_string(),
+            hosts: 2,
+            workload_id: "workload-id".to_string(),
+        };
+
+        let mut current_assignments: Vec<Assignment> = vec![Assignment {
+            id: "assignment1-id".to_string(),
+            deployment_id: "deployment-id".to_string(),
+            host_id: "host1-id".to_string(),
+        }];
+
+        let mut available_hosts = vec![
+            Host {
+                id: "host1-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+            Host {
+                id: "host2-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+        ];
+
+        let desired_hosts = 2;
+
+        let (assignments_to_create, assignments_to_delete) =
+            Reconciler::compute_assignment_changes(
+                &deployment,
+                &mut current_assignments,
+                &mut available_hosts,
+                desired_hosts,
+            )
+            .unwrap();
+
+        assert_eq!(assignments_to_create.len(), 1);
+        assert_eq!(assignments_to_delete.len(), 0);
+
+        let assignment = assignments_to_create.first().unwrap();
+        assert_eq!(assignment.deployment_id, deployment.id);
+        assert_eq!(assignment.host_id, "host2-id");
+    }
+
+    #[test]
+    fn test_scale_down_deployment() {
+        let deployment = Deployment {
+            id: "deployment-id".to_string(),
+            target_id: "target-id".to_string(),
+            hosts: 2,
+            workload_id: "workload-id".to_string(),
+        };
+
+        let mut current_assignments: Vec<Assignment> = vec![
+            Assignment {
+                id: "assignment1-id".to_string(),
+                deployment_id: "deployment-id".to_string(),
+                host_id: "host1-id".to_string(),
+            },
+            Assignment {
+                id: "assignment2-id".to_string(),
+                deployment_id: "deployment-id".to_string(),
+                host_id: "host2-id".to_string(),
+            },
+        ];
+
+        let mut available_hosts = vec![
+            Host {
+                id: "host1-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+            Host {
+                id: "host2-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+        ];
+
+        let desired_hosts = 1;
+
+        let (assignments_to_create, assignments_to_delete) =
+            Reconciler::compute_assignment_changes(
+                &deployment,
+                &mut current_assignments,
+                &mut available_hosts,
+                desired_hosts,
+            )
+            .unwrap();
+
+        assert_eq!(assignments_to_create.len(), 0);
+        assert_eq!(assignments_to_delete.len(), 1);
+
+        let assignment = assignments_to_delete.first().unwrap();
+        assert_eq!(assignment.deployment_id, deployment.id);
+        assert_eq!(assignment.host_id, "host1-id");
+    }
+
+    #[test]
+    fn test_host_deleted_deployment() {
+        let deployment = Deployment {
+            id: "deployment-id".to_string(),
+            target_id: "target-id".to_string(),
+            hosts: 2,
+            workload_id: "workload-id".to_string(),
+        };
+
+        let mut current_assignments: Vec<Assignment> = vec![
+            Assignment {
+                id: "assignment1-id".to_string(),
+                deployment_id: "deployment-id".to_string(),
+                host_id: "host1-id".to_string(),
+            },
+            Assignment {
+                id: "assignment2-id".to_string(),
+                deployment_id: "deployment-id".to_string(),
+                host_id: "host2-id".to_string(),
+            },
+        ];
+
+        let mut available_hosts = vec![Host {
+            id: "host1-id".to_string(),
+            labels: vec!["region:eastus2".to_string()],
+        }];
+
+        let desired_hosts = 0;
+
+        let (assignments_to_create, assignments_to_delete) =
+            Reconciler::compute_assignment_changes(
+                &deployment,
+                &mut current_assignments,
+                &mut available_hosts,
+                desired_hosts,
+            )
+            .unwrap();
+
+        assert_eq!(assignments_to_create.len(), 0);
+        assert_eq!(assignments_to_delete.len(), 2);
+
+        let delete_assignment = &assignments_to_delete[0];
+        assert_eq!(delete_assignment.deployment_id, deployment.id);
+        assert_eq!(delete_assignment.host_id, "host2-id");
+
+        let delete_assignment = &assignments_to_delete[1];
+        assert_eq!(delete_assignment.deployment_id, deployment.id);
+        assert_eq!(delete_assignment.host_id, "host1-id");
     }
 }

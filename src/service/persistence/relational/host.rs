@@ -171,7 +171,7 @@ mod tests {
 
         let new_host = Host {
             id: "host-under-many-test".to_owned(),
-            labels: vec!["cloud:azure".to_owned(), "region:eastus2".to_owned()],
+            labels: vec!["cloud:aws".to_owned(), "region:westus2".to_owned()],
         };
 
         let host_persistence = HostRelationalPersistence::default();

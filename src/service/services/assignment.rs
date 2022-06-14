@@ -11,38 +11,12 @@ pub struct AssignmentService {
 }
 
 impl AssignmentService {
-    pub fn create(
-        &self,
-        assignment: Assignment,
-        operation_id: &Option<OperationId>,
-    ) -> anyhow::Result<OperationId> {
-        // TODO: Use an Error enumeration to return specific error
-
-        match self.get_by_id(&assignment.id)? {
-            Some(assignment) => {
-                return Err(anyhow::anyhow!(
-                    "Assignment id {} already exists",
-                    assignment.id
-                ))
-            }
-            None => {}
-        };
-
-        let assignment_id = self.persistence.create(&assignment)?;
-
-        let assignment = self.get_by_id(&assignment_id)?;
-        let assignment = match assignment {
-            Some(assignment) => assignment,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "Couldn't find created assignment id returned"
-                ))
-            }
-        };
-
-        let operation_id = OperationId::unwrap_or_create(operation_id);
-
-        let assignment_message: AssignmentMessage = assignment.into();
+    fn create_event(
+        assignment: &Assignment,
+        event_type: EventType,
+        operation_id: &OperationId,
+    ) -> Event {
+        let assignment_message: AssignmentMessage = assignment.clone().into();
 
         let timestamp = Timestamp {
             seconds: SystemTime::now()
@@ -52,25 +26,48 @@ impl AssignmentService {
             nanos: 0,
         };
 
-        let create_assignment_event = Event {
+        Event {
             operation_id: Some(operation_id.clone()),
             model_type: ModelType::Assignment as i32,
             serialized_model: assignment_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
+            event_type: event_type as i32,
             timestamp: Some(timestamp),
-        };
+        }
+    }
+
+    pub fn create(
+        &self,
+        assignment: Assignment,
+        operation_id: &Option<OperationId>,
+    ) -> anyhow::Result<OperationId> {
+        self.persistence.create(&assignment)?;
+
+        let operation_id = OperationId::unwrap_or_create(operation_id);
+
+        let create_assignment_event =
+            Self::create_event(&assignment, EventType::Created, &operation_id);
 
         self.event_stream.send(&create_assignment_event)?;
 
         Ok(operation_id)
     }
 
-    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
-        self.persistence.get_by_id(host_id)
-    }
+    pub fn create_many(
+        &self,
+        assignments: &[Assignment],
+        operation_id: &Option<OperationId>,
+    ) -> anyhow::Result<OperationId> {
+        let operation_id = OperationId::unwrap_or_create(operation_id);
+        self.persistence.create_many(assignments)?;
 
-    pub fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
-        self.persistence.get_by_deployment_id(deployment_id)
+        let create_assignment_events = assignments
+            .iter()
+            .map(|assignment| Self::create_event(&assignment, EventType::Created, &operation_id))
+            .collect::<Vec<_>>();
+
+        self.event_stream.send_many(&create_assignment_events)?;
+
+        Ok(operation_id)
     }
 
     pub fn delete(
@@ -91,27 +88,42 @@ impl AssignmentService {
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
-        let assignment_message: AssignmentMessage = assignment.into();
-
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let delete_assignment_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Assignment as i32,
-            serialized_model: assignment_message.encode_to_vec(),
-            event_type: EventType::Deleted as i32,
-            timestamp: Some(timestamp),
-        };
+        let delete_assignment_event =
+            Self::create_event(&assignment, EventType::Deleted, &operation_id);
 
         self.event_stream.send(&delete_assignment_event)?;
 
         Ok(operation_id)
+    }
+
+    pub fn delete_many(
+        &self,
+        assignments: &[Assignment],
+        operation_id: &Option<OperationId>,
+    ) -> anyhow::Result<OperationId> {
+        let operation_id = OperationId::unwrap_or_create(operation_id);
+        let assignment_ids = assignments
+            .iter()
+            .map(|a| a.id.as_ref())
+            .collect::<Vec<_>>();
+        self.persistence.delete_many(&assignment_ids)?;
+
+        let delete_assignment_events = assignments
+            .iter()
+            .map(|assignment| Self::create_event(&assignment, EventType::Deleted, &operation_id))
+            .collect::<Vec<_>>();
+
+        self.event_stream.send_many(&delete_assignment_events)?;
+
+        Ok(operation_id)
+    }
+
+    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
+        self.persistence.get_by_id(host_id)
+    }
+
+    pub fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
+        self.persistence.get_by_deployment_id(deployment_id)
     }
 
     pub fn list(&self) -> anyhow::Result<Vec<Assignment>> {
@@ -166,5 +178,39 @@ mod tests {
             .unwrap();
 
         assert_eq!(delete_operation_id.id.len(), 36);
+    }
+
+    #[test]
+    fn test_create_get_delete_many() {
+        dotenv().ok();
+
+        let new_assignment = Assignment {
+            id: "assignment-service-under-many-test".to_owned(),
+            deployment_id: "deployment-fixture".to_owned(),
+            host_id: "host-fixture".to_owned(),
+        };
+
+        let assignment_persistence = AssignmentMemoryPersistence::default();
+        let event_stream =
+            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+
+        let assignment_service = AssignmentService {
+            persistence: Box::new(assignment_persistence),
+            event_stream: Arc::clone(&event_stream),
+        };
+
+        assignment_service
+            .create_many(&[new_assignment.clone()], &None)
+            .unwrap();
+
+        let event_count = event_stream.receive().count();
+        assert_eq!(event_count, 1);
+
+        assignment_service
+            .delete_many(&[new_assignment.clone()], &None)
+            .unwrap();
+
+        let event_count = event_stream.receive().count();
+        assert_eq!(event_count, 1);
     }
 }

@@ -14,6 +14,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         let results: Vec<String> = diesel::insert_into(table)
             .values(assignment)
             .returning(assignments::id)
+            .on_conflict_do_nothing()
             .get_results(&connection)?;
 
         match results.first() {
@@ -28,6 +29,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         let results = diesel::insert_into(table)
             .values(models)
             .returning(assignments::id)
+            .on_conflict_do_nothing()
             .get_results(&connection)?;
 
         Ok(results)

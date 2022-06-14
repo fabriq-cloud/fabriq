@@ -26,6 +26,14 @@ impl EventStream for MemoryEventStream {
         Ok(())
     }
 
+    fn send_many(&self, events: &[Event]) -> anyhow::Result<()> {
+        for event in events.iter() {
+            self.send(event)?;
+        }
+
+        Ok(())
+    }
+
     fn receive(&self) -> Box<dyn Iterator<Item = Option<Event>> + '_> {
         let mut events = self.events.lock().unwrap();
 
