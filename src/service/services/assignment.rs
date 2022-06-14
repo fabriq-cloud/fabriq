@@ -62,7 +62,7 @@ impl AssignmentService {
 
         let create_assignment_events = assignments
             .iter()
-            .map(|assignment| Self::create_event(&assignment, EventType::Created, &operation_id))
+            .map(|assignment| Self::create_event(assignment, EventType::Created, &operation_id))
             .collect::<Vec<_>>();
 
         self.event_stream.send_many(&create_assignment_events)?;
@@ -110,7 +110,7 @@ impl AssignmentService {
 
         let delete_assignment_events = assignments
             .iter()
-            .map(|assignment| Self::create_event(&assignment, EventType::Deleted, &operation_id))
+            .map(|assignment| Self::create_event(assignment, EventType::Deleted, &operation_id))
             .collect::<Vec<_>>();
 
         self.event_stream.send_many(&delete_assignment_events)?;
@@ -207,7 +207,7 @@ mod tests {
         assert_eq!(event_count, 1);
 
         assignment_service
-            .delete_many(&[new_assignment.clone()], &None)
+            .delete_many(&[new_assignment], &None)
             .unwrap();
 
         let event_count = event_stream.receive().count();
