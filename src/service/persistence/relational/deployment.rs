@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 
-use crate::persistence::Persistence;
+use crate::persistence::{DeploymentPersistence, Persistence};
 use crate::schema::deployments::table;
 use crate::{models::Deployment, schema::deployments, schema::deployments::dsl::*};
 
@@ -68,6 +68,18 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
     }
 }
 
+impl DeploymentPersistence for DeploymentRelationalPersistence {
+    fn get_by_target_id(&self, query_target_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = deployments
+            .filter(target_id.eq(query_target_id))
+            .load::<Deployment>(&connection)?;
+
+        Ok(results)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use dotenv::dotenv;
@@ -129,5 +141,18 @@ mod tests {
             .delete_many(&[&new_deployment.id])
             .unwrap();
         assert_eq!(deleted_deployments, 1);
+    }
+
+    #[test]
+    fn test_get_by_target_id() {
+        dotenv().ok();
+
+        let deployment_persistence = DeploymentRelationalPersistence::default();
+
+        let deployments_for_target = deployment_persistence
+            .get_by_target_id("target-fixture")
+            .unwrap();
+
+        assert_eq!(deployments_for_target.len(), 1);
     }
 }

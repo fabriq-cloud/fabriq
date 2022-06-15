@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use akira::{
     models::{Deployment, Host, Target, Template, Workload, Workspace},
-    persistence::memory::{HostMemoryPersistence, MemoryPersistence},
+    persistence::memory::{DeploymentMemoryPersistence, HostMemoryPersistence, MemoryPersistence},
     services::{
         DeploymentService, HostService, TargetService, TemplateService, WorkloadService,
         WorkspaceService,
@@ -108,7 +108,7 @@ async fn test_e2e() {
 
     assert_eq!(create_workload_operation_id.id.len(), 36);
 
-    let deployment_persistence = MemoryPersistence::<Deployment>::default();
+    let deployment_persistence = DeploymentMemoryPersistence::default();
 
     let deployment_service = DeploymentService {
         persistence: Box::new(deployment_persistence),

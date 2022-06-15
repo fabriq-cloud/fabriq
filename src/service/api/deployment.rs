@@ -113,13 +113,12 @@ mod tests {
 
     use super::GrpcDeploymentService;
 
-    use crate::models::Deployment;
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::persistence::memory::DeploymentMemoryPersistence;
     use crate::services::DeploymentService;
 
     #[tokio::test]
     async fn test_create_list_deployment() -> anyhow::Result<()> {
-        let deployment_persistence = Box::new(MemoryPersistence::<Deployment>::default());
+        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 

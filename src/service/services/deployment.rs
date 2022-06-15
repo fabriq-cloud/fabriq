@@ -4,10 +4,10 @@ use akira_core::{DeploymentMessage, Event, EventStream, EventType, ModelType, Op
 use prost::Message;
 use prost_types::Timestamp;
 
-use crate::{models::Deployment, persistence::Persistence};
+use crate::{models::Deployment, persistence::DeploymentPersistence};
 
 pub struct DeploymentService {
-    pub persistence: Box<dyn Persistence<Deployment>>,
+    pub persistence: Box<dyn DeploymentPersistence>,
     pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
@@ -102,6 +102,10 @@ impl DeploymentService {
 
         Ok(results)
     }
+
+    pub fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        self.persistence.get_by_target_id(target_id)
+    }
 }
 
 #[cfg(test)]
@@ -110,22 +114,22 @@ mod tests {
     use dotenv::dotenv;
 
     use super::*;
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::persistence::memory::DeploymentMemoryPersistence;
 
     #[test]
     fn test_create_get_delete() {
         dotenv().ok();
 
         let new_deployment = Deployment {
-            id: "foreign-exchange-api-prod".to_owned(),
-            workload_id: "foreign-exchange-api".to_owned(),
-            target_id: "azure-east".to_owned(),
+            id: "deployment-service-under-test".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            target_id: "target-fixture".to_owned(),
             hosts: 3,
         };
 
-        let deployment_persistence = MemoryPersistence::<Deployment>::default();
+        let deployment_persistence = DeploymentMemoryPersistence::default();
         let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream>);
 
         let deployment_service = DeploymentService {
             persistence: Box::new(deployment_persistence),
@@ -142,6 +146,12 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(fetched_deployment.id, new_deployment.id);
+
+        let deployments_by_target = deployment_service
+            .get_by_target_id("target-fixture")
+            .unwrap();
+
+        assert!(!deployments_by_target.is_empty());
 
         let deleted_operation_id = deployment_service
             .delete(&new_deployment.id, &None)

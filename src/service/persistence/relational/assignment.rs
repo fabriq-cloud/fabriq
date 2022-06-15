@@ -116,7 +116,7 @@ mod tests {
             .get_by_deployment_id(&new_assignment.deployment_id)
             .unwrap();
 
-        assert_eq!(deployment_assignments.len(), 1);
+        assert!(!deployment_assignments.is_empty());
 
         let deleted_assignments = assignment_persistence
             .delete(&inserted_assignment_id)

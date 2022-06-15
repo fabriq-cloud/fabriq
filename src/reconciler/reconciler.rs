@@ -71,7 +71,7 @@ impl Reconciler {
         let targets = self.target_service.get_matching_host(&host)?;
 
         for target in targets {
-            let deployments = self.deployment_service.list()?; //.get_matching_target(&target);
+            let deployments = self.deployment_service.get_by_target_id(&target.id)?;
 
             for deployment in deployments {
                 // for deleted host this will shift to another host
