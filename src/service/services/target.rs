@@ -3,7 +3,10 @@ use prost::Message;
 use prost_types::Timestamp;
 use std::{sync::Arc, time::SystemTime};
 
-use crate::{models::Target, persistence::Persistence};
+use crate::{
+    models::{Host, Target},
+    persistence::Persistence,
+};
 
 pub struct TargetService {
     pub persistence: Box<dyn Persistence<Target>>,
@@ -13,10 +16,10 @@ pub struct TargetService {
 impl TargetService {
     pub fn create(
         &self,
-        target: Target,
+        target: &Target,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let target_id = self.persistence.create(&target)?;
+        let target_id = self.persistence.create(target)?;
 
         let target = self.get_by_id(&target_id)?;
         let target = match target {
@@ -97,6 +100,26 @@ impl TargetService {
 
         Ok(results)
     }
+
+    pub fn get_matching_host(&self, host: &Host) -> anyhow::Result<Vec<Target>> {
+        // TODO: Naive implementation, use proper query
+        let targets = self.list()?;
+        let targets_matching_host = targets
+            .iter()
+            .filter(|target| {
+                for label in &target.labels {
+                    if !host.labels.contains(label) {
+                        return false;
+                    }
+                }
+
+                true
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        Ok(targets_matching_host)
+    }
 }
 
 #[cfg(test)]
@@ -127,7 +150,7 @@ mod tests {
         };
 
         let created_target_operation_id = target_service
-            .create(new_target.clone(), &Some(OperationId::create()))
+            .create(&new_target, &Some(OperationId::create()))
             .unwrap();
         assert_eq!(created_target_operation_id.id.len(), 36);
 
@@ -136,5 +159,42 @@ mod tests {
 
         let deleted_target_operation_id = target_service.delete(&new_target.id, None).unwrap();
         assert_eq!(deleted_target_operation_id.id.len(), 36);
+    }
+
+    #[test]
+    fn test_get_matching_host() {
+        dotenv().ok();
+
+        let host = Host {
+            id: "azure-eastus2-1".to_owned(),
+            labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
+        };
+
+        let matching_target: Target = Target {
+            id: "eastus2".to_owned(),
+            labels: vec!["location:eastus2".to_string()],
+        };
+
+        let non_matching_target: Target = Target {
+            id: "westus2".to_owned(),
+            labels: vec!["location:westus2".to_string()],
+        };
+
+        let target_persistence = MemoryPersistence::<Target>::default();
+
+        let event_stream =
+            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+
+        let target_service = TargetService {
+            persistence: Box::new(target_persistence),
+            event_stream,
+        };
+
+        target_service.create(&matching_target, &None).unwrap();
+        target_service.create(&non_matching_target, &None).unwrap();
+
+        let matching_targets = target_service.get_matching_host(&host).unwrap();
+        assert_eq!(matching_targets.len(), 1);
+        assert_eq!(matching_targets[0].id, matching_target.id);
     }
 }

@@ -6,11 +6,11 @@
 
 use std::sync::Arc;
 
-use akira_core::{DeploymentMessage, Event, EventType, ModelType};
+use akira_core::{DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId};
 use prost::Message;
 
 use akira::{
-    models::{Assignment, Deployment, Host},
+    models::{Assignment, Deployment, Host, Target},
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
         WorkloadService, WorkspaceService,
@@ -41,10 +41,7 @@ impl Reconciler {
             model_type if model_type == ModelType::Deployment as i32 => {
                 self.process_deployment_event(event)
             }
-            model_type if model_type == ModelType::Host as i32 => {
-                // self.process_host_event(event).await
-                Ok(())
-            }
+            model_type if model_type == ModelType::Host as i32 => self.process_host_event(event),
             model_type if model_type == ModelType::Target as i32 => {
                 // self.process_target_event(event).await
                 Ok(())
@@ -65,6 +62,91 @@ impl Reconciler {
                 panic!("unsupported model type: {:?}", event);
             }
         }
+    }
+
+    fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
+        // TODO: need both previous and new host to do this correctly
+        // Iterate old AND new targets matched by previous and new host.
+        let host: Host = HostMessage::decode(&*event.serialized_model)?.into();
+        let targets = self.target_service.get_matching_host(&host)?;
+
+        for target in targets {
+            let deployments = self.deployment_service.list()?; //.get_matching_target(&target);
+
+            for deployment in deployments {
+                // for deleted host this will shift to another host
+                // for created host this will fulfill if waiting on another target
+                self.process_deployment_event_impl(
+                    &deployment,
+                    &target,
+                    deployment.hosts as usize,
+                    &event.operation_id,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
+        let deployment: Deployment = DeploymentMessage::decode(&*event.serialized_model)?.into();
+
+        let target = self.target_service.get_by_id(&deployment.target_id)?;
+        let target = match target {
+            Some(target) => target,
+            None => {
+                return Err(anyhow::anyhow!(
+                    "couldn't find target with id {}",
+                    deployment.target_id
+                ))
+            }
+        };
+
+        let desired_host_count: usize = if event.event_type == EventType::Deleted as i32 {
+            0
+        } else {
+            deployment.hosts as usize
+        };
+
+        self.process_deployment_event_impl(
+            &deployment,
+            &target,
+            desired_host_count,
+            &event.operation_id,
+        )
+    }
+
+    pub fn process_deployment_event_impl(
+        &self,
+        deployment: &Deployment,
+        target: &Target,
+        desired_host_count: usize,
+        operation_id: &Option<OperationId>,
+    ) -> anyhow::Result<()> {
+        let target_matching_hosts = self.host_service.get_matching_target(target)?;
+
+        let existing_assignments = self
+            .assignment_service
+            .get_by_deployment_id(&deployment.id)?;
+
+        // compute assigments to create and delete
+
+        let (assignments_to_create, assignments_to_delete) = Self::compute_assignment_changes(
+            deployment,
+            &existing_assignments,
+            &target_matching_hosts,
+            desired_host_count,
+        )?;
+
+        // persist changes
+
+        self.assignment_service
+            .create_many(&assignments_to_create, operation_id)?;
+
+        self.assignment_service
+            .delete_many(&assignments_to_delete, operation_id)?;
+
+        Ok(())
     }
 
     pub fn compute_assignment_changes(
@@ -146,53 +228,6 @@ impl Reconciler {
         }
 
         Ok((assignments_to_create, assignments_to_delete))
-    }
-
-    fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
-        // decode and load needed data
-        let deployment: Deployment = DeploymentMessage::decode(&*event.serialized_model)?.into();
-
-        let desired_host_count: usize = if event.event_type == EventType::Deleted as i32 {
-            0
-        } else {
-            deployment.hosts as usize
-        };
-
-        let target = self.target_service.get_by_id(&deployment.target_id)?;
-        let target = match target {
-            Some(target) => target,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "couldn't find target with id {}",
-                    deployment.target_id
-                ))
-            }
-        };
-
-        let target_matching_hosts = self.host_service.get_matching_target(&target)?;
-
-        let existing_assignments = self
-            .assignment_service
-            .get_by_deployment_id(&deployment.id)?;
-
-        // compute assigments to create and delete
-
-        let (assignments_to_create, assignments_to_delete) = Self::compute_assignment_changes(
-            &deployment,
-            &existing_assignments,
-            &target_matching_hosts,
-            desired_host_count,
-        )?;
-
-        // persist changes
-
-        self.assignment_service
-            .create_many(&assignments_to_create, &event.operation_id)?;
-
-        self.assignment_service
-            .delete_many(&assignments_to_delete, &event.operation_id)?;
-
-        Ok(())
     }
 }
 
@@ -389,5 +424,46 @@ mod tests {
         let delete_assignment = &assignments_to_delete[1];
         assert_eq!(delete_assignment.deployment_id, deployment.id);
         assert_eq!(delete_assignment.host_id, "host1-id");
+    }
+
+    #[test]
+    fn test_do_nothing_deployment() {
+        let deployment = Deployment {
+            id: "created-deployment".to_string(),
+            target_id: "target-id".to_string(),
+            hosts: 2,
+            workload_id: "workload-id".to_string(),
+        };
+
+        let existing_assignments: Vec<Assignment> = vec![Assignment {
+            id: "assignment1-id".to_string(),
+            deployment_id: "deployment-id".to_string(),
+            host_id: "host1-id".to_string(),
+        }];
+
+        let target_matching_hosts = vec![
+            Host {
+                id: "host1-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+            Host {
+                id: "host2-id".to_string(),
+                labels: vec!["region:eastus2".to_string()],
+            },
+        ];
+
+        let desired_host_count = 1;
+
+        let (assignments_to_create, assignments_to_delete) =
+            Reconciler::compute_assignment_changes(
+                &deployment,
+                &existing_assignments,
+                &target_matching_hosts,
+                desired_host_count,
+            )
+            .unwrap();
+
+        assert_eq!(assignments_to_create.len(), 0);
+        assert_eq!(assignments_to_delete.len(), 0);
     }
 }

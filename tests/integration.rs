@@ -47,7 +47,7 @@ async fn test_e2e() {
         labels: vec!["location:eastus2".to_string()],
     };
 
-    let create_target_operation_id = target_service.create(new_target.clone(), &None).unwrap();
+    let create_target_operation_id = target_service.create(&new_target, &None).unwrap();
 
     assert_eq!(create_target_operation_id.id.len(), 36);
 

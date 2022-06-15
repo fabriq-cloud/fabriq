@@ -30,7 +30,7 @@ impl TargetTrait for GrpcTargetService {
             labels: request.get_ref().labels.clone(),
         };
 
-        let operation_id = match self.service.create(new_target, &None) {
+        let operation_id = match self.service.create(&new_target, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
