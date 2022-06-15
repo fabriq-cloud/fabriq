@@ -23,7 +23,7 @@ impl TemplateService {
 
     pub fn create(
         &self,
-        template: Template,
+        template: &Template,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         // TODO: Use an Error enumeration to return specific error
@@ -38,7 +38,7 @@ impl TemplateService {
             None => {}
         };
 
-        let template_id = self.persistence.create(&template)?;
+        let template_id = self.persistence.create(template)?;
 
         let template = self.get_by_id(&template_id)?;
         let template = match template {
@@ -153,7 +153,7 @@ mod tests {
             event_stream,
         };
 
-        let create_operation_id = template_service.create(new_template.clone(), None).unwrap();
+        let create_operation_id = template_service.create(&new_template, None).unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 

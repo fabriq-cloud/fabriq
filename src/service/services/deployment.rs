@@ -12,12 +12,36 @@ pub struct DeploymentService {
 }
 
 impl DeploymentService {
+    pub fn create_event(
+        assignment: &Deployment,
+        event_type: EventType,
+        operation_id: &OperationId,
+    ) -> Event {
+        let deployment_message: DeploymentMessage = assignment.clone().into();
+
+        let timestamp = Timestamp {
+            seconds: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            nanos: 0,
+        };
+
+        Event {
+            operation_id: Some(operation_id.clone()),
+            model_type: ModelType::Deployment as i32,
+            serialized_model: deployment_message.encode_to_vec(),
+            event_type: event_type as i32,
+            timestamp: Some(timestamp),
+        }
+    }
+
     pub fn create(
         &self,
-        deployment: Deployment,
+        deployment: &Deployment,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let deployment_id = self.persistence.create(&deployment)?;
+        let deployment_id = self.persistence.create(deployment)?;
 
         let deployment = self.get_by_id(&deployment_id)?;
         let deployment = match deployment {
@@ -137,7 +161,7 @@ mod tests {
         };
 
         let deployment_created_operation_id = deployment_service
-            .create(new_deployment.clone(), &Some(OperationId::create()))
+            .create(&new_deployment, &Some(OperationId::create()))
             .unwrap();
         assert_eq!(deployment_created_operation_id.id.len(), 36);
 

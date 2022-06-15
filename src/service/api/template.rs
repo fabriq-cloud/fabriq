@@ -23,16 +23,9 @@ impl TemplateTrait for GrpcTemplateService {
         &self,
         request: Request<TemplateMessage>,
     ) -> Result<Response<OperationId>, Status> {
-        // TODO: Validate NewTemplateMessage to be valid
+        let new_template: Template = request.into_inner().into();
 
-        let new_template = Template {
-            id: request.get_ref().id.clone(),
-            repository: request.get_ref().repository.clone(),
-            branch: request.get_ref().branch.clone(),
-            path: request.get_ref().path.clone(),
-        };
-
-        let operation_id = match self.service.create(new_template, None) {
+        let operation_id = match self.service.create(&new_template, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(

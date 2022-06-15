@@ -38,3 +38,13 @@ impl From<Assignment> for AssignmentMessage {
         }
     }
 }
+
+impl From<AssignmentMessage> for Assignment {
+    fn from(assignment: AssignmentMessage) -> Self {
+        Self {
+            id: assignment.id,
+            deployment_id: assignment.deployment_id,
+            host_id: assignment.host_id,
+        }
+    }
+}

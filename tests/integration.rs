@@ -30,7 +30,7 @@ async fn test_e2e() {
     };
 
     host_service
-        .create(new_host, &Some(OperationId::create()))
+        .create(&new_host, &Some(OperationId::create()))
         .unwrap();
 
     let target_persistence = MemoryPersistence::<Target>::default();
@@ -65,7 +65,7 @@ async fn test_e2e() {
     };
 
     let create_template_operation_id = template_service
-        .create(new_template.clone(), Some(OperationId::create()))
+        .create(&new_template, Some(OperationId::create()))
         .unwrap();
 
     assert_eq!(create_template_operation_id.id.len(), 36);
@@ -89,9 +89,7 @@ async fn test_e2e() {
         id: "foreign-exchange".to_string(),
     };
 
-    let create_workspace_operation_id = workspace_service
-        .create(new_workspace.clone(), &None)
-        .unwrap();
+    let create_workspace_operation_id = workspace_service.create(&new_workspace, &None).unwrap();
 
     assert_eq!(create_workspace_operation_id.id.len(), 36);
 
@@ -103,7 +101,7 @@ async fn test_e2e() {
     };
 
     let create_workload_operation_id = workload_service
-        .create(new_workload.clone(), Some(OperationId::create()))
+        .create(&new_workload, Some(OperationId::create()))
         .unwrap();
 
     assert_eq!(create_workload_operation_id.id.len(), 36);
@@ -123,5 +121,5 @@ async fn test_e2e() {
         hosts: 3,
     };
 
-    let _deployment_id = deployment_service.create(new_deployment, &None).unwrap();
+    let _deployment_id = deployment_service.create(&new_deployment, &None).unwrap();
 }

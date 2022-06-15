@@ -9,7 +9,7 @@ use super::WorkloadService;
 
 pub struct WorkspaceService {
     pub persistence: Box<dyn Persistence<Workspace>>,
-    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub event_stream: Arc<Box<dyn EventStream>>,
 
     pub workload_service: Arc<WorkloadService>,
 }
@@ -17,7 +17,7 @@ pub struct WorkspaceService {
 impl WorkspaceService {
     pub fn create(
         &self,
-        workspace: Workspace,
+        workspace: &Workspace,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         // TODO: Use an Error enumeration to return specific error
@@ -32,7 +32,7 @@ impl WorkspaceService {
             None => {}
         };
 
-        let workspace_id = self.persistence.create(&workspace)?;
+        let workspace_id = self.persistence.create(workspace)?;
 
         let workspace = self.get_by_id(&workspace_id)?;
         let workspace = match workspace {
@@ -165,9 +165,7 @@ mod tests {
             id: "workspace-under-test".to_owned(),
         };
 
-        let create_operation_id = workspace_service
-            .create(new_workspace.clone(), &None)
-            .unwrap();
+        let create_operation_id = workspace_service.create(&new_workspace, &None).unwrap();
         assert_eq!(create_operation_id.id.len(), 36);
 
         let fetched_workspace = workspace_service

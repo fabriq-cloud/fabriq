@@ -233,7 +233,104 @@ impl Reconciler {
 
 #[cfg(test)]
 mod tests {
+    use akira::models::{Template, Workload, Workspace};
+    use akira::persistence::memory::{
+        AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
+        MemoryPersistence,
+    };
+    use akira_core::EventStream;
+    use akira_memory_stream::MemoryEventStream;
+
     use super::*;
+
+    fn create_reconciler_fixture() -> anyhow::Result<Reconciler> {
+        let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MemoryEventStream::new()?));
+
+        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
+        let assignment_service = Arc::new(AssignmentService {
+            persistence: assignment_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
+        let deployment_service = Arc::new(DeploymentService {
+            persistence: deployment_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let host_persistence = Box::new(HostMemoryPersistence::default());
+        let host_service = Arc::new(HostService {
+            persistence: host_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let target_persistence = Box::new(MemoryPersistence::<Target>::default());
+        let target_service = Arc::new(TargetService {
+            persistence: target_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let template_persistence = Box::new(MemoryPersistence::<Template>::default());
+        let template_service = Arc::new(TemplateService {
+            persistence: template_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let workload_persistence = Box::new(MemoryPersistence::<Workload>::default());
+        let workload_service = Arc::new(WorkloadService {
+            persistence: workload_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let workspace_persistence = Box::new(MemoryPersistence::<Workspace>::default());
+        let workspace_service = Arc::new(WorkspaceService {
+            persistence: workspace_persistence,
+            event_stream: Arc::clone(&event_stream),
+
+            workload_service: Arc::clone(&workload_service),
+        });
+
+        Ok(Reconciler {
+            assignment_service,
+            deployment_service,
+            host_service,
+            target_service,
+            template_service,
+            workload_service,
+            workspace_service,
+        })
+    }
+
+    #[test]
+    fn test_process_deployment_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let host = Host {
+            id: "host1-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host, &None).unwrap();
+
+        let target = Target {
+            id: "eastus2".to_owned(),
+            labels: vec!["region:eastus2".to_owned()],
+        };
+
+        reconciler.target_service.create(&target, &None).unwrap();
+
+        let deployment = Deployment {
+            id: "deployment-fixture".to_owned(),
+            target_id: "eastus2".to_owned(),
+            hosts: 2,
+            workload_id: "workload-fixture".to_owned(),
+        };
+
+        reconciler
+            .deployment_service
+            .create(&deployment, &None)
+            .unwrap();
+    }
 
     #[test]
     fn test_new_deployment() {

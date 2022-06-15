@@ -23,12 +23,7 @@ impl TargetTrait for GrpcTargetService {
         &self,
         request: Request<TargetMessage>,
     ) -> Result<Response<OperationId>, Status> {
-        // TODO: Validate target id is valid
-
-        let new_target = Target {
-            id: request.get_ref().id.clone(),
-            labels: request.get_ref().labels.clone(),
-        };
+        let new_target: Target = request.into_inner().into();
 
         let operation_id = match self.service.create(&new_target, &None) {
             Ok(operation_id) => operation_id,

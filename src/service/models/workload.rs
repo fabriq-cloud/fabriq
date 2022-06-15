@@ -32,3 +32,13 @@ impl From<Workload> for WorkloadMessage {
         }
     }
 }
+
+impl From<WorkloadMessage> for Workload {
+    fn from(workload: WorkloadMessage) -> Self {
+        Self {
+            id: workload.id,
+            workspace_id: workload.workspace_id,
+            template_id: workload.template_id,
+        }
+    }
+}

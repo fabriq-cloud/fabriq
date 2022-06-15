@@ -66,6 +66,20 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
 
         Ok(cloned_result)
     }
+
+    #[cfg(test)]
+    fn ensure_fixtures(&self) -> anyhow::Result<()> {
+        let deployment_fixture = Deployment {
+            id: "deployment-fixture".to_string(),
+            workload_id: "workload-fixture".to_string(),
+            target_id: "target-fixture".to_string(),
+            hosts: 2,
+        };
+
+        self.create(&deployment_fixture)?;
+
+        Ok(())
+    }
 }
 
 impl DeploymentPersistence for DeploymentRelationalPersistence {
@@ -90,7 +104,6 @@ mod tests {
     #[test]
     fn test_create_get_delete() {
         dotenv().ok();
-        crate::persistence::relational::ensure_fixtures();
 
         let new_deployment = Deployment {
             id: "deployment-under-test".to_owned(),

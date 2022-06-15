@@ -25,15 +25,9 @@ impl AssignmentTrait for GrpcAssignmentService {
         &self,
         request: Request<AssignmentMessage>,
     ) -> Result<Response<OperationId>, Status> {
-        // TODO: Validate assignment id is valid
+        let new_assignment: Assignment = request.into_inner().into();
 
-        let new_assignment = Assignment {
-            id: request.get_ref().id.clone(),
-            host_id: request.get_ref().host_id.clone(),
-            deployment_id: request.get_ref().deployment_id.clone(),
-        };
-
-        let operation_id = match self.service.create(new_assignment, &None) {
+        let operation_id = match self.service.create(&new_assignment, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(

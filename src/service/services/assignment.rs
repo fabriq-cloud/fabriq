@@ -11,7 +11,7 @@ pub struct AssignmentService {
 }
 
 impl AssignmentService {
-    fn create_event(
+    pub fn create_event(
         assignment: &Assignment,
         event_type: EventType,
         operation_id: &OperationId,
@@ -37,15 +37,15 @@ impl AssignmentService {
 
     pub fn create(
         &self,
-        assignment: Assignment,
+        assignment: &Assignment,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        self.persistence.create(&assignment)?;
+        self.persistence.create(assignment)?;
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
         let create_assignment_event =
-            Self::create_event(&assignment, EventType::Created, &operation_id);
+            Self::create_event(assignment, EventType::Created, &operation_id);
 
         self.event_stream.send(&create_assignment_event)?;
 
@@ -160,9 +160,7 @@ mod tests {
             event_stream,
         };
 
-        let create_operation_id = assignment_service
-            .create(new_assignment.clone(), &None)
-            .unwrap();
+        let create_operation_id = assignment_service.create(&new_assignment, &None).unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 

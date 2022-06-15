@@ -27,3 +27,14 @@ impl From<Template> for TemplateMessage {
         }
     }
 }
+
+impl From<TemplateMessage> for Template {
+    fn from(template: TemplateMessage) -> Self {
+        Self {
+            id: template.id,
+            repository: template.repository,
+            branch: template.branch,
+            path: template.path,
+        }
+    }
+}

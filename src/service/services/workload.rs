@@ -13,10 +13,10 @@ pub struct WorkloadService {
 impl WorkloadService {
     pub fn create(
         &self,
-        workload: Workload,
+        workload: &Workload,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let workload_id = self.persistence.create(&workload)?;
+        let workload_id = self.persistence.create(workload)?;
 
         let workload = self.get_by_id(&workload_id)?;
         let workload = match workload {
@@ -138,7 +138,7 @@ mod tests {
         };
 
         let create_operation_id = workload_service
-            .create(new_workload.clone(), Some(OperationId::create()))
+            .create(&new_workload, Some(OperationId::create()))
             .unwrap();
         assert_eq!(create_operation_id.id.len(), 36);
 

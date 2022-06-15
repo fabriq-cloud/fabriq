@@ -18,10 +18,10 @@ pub struct HostService {
 impl HostService {
     pub fn create(
         &self,
-        host: Host,
+        host: &Host,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let host_id = self.persistence.create(&host)?;
+        let host_id = self.persistence.create(host)?;
 
         let host = self.get_by_id(&host_id)?;
         let host = match host {
@@ -137,7 +137,7 @@ mod tests {
         };
 
         let created_host_operation_id = host_service
-            .create(new_host.clone(), &Some(OperationId::create()))
+            .create(&new_host, &Some(OperationId::create()))
             .unwrap();
         assert_eq!(created_host_operation_id.id.len(), 36);
 

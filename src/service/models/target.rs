@@ -24,3 +24,12 @@ impl From<Target> for TargetMessage {
         }
     }
 }
+
+impl From<TargetMessage> for Target {
+    fn from(target: TargetMessage) -> Self {
+        Self {
+            id: target.id,
+            labels: target.labels,
+        }
+    }
+}

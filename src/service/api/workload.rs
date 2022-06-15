@@ -23,16 +23,9 @@ impl WorkloadTrait for GrpcWorkloadService {
         &self,
         request: Request<WorkloadMessage>,
     ) -> Result<Response<OperationId>, Status> {
-        // TODO: Validate NewWorkloadMessage to be valid
+        let new_workload: Workload = request.into_inner().into();
 
-        let new_workload = Workload {
-            id: request.get_ref().id.clone(),
-
-            template_id: request.get_ref().template_id.clone(),
-            workspace_id: request.get_ref().workspace_id.clone(),
-        };
-
-        let operation_id = match self.service.create(new_workload, None) {
+        let operation_id = match self.service.create(&new_workload, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(

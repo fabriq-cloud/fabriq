@@ -23,13 +23,9 @@ impl WorkspaceTrait for GrpcWorkspaceService {
         &self,
         request: Request<WorkspaceMessage>,
     ) -> Result<Response<OperationId>, Status> {
-        // TODO: Validate workspace id is valid
+        let new_workspace: Workspace = request.into_inner().into();
 
-        let new_workspace: Workspace = Workspace {
-            id: request.get_ref().id.clone(),
-        };
-
-        let operation_id = match self.service.create(new_workspace, &None) {
+        let operation_id = match self.service.create(&new_workspace, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(

@@ -24,16 +24,9 @@ impl DeploymentTrait for GrpcDeploymentService {
         &self,
         request: Request<DeploymentMessage>,
     ) -> Result<Response<OperationId>, Status> {
-        // TODO: Validate deployment id is valid
+        let new_deployment: Deployment = request.into_inner().into();
 
-        let new_deployment = Deployment {
-            id: request.get_ref().id.clone(),
-            target_id: request.get_ref().target_id.clone(),
-            workload_id: request.get_ref().workload_id.clone(),
-            hosts: request.get_ref().hosts,
-        };
-
-        let operation_id = match self.service.create(new_deployment, &None) {
+        let operation_id = match self.service.create(&new_deployment, &None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(

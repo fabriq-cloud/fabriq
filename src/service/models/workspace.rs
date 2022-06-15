@@ -21,3 +21,9 @@ impl From<Workspace> for WorkspaceMessage {
         Self { id: workload.id }
     }
 }
+
+impl From<WorkspaceMessage> for Workspace {
+    fn from(workload: WorkspaceMessage) -> Self {
+        Self { id: workload.id }
+    }
+}
