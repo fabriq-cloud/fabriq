@@ -414,6 +414,15 @@ mod tests {
             .unwrap();
 
         let event =
+            akira::services::HostService::create_event(&host4, EventType::Created, &operation_id);
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 0);
+
+        let event =
             akira::services::HostService::create_event(&host3, EventType::Created, &operation_id);
 
         reconciler.process(&event).unwrap();
