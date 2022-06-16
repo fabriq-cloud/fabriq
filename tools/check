@@ -1,5 +1,6 @@
 #!/bin/bash
 
+diesel migration run
 cargo test --all-targets
 cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings
 cargo fmt --all -- --check
