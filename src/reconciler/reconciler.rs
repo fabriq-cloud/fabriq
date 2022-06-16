@@ -64,7 +64,7 @@ impl Reconciler {
 
     fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
         let deployment_option = if let Some(serialized_previous_model) =
-            &event.serialized_current_model
+            &event.serialized_previous_model
         {
             let deployment_message =
                 DeploymentMessage::decode(&*serialized_previous_model.clone())?;
@@ -183,7 +183,7 @@ impl Reconciler {
             for deployment in deployments {
                 self.process_deployment_event_impl(
                     &deployment,
-                    &target,
+                    target,
                     deployment.hosts as usize,
                     operation_id,
                 )?;
