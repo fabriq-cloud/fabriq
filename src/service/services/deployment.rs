@@ -115,6 +115,14 @@ impl DeploymentService {
     pub fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_target_id(target_id)
     }
+
+    pub fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        self.persistence.get_by_template_id(template_id)
+    }
+
+    pub fn get_by_workload_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        self.persistence.get_by_workload_id(template_id)
+    }
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use crate::models::{Assignment, Deployment, Host, Target};
+use crate::models::{Assignment, Deployment, Host, Target, Workload};
 
 pub mod memory;
 pub mod relational;
@@ -26,4 +26,10 @@ pub trait HostPersistence: Send + Sync + Persistence<Host> {
 
 pub trait DeploymentPersistence: Send + Sync + Persistence<Deployment> {
     fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>>;
+    fn get_by_template_id(&self, id: &str) -> anyhow::Result<Vec<Deployment>>;
+    fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>>;
+}
+
+pub trait WorkloadPersistence: Send + Sync + Persistence<Workload> {
+    fn get_by_template_id(&self, id: &str) -> anyhow::Result<Vec<Workload>>;
 }

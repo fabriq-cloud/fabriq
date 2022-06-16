@@ -144,7 +144,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        models::Workload, persistence::memory::MemoryPersistence, services::WorkloadService,
+        persistence::memory::{MemoryPersistence, WorkloadMemoryPersistence},
+        services::WorkloadService,
     };
 
     #[test]
@@ -154,7 +155,7 @@ mod tests {
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let workload_persistence = MemoryPersistence::<Workload>::default();
+        let workload_persistence = WorkloadMemoryPersistence::default();
         let workload_service = Arc::new(WorkloadService {
             persistence: Box::new(workload_persistence),
             event_stream: event_stream.clone(),

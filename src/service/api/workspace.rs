@@ -95,8 +95,8 @@ mod tests {
 
     use super::{GrpcWorkspaceService, WorkspaceMessage};
 
-    use crate::models::{Workload, Workspace};
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::models::Workspace;
+    use crate::persistence::memory::{MemoryPersistence, WorkloadMemoryPersistence};
     use crate::services::{WorkloadService, WorkspaceService};
 
     #[tokio::test]
@@ -105,7 +105,7 @@ mod tests {
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let workload_persistence = MemoryPersistence::<Workload>::default();
+        let workload_persistence = WorkloadMemoryPersistence::default();
         let workload_service = Arc::new(WorkloadService {
             persistence: Box::new(workload_persistence),
             event_stream: event_stream.clone(),

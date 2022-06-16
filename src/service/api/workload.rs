@@ -98,13 +98,12 @@ mod tests {
 
     use super::{GrpcWorkloadService, WorkloadMessage};
 
-    use crate::models::Workload;
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::persistence::memory::WorkloadMemoryPersistence;
     use crate::services::WorkloadService;
 
     #[tokio::test]
     async fn test_create_list_workload() -> anyhow::Result<()> {
-        let workload_persistence = Box::new(MemoryPersistence::<Workload>::default());
+        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 

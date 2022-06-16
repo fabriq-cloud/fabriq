@@ -78,6 +78,32 @@ impl DeploymentPersistence for DeploymentMemoryPersistence {
 
         Ok(deployments_for_target)
     }
+
+    fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        let locked_deployments = self.get_models_locked()?;
+
+        let mut deployments_for_template = Vec::new();
+        for deployment in (*locked_deployments).values() {
+            if deployment.template_id == Some(template_id.to_string()) {
+                deployments_for_template.push(deployment.clone());
+            }
+        }
+
+        Ok(deployments_for_template)
+    }
+
+    fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        let locked_deployments = self.get_models_locked()?;
+
+        let mut deployments_for_workload = Vec::new();
+        for deployment in (*locked_deployments).values() {
+            if deployment.workload_id == workload_id {
+                deployments_for_workload.push(deployment.clone());
+            }
+        }
+
+        Ok(deployments_for_workload)
+    }
 }
 
 impl DeploymentMemoryPersistence {

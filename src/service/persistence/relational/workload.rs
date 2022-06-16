@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 
-use crate::persistence::Persistence;
+use crate::persistence::{Persistence, WorkloadPersistence};
 use crate::schema::workloads::table;
 use crate::{models::Workload, schema::workloads, schema::workloads::dsl::*};
 
@@ -65,6 +65,18 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         let cloned_result = results.first().cloned();
 
         Ok(cloned_result)
+    }
+}
+
+impl WorkloadPersistence for WorkloadRelationalPersistence {
+    fn get_by_template_id(&self, query_template_id: &str) -> anyhow::Result<Vec<Workload>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = workloads
+            .filter(template_id.eq(query_template_id))
+            .load::<Workload>(&connection)?;
+
+        Ok(results)
     }
 }
 

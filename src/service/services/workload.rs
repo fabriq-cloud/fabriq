@@ -3,11 +3,11 @@ use prost::Message;
 use prost_types::Timestamp;
 use std::{sync::Arc, time::SystemTime};
 
-use crate::{models::Workload, persistence::Persistence};
+use crate::{models::Workload, persistence::WorkloadPersistence};
 
 pub struct WorkloadService {
-    pub persistence: Box<dyn Persistence<Workload>>,
-    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub persistence: Box<dyn WorkloadPersistence>,
+    pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl WorkloadService {
@@ -108,6 +108,10 @@ impl WorkloadService {
 
         Ok(results)
     }
+
+    pub fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Workload>> {
+        self.persistence.get_by_template_id(template_id)
+    }
 }
 
 #[cfg(test)]
@@ -116,7 +120,7 @@ mod tests {
     use dotenv::dotenv;
 
     use super::*;
-    use crate::persistence::memory::MemoryPersistence;
+    use crate::persistence::memory::WorkloadMemoryPersistence;
 
     #[test]
     fn test_create_get_delete() {
@@ -129,7 +133,7 @@ mod tests {
             workspace_id: "cribbage-team".to_owned(),
         };
 
-        let workload_persistence = MemoryPersistence::<Workload>::default();
+        let workload_persistence = WorkloadMemoryPersistence::default();
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 

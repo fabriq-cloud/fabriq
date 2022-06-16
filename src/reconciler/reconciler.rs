@@ -8,11 +8,12 @@ use std::{collections::HashMap, sync::Arc};
 
 use akira_core::{
     DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId, TargetMessage,
+    TemplateMessage,
 };
 use prost::Message;
 
 use akira::{
-    models::{Assignment, Deployment, Host, Target},
+    models::{Assignment, Deployment, Host, Target, Template},
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
         WorkloadService, WorkspaceService,
@@ -52,7 +53,7 @@ impl Reconciler {
                 Ok(())
             }
             model_type if model_type == ModelType::Workspace as i32 => {
-                //self.process_workspace_event(event)
+                // NOP
                 Ok(())
             }
             _ => {
@@ -62,39 +63,8 @@ impl Reconciler {
     }
 
     fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
-        let deployment_option = if let Some(serialized_previous_model) =
-            &event.serialized_previous_model
-        {
-            let deployment_message =
-                DeploymentMessage::decode(&*serialized_previous_model.clone())?;
-            Some(deployment_message.into())
-        } else if let Some(serialized_current_model) = &event.serialized_current_model {
-            let deployment_message = DeploymentMessage::decode(&*serialized_current_model.clone())?;
-            Some(deployment_message.into())
-        } else {
-            None
-        };
-
-        let deployment: Deployment = match deployment_option {
-            Some(deployment) => deployment,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "Event received without previous or current deployment {:?}",
-                    event
-                ))
-            }
-        };
-
-        let target = self.target_service.get_by_id(&deployment.target_id)?;
-        let target = match target {
-            Some(target) => target,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "couldn't find target with id {}",
-                    deployment.target_id
-                ))
-            }
-        };
+        let deployment =
+            Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
 
         let desired_host_count: usize = if event.event_type == EventType::Deleted as i32 {
             0
@@ -102,22 +72,27 @@ impl Reconciler {
             deployment.host_count as usize
         };
 
-        self.process_deployment_event_impl(
-            &deployment,
-            &target,
-            desired_host_count,
-            &event.operation_id,
-        )
+        self.process_deployment_event_impl(&deployment, desired_host_count, &event.operation_id)
     }
 
     pub fn process_deployment_event_impl(
         &self,
         deployment: &Deployment,
-        target: &Target,
         desired_host_count: usize,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<()> {
-        let target_matching_hosts = self.host_service.get_matching_target(target)?;
+        let target = self.target_service.get_by_id(&deployment.target_id)?;
+        let target = match target {
+            Some(target) => target,
+            None => {
+                return Err(anyhow::anyhow!(
+                    "couldn't find deployment target with id {}",
+                    deployment.target_id
+                ))
+            }
+        };
+
+        let target_matching_hosts = self.host_service.get_matching_target(&target)?;
 
         let existing_assignments = self
             .assignment_service
@@ -182,7 +157,6 @@ impl Reconciler {
             for deployment in deployments {
                 self.process_deployment_event_impl(
                     &deployment,
-                    target,
                     deployment.host_count as usize,
                     operation_id,
                 )?;
@@ -192,9 +166,59 @@ impl Reconciler {
         Ok(())
     }
 
-    fn process_template_event(&self, _event: &Event) -> anyhow::Result<()> {
+    fn get_current_or_previous_model<ModelMessage: Default + Message, Model: From<ModelMessage>>(
+        event: &Event,
+    ) -> anyhow::Result<Model> {
+        let message: ModelMessage =
+            if let Some(serialized_current_model) = &event.serialized_current_model {
+                ModelMessage::decode(&**serialized_current_model)?
+            } else if let Some(serialized_previous_model) = &event.serialized_previous_model {
+                ModelMessage::decode(&**serialized_previous_model)?
+            } else {
+                return Err(anyhow::anyhow!(
+                    "Event received without previous or current model {:?}",
+                    event
+                ));
+            };
+
+        Ok(message.into())
+    }
+
+    fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
+        let template = Self::get_current_or_previous_model::<TemplateMessage, Template>(event)?;
+        let mut spanning_deployments_set: HashMap<String, Deployment> = HashMap::new();
+
+        let workloads = self.workload_service.get_by_template_id(&template.id)?;
+        for workload in workloads {
+            let deployments = self.deployment_service.get_by_workload_id(&workload.id)?;
+            for deployment in deployments {
+                // we will pull in deployments with this template_id as an override below
+                if deployment.template_id.is_none() {
+                    spanning_deployments_set.insert(deployment.id.clone(), deployment);
+                }
+            }
+        }
+
+        let deployments = self.deployment_service.get_by_template_id(&template.id)?;
+
+        for deployment in deployments {
+            spanning_deployments_set.insert(deployment.id.clone(), deployment);
+        }
+
+        let spanning_deployments = spanning_deployments_set
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for deployment in spanning_deployments {
+            self.process_deployment_event_impl(
+                &deployment,
+                deployment.host_count as usize,
+                &event.operation_id,
+            )?;
+        }
+
         Ok(())
-        // get all deployments that use this template
 
         // self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
     }
@@ -299,10 +323,10 @@ impl Reconciler {
 
 #[cfg(test)]
 mod tests {
-    use akira::models::{Template, Workload, Workspace};
+    use akira::models::{Template, Workspace};
     use akira::persistence::memory::{
         AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
-        MemoryPersistence,
+        MemoryPersistence, WorkloadMemoryPersistence,
     };
     use akira_core::EventStream;
     use akira_memory_stream::MemoryEventStream;
@@ -342,7 +366,7 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
         });
 
-        let workload_persistence = Box::new(MemoryPersistence::<Workload>::default());
+        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
         let workload_service = Arc::new(WorkloadService {
             persistence: workload_persistence,
             event_stream: Arc::clone(&event_stream),
@@ -417,6 +441,79 @@ mod tests {
         let event = akira::services::TargetService::create_event(
             &None,
             &Some(target),
+            EventType::Created,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
+    fn test_process_template_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let host1 = Host {
+            id: "host1-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host1, &None).unwrap();
+
+        let host2 = Host {
+            id: "host3-id".to_owned(),
+            labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host2, &None).unwrap();
+
+        let host3 = Host {
+            id: "host3-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host3, &None).unwrap();
+
+        let deployment = Deployment {
+            id: "deployment-fixture".to_owned(),
+            target_id: "eastus2".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            template_id: Some("template-fixture".to_owned()),
+            host_count: 2,
+        };
+
+        let operation_id = OperationId::create();
+
+        reconciler
+            .deployment_service
+            .create(&deployment, &Some(operation_id.clone()))
+            .unwrap();
+
+        let target = Target {
+            id: "eastus2".to_owned(),
+            labels: vec!["region:eastus2".to_owned()],
+        };
+
+        reconciler.target_service.create(&target, &None).unwrap();
+
+        let new_template = Template {
+            id: "template-fixture".to_owned(),
+            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
+            branch: "main".to_owned(),
+            path: "external-service".to_owned(),
+        };
+
+        reconciler
+            .template_service
+            .create(&new_template, Some(operation_id.clone()))
+            .unwrap();
+
+        let event = akira::services::TemplateService::create_event(
+            &None,
+            &Some(new_template),
             EventType::Created,
             &operation_id,
         );

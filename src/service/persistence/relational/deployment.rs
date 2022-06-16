@@ -78,6 +78,26 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
 
         Ok(results)
     }
+
+    fn get_by_template_id(&self, query_template_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = deployments
+            .filter(template_id.eq(query_template_id))
+            .load::<Deployment>(&connection)?;
+
+        Ok(results)
+    }
+
+    fn get_by_workload_id(&self, query_workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        let connection = crate::db::get_connection()?;
+
+        let results = deployments
+            .filter(workload_id.eq(query_workload_id))
+            .load::<Deployment>(&connection)?;
+
+        Ok(results)
+    }
 }
 
 #[cfg(test)]
@@ -155,6 +175,20 @@ mod tests {
 
         let deployments_for_target = deployment_persistence
             .get_by_target_id("target-fixture")
+            .unwrap();
+
+        assert_eq!(deployments_for_target.len(), 1);
+    }
+
+    #[test]
+    fn test_get_by_template_id() {
+        dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
+
+        let deployment_persistence = DeploymentRelationalPersistence::default();
+
+        let deployments_for_target = deployment_persistence
+            .get_by_template_id("template-fixture")
             .unwrap();
 
         assert_eq!(deployments_for_target.len(), 1);

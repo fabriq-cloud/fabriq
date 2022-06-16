@@ -2,7 +2,7 @@ use akira_core::HostMessage;
 
 use crate::{persistence::PersistableModel, schema::hosts};
 
-#[derive(Clone, Debug, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
+#[derive(Clone, Debug, Default, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
 #[table_name = "hosts"]
 pub struct Host {
     pub id: String,

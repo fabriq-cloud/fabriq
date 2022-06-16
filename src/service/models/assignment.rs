@@ -5,7 +5,16 @@ use crate::persistence::PersistableModel;
 use crate::schema::assignments;
 
 #[derive(
-    Associations, Clone, Debug, Eq, Identifiable, Insertable, PartialEq, Queryable, QueryableByName,
+    Associations,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    Identifiable,
+    Insertable,
+    PartialEq,
+    Queryable,
+    QueryableByName,
 )]
 #[table_name = "assignments"]
 #[belongs_to(Deployment)]

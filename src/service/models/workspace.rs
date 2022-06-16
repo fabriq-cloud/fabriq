@@ -3,7 +3,16 @@ use akira_core::WorkspaceMessage;
 use crate::{persistence::PersistableModel, schema::workspaces};
 
 #[derive(
-    Associations, Clone, Debug, Eq, Identifiable, Insertable, PartialEq, Queryable, QueryableByName,
+    Associations,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    Identifiable,
+    Insertable,
+    PartialEq,
+    Queryable,
+    QueryableByName,
 )]
 #[table_name = "workspaces"]
 pub struct Workspace {

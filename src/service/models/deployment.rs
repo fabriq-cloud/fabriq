@@ -5,7 +5,16 @@ use super::{Target, Workload};
 use crate::{persistence::PersistableModel, schema::deployments};
 
 #[derive(
-    Associations, Clone, Debug, Eq, Identifiable, Insertable, PartialEq, Queryable, QueryableByName,
+    Associations,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    Identifiable,
+    Insertable,
+    PartialEq,
+    Queryable,
+    QueryableByName,
 )]
 #[table_name = "deployments"]
 #[belongs_to(Workload)]

@@ -2,7 +2,7 @@ use akira_core::TemplateMessage;
 
 use crate::{persistence::PersistableModel, schema::templates};
 
-#[derive(Clone, Debug, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
+#[derive(Clone, Debug, Default, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
 #[table_name = "templates"]
 pub struct Template {
     pub id: String, // external-service
