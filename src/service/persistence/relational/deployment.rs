@@ -177,7 +177,7 @@ mod tests {
             .get_by_target_id("target-fixture")
             .unwrap();
 
-        assert_eq!(deployments_for_target.len(), 1);
+        assert!(!deployments_for_target.is_empty());
     }
 
     #[test]
@@ -187,10 +187,10 @@ mod tests {
 
         let deployment_persistence = DeploymentRelationalPersistence::default();
 
-        let deployments_for_target = deployment_persistence
+        let deployments_for_template = deployment_persistence
             .get_by_template_id("template-fixture")
             .unwrap();
 
-        assert_eq!(deployments_for_target.len(), 1);
+        assert!(!deployments_for_template.is_empty());
     }
 }
