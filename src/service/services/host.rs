@@ -16,6 +16,30 @@ pub struct HostService {
 }
 
 impl HostService {
+    pub fn create_event(
+        assignment: &Host,
+        event_type: EventType,
+        operation_id: &OperationId,
+    ) -> Event {
+        let host_message: HostMessage = assignment.clone().into();
+
+        let timestamp = Timestamp {
+            seconds: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            nanos: 0,
+        };
+
+        Event {
+            operation_id: Some(operation_id.clone()),
+            model_type: ModelType::Host as i32,
+            serialized_model: host_message.encode_to_vec(),
+            event_type: event_type as i32,
+            timestamp: Some(timestamp),
+        }
+    }
+
     pub fn create(
         &self,
         host: &Host,
