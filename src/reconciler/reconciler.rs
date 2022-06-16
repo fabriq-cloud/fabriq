@@ -4,7 +4,7 @@
 // It does not handle the work that is specific to a specific workflow, for example truing up a GitOps repo.
 // These processor specific workflows are implemented using external processors.
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use akira_core::{DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId};
 use prost::Message;
@@ -35,7 +35,7 @@ impl Reconciler {
 
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
-                // self.process_assignment_event(event).await
+                // NOP
                 Ok(())
             }
             model_type if model_type == ModelType::Deployment as i32 => {
@@ -43,19 +43,18 @@ impl Reconciler {
             }
             model_type if model_type == ModelType::Host as i32 => self.process_host_event(event),
             model_type if model_type == ModelType::Target as i32 => {
-                // self.process_target_event(event).await
-                Ok(())
+                self.process_target_event(event)
             }
             model_type if model_type == ModelType::Template as i32 => {
-                // self.process_template_event(event).await
+                // self.process_template_event(event)
                 Ok(())
             }
             model_type if model_type == ModelType::Workload as i32 => {
-                // self.process_workload_event(event).await
+                // self.process_workload_event(event)
                 Ok(())
             }
             model_type if model_type == ModelType::Workspace as i32 => {
-                //self.process_workspace_event(event).await
+                //self.process_workspace_event(event)
                 Ok(())
             }
             _ => {
@@ -64,32 +63,29 @@ impl Reconciler {
         }
     }
 
-    fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
-        // TODO: need both previous and new host to do this correctly
-        // Iterate old AND new targets matched by previous and new host.
-        let host: Host = HostMessage::decode(&*event.serialized_model)?.into();
-        let targets = self.target_service.get_matching_host(&host)?;
-
-        for target in targets {
-            let deployments = self.deployment_service.get_by_target_id(&target.id)?;
-
-            for deployment in deployments {
-                // for deleted host this will shift to another host
-                // for created host this will fulfill if waiting on another target
-                self.process_deployment_event_impl(
-                    &deployment,
-                    &target,
-                    deployment.hosts as usize,
-                    &event.operation_id,
-                )?;
-            }
-        }
-
-        Ok(())
-    }
-
     fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
-        let deployment: Deployment = DeploymentMessage::decode(&*event.serialized_model)?.into();
+        let deployment_option = if let Some(serialized_previous_model) =
+            &event.serialized_current_model
+        {
+            let deployment_message =
+                DeploymentMessage::decode(&*serialized_previous_model.clone())?;
+            Some(deployment_message.into())
+        } else if let Some(serialized_current_model) = &event.serialized_current_model {
+            let deployment_message = DeploymentMessage::decode(&*serialized_current_model.clone())?;
+            Some(deployment_message.into())
+        } else {
+            None
+        };
+
+        let deployment: Deployment = match deployment_option {
+            Some(deployment) => deployment,
+            None => {
+                return Err(anyhow::anyhow!(
+                    "Event received without previous or current deployment {:?}",
+                    event
+                ))
+            }
+        };
 
         let target = self.target_service.get_by_id(&deployment.target_id)?;
         let target = match target {
@@ -146,6 +142,59 @@ impl Reconciler {
         self.assignment_service
             .delete_many(&assignments_to_delete, operation_id)?;
 
+        Ok(())
+    }
+
+    fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
+        let mut spanning_target_set: HashMap<String, Target> = HashMap::new();
+
+        if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
+            let previous_host = HostMessage::decode(&*serialized_previous_model)?.into();
+            let previous_targets = self.target_service.get_matching_host(&previous_host)?;
+
+            for target in previous_targets {
+                spanning_target_set.insert(target.id.clone(), target);
+            }
+        }
+
+        if let Some(serialized_current_model) = event.serialized_current_model.clone() {
+            let current_host = HostMessage::decode(&*serialized_current_model)?.into();
+            let current_targets = self.target_service.get_matching_host(&current_host)?;
+
+            for target in current_targets {
+                spanning_target_set.insert(target.id.clone(), target);
+            }
+        }
+
+        let spanning_targets = spanning_target_set.values().cloned().collect::<Vec<_>>();
+
+        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)?;
+
+        Ok(())
+    }
+
+    fn update_deployments_for_targets(
+        &self,
+        targets: &[Target],
+        operation_id: &Option<OperationId>,
+    ) -> anyhow::Result<()> {
+        for target in targets {
+            let deployments = self.deployment_service.get_by_target_id(&target.id)?;
+
+            for deployment in deployments {
+                self.process_deployment_event_impl(
+                    &deployment,
+                    &target,
+                    deployment.hosts as usize,
+                    operation_id,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn process_target_event(&self, _event: &Event) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -348,7 +397,8 @@ mod tests {
             .unwrap();
 
         let event = akira::services::DeploymentService::create_event(
-            &deployment,
+            &None,
+            &Some(deployment),
             EventType::Created,
             &operation_id,
         );
@@ -413,8 +463,12 @@ mod tests {
             .create(&deployment, &Some(operation_id.clone()))
             .unwrap();
 
-        let event =
-            akira::services::HostService::create_event(&host4, EventType::Created, &operation_id);
+        let event = akira::services::HostService::create_event(
+            &None,
+            &Some(host4),
+            EventType::Created,
+            &operation_id,
+        );
 
         reconciler.process(&event).unwrap();
 
@@ -422,16 +476,22 @@ mod tests {
 
         assert_eq!(assignments.len(), 0);
 
-        let event =
-            akira::services::HostService::create_event(&host3, EventType::Created, &operation_id);
+        let event = akira::services::HostService::create_event(
+            &None,
+            &Some(host3),
+            EventType::Created,
+            &operation_id,
+        );
 
         reconciler.process(&event).unwrap();
 
         let assignments = reconciler.assignment_service.list().unwrap();
 
         assert_eq!(assignments.len(), 2);
-        assert_eq!(assignments[0].host_id, "host1-id");
-        assert_eq!(assignments[1].host_id, "host3-id");
+
+        for assignment in assignments {
+            assert!(assignment.host_id == "host1-id" || assignment.host_id == "host3-id");
+        }
     }
 
     #[test]

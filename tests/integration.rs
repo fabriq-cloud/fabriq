@@ -35,7 +35,6 @@ async fn test_e2e() {
 
     let target_persistence = MemoryPersistence::<Target>::default();
 
-    let cloned_event_stream = Arc::clone(&event_stream);
     let target_service = TargetService {
         persistence: Box::new(target_persistence),
         event_stream: Arc::clone(&event_stream),
@@ -53,8 +52,10 @@ async fn test_e2e() {
 
     let template_persistence = MemoryPersistence::<Template>::default();
 
-    let template_service =
-        TemplateService::new(Box::new(template_persistence), cloned_event_stream);
+    let template_service = TemplateService {
+        persistence: Box::new(template_persistence),
+        event_stream: Arc::clone(&event_stream),
+    };
 
     // create template
     let new_template = Template {

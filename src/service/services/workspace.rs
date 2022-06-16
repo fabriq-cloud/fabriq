@@ -15,6 +15,43 @@ pub struct WorkspaceService {
 }
 
 impl WorkspaceService {
+    pub fn serialize_model(model: &Option<Workspace>) -> Option<Vec<u8>> {
+        match model {
+            Some(assignment) => {
+                let message: WorkspaceMessage = assignment.clone().into();
+                Some(message.encode_to_vec())
+            }
+            None => None,
+        }
+    }
+
+    pub fn create_event(
+        previous_model: &Option<Workspace>,
+        current_model: &Option<Workspace>,
+        event_type: EventType,
+        operation_id: &OperationId,
+    ) -> Event {
+        let serialized_previous_model = Self::serialize_model(previous_model);
+        let serialized_current_model = Self::serialize_model(current_model);
+
+        let timestamp = Timestamp {
+            seconds: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            nanos: 0,
+        };
+
+        Event {
+            operation_id: Some(operation_id.clone()),
+            model_type: ModelType::Workspace as i32,
+            serialized_previous_model,
+            serialized_current_model,
+            event_type: event_type as i32,
+            timestamp: Some(timestamp),
+        }
+    }
+
     pub fn create(
         &self,
         workspace: &Workspace,
@@ -46,25 +83,10 @@ impl WorkspaceService {
         };
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        let workspace_message: WorkspaceMessage = workspace.into();
+        let create_event =
+            Self::create_event(&None, &Some(workspace), EventType::Created, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let create_workspace_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Workspace as i32,
-            serialized_model: workspace_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&create_workspace_event)?;
+        self.event_stream.send(&create_event)?;
 
         Ok(operation_id)
     }
@@ -100,25 +122,10 @@ impl WorkspaceService {
         }
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let workspace_message: WorkspaceMessage = workspace.into();
+        let delete_event =
+            Self::create_event(&Some(workspace), &None, EventType::Deleted, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let delete_workspace_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Workspace as i32,
-            serialized_model: workspace_message.encode_to_vec(),
-            event_type: EventType::Deleted as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&delete_workspace_event)?;
+        self.event_stream.send(&delete_event)?;
 
         Ok(operation_id)
     }

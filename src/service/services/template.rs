@@ -11,13 +11,40 @@ pub struct TemplateService {
 }
 
 impl TemplateService {
-    pub fn new(
-        persistence: Box<dyn Persistence<Template>>,
-        event_stream: Arc<Box<dyn EventStream>>,
-    ) -> Self {
-        Self {
-            persistence,
-            event_stream,
+    pub fn serialize_model(model: &Option<Template>) -> Option<Vec<u8>> {
+        match model {
+            Some(assignment) => {
+                let message: TemplateMessage = assignment.clone().into();
+                Some(message.encode_to_vec())
+            }
+            None => None,
+        }
+    }
+
+    pub fn create_event(
+        previous_model: &Option<Template>,
+        current_model: &Option<Template>,
+        event_type: EventType,
+        operation_id: &OperationId,
+    ) -> Event {
+        let serialized_previous_model = Self::serialize_model(previous_model);
+        let serialized_current_model = Self::serialize_model(current_model);
+
+        let timestamp = Timestamp {
+            seconds: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            nanos: 0,
+        };
+
+        Event {
+            operation_id: Some(operation_id.clone()),
+            model_type: ModelType::Template as i32,
+            serialized_previous_model,
+            serialized_current_model,
+            event_type: event_type as i32,
+            timestamp: Some(timestamp),
         }
     }
 
@@ -51,25 +78,10 @@ impl TemplateService {
         };
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let template_message: TemplateMessage = template.into();
+        let create_event =
+            Self::create_event(&None, &Some(template), EventType::Created, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let create_template_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Template as i32,
-            serialized_model: template_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&create_template_event)?;
+        self.event_stream.send(&create_event)?;
 
         Ok(operation_id)
     }
@@ -95,25 +107,10 @@ impl TemplateService {
         }
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let template_message: TemplateMessage = template.into();
+        let delete_event =
+            Self::create_event(&Some(template), &None, EventType::Deleted, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let delete_template_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Template as i32,
-            serialized_model: template_message.encode_to_vec(),
-            event_type: EventType::Deleted as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&delete_template_event)?;
+        self.event_stream.send(&delete_event)?;
 
         Ok(operation_id)
     }

@@ -11,12 +11,24 @@ pub struct AssignmentService {
 }
 
 impl AssignmentService {
+    pub fn serialize_model(model: &Option<Assignment>) -> Option<Vec<u8>> {
+        match model {
+            Some(assignment) => {
+                let message: AssignmentMessage = assignment.clone().into();
+                Some(message.encode_to_vec())
+            }
+            None => None,
+        }
+    }
+
     pub fn create_event(
-        assignment: &Assignment,
+        previous_assignment: &Option<Assignment>,
+        current_assignment: &Option<Assignment>,
         event_type: EventType,
         operation_id: &OperationId,
     ) -> Event {
-        let assignment_message: AssignmentMessage = assignment.clone().into();
+        let serialized_current_model = Self::serialize_model(current_assignment);
+        let serialized_previous_model = Self::serialize_model(previous_assignment);
 
         let timestamp = Timestamp {
             seconds: SystemTime::now()
@@ -29,7 +41,8 @@ impl AssignmentService {
         Event {
             operation_id: Some(operation_id.clone()),
             model_type: ModelType::Assignment as i32,
-            serialized_model: assignment_message.encode_to_vec(),
+            serialized_previous_model,
+            serialized_current_model,
             event_type: event_type as i32,
             timestamp: Some(timestamp),
         }
@@ -44,8 +57,12 @@ impl AssignmentService {
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
-        let create_assignment_event =
-            Self::create_event(assignment, EventType::Created, &operation_id);
+        let create_assignment_event = Self::create_event(
+            &None,
+            &Some(assignment.clone()),
+            EventType::Created,
+            &operation_id,
+        );
 
         self.event_stream.send(&create_assignment_event)?;
 
@@ -62,7 +79,14 @@ impl AssignmentService {
 
         let create_assignment_events = assignments
             .iter()
-            .map(|assignment| Self::create_event(assignment, EventType::Created, &operation_id))
+            .map(|assignment| {
+                Self::create_event(
+                    &None,
+                    &Some(assignment.clone()),
+                    EventType::Created,
+                    &operation_id,
+                )
+            })
             .collect::<Vec<_>>();
 
         self.event_stream.send_many(&create_assignment_events)?;
@@ -89,7 +113,7 @@ impl AssignmentService {
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
         let delete_assignment_event =
-            Self::create_event(&assignment, EventType::Deleted, &operation_id);
+            Self::create_event(&Some(assignment), &None, EventType::Deleted, &operation_id);
 
         self.event_stream.send(&delete_assignment_event)?;
 
@@ -110,7 +134,14 @@ impl AssignmentService {
 
         let delete_assignment_events = assignments
             .iter()
-            .map(|assignment| Self::create_event(assignment, EventType::Deleted, &operation_id))
+            .map(|assignment| {
+                Self::create_event(
+                    &Some(assignment.clone()),
+                    &None,
+                    EventType::Deleted,
+                    &operation_id,
+                )
+            })
             .collect::<Vec<_>>();
 
         self.event_stream.send_many(&delete_assignment_events)?;

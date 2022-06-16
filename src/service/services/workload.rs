@@ -11,6 +11,43 @@ pub struct WorkloadService {
 }
 
 impl WorkloadService {
+    pub fn serialize_model(model: &Option<Workload>) -> Option<Vec<u8>> {
+        match model {
+            Some(assignment) => {
+                let message: WorkloadMessage = assignment.clone().into();
+                Some(message.encode_to_vec())
+            }
+            None => None,
+        }
+    }
+
+    pub fn create_event(
+        previous_model: &Option<Workload>,
+        current_model: &Option<Workload>,
+        event_type: EventType,
+        operation_id: &OperationId,
+    ) -> Event {
+        let serialized_previous_model = Self::serialize_model(previous_model);
+        let serialized_current_model = Self::serialize_model(current_model);
+
+        let timestamp = Timestamp {
+            seconds: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            nanos: 0,
+        };
+
+        Event {
+            operation_id: Some(operation_id.clone()),
+            model_type: ModelType::Workload as i32,
+            serialized_previous_model,
+            serialized_current_model,
+            event_type: event_type as i32,
+            timestamp: Some(timestamp),
+        }
+    }
+
     pub fn create(
         &self,
         workload: &Workload,
@@ -29,25 +66,10 @@ impl WorkloadService {
         };
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let workload_message: WorkloadMessage = workload.into();
+        let create_event =
+            Self::create_event(&None, &Some(workload), EventType::Created, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let create_workload_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Workload as i32,
-            serialized_model: workload_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&create_workload_event)?;
+        self.event_stream.send(&create_event)?;
 
         Ok(operation_id)
     }
@@ -55,12 +77,6 @@ impl WorkloadService {
     pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workload>> {
         self.persistence.get_by_id(host_id)
     }
-
-    /*
-    pub async fn get_by_workspace_id(&self, workspace_id: &str) -> anyhow::Result<Vec<Workload>> {
-        self.persistence.get_by_workspace_id(workspace_id).await
-    }
-    */
 
     pub fn delete(
         &self,
@@ -79,25 +95,10 @@ impl WorkloadService {
         }
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let workload_message: WorkloadMessage = workload.into();
+        let delete_event =
+            Self::create_event(&Some(workload), &None, EventType::Deleted, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let delete_workload_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Workload as i32,
-            serialized_model: workload_message.encode_to_vec(),
-            event_type: EventType::Deleted as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&delete_workload_event)?;
+        self.event_stream.send(&delete_event)?;
 
         Ok(operation_id)
     }

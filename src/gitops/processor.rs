@@ -1,8 +1,7 @@
 use akira_core::assignment::assignment_client::AssignmentClient;
 use akira_core::host::host_client::HostClient;
 use akira_core::target::target_client::TargetClient;
-use akira_core::{DeploymentMessage, Event, EventType, ModelType};
-use prost::Message;
+use akira_core::{Event, EventType, ModelType};
 use tonic::codegen::InterceptedService;
 use tonic::metadata::{Ascii, MetadataValue};
 use tonic::service::Interceptor;
@@ -112,7 +111,7 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                let _deployment = DeploymentMessage::decode(&*event.serialized_model)?;
+                // let _deployment = DeploymentMessage::decode(&*event.serialized_current_model)?;
 
                 let _assignment_client = self.create_assignment_client();
                 let _host_client = self.create_host_client();

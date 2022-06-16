@@ -12,12 +12,24 @@ pub struct DeploymentService {
 }
 
 impl DeploymentService {
+    pub fn serialize_model(model: &Option<Deployment>) -> Option<Vec<u8>> {
+        match model {
+            Some(assignment) => {
+                let message: DeploymentMessage = assignment.clone().into();
+                Some(message.encode_to_vec())
+            }
+            None => None,
+        }
+    }
+
     pub fn create_event(
-        assignment: &Deployment,
+        previous_deployment: &Option<Deployment>,
+        current_deployment: &Option<Deployment>,
         event_type: EventType,
         operation_id: &OperationId,
     ) -> Event {
-        let deployment_message: DeploymentMessage = assignment.clone().into();
+        let serialized_previous_model = Self::serialize_model(previous_deployment);
+        let serialized_current_model = Self::serialize_model(current_deployment);
 
         let timestamp = Timestamp {
             seconds: SystemTime::now()
@@ -30,7 +42,8 @@ impl DeploymentService {
         Event {
             operation_id: Some(operation_id.clone()),
             model_type: ModelType::Deployment as i32,
-            serialized_model: deployment_message.encode_to_vec(),
+            serialized_previous_model,
+            serialized_current_model,
             event_type: event_type as i32,
             timestamp: Some(timestamp),
         }
@@ -54,23 +67,9 @@ impl DeploymentService {
         };
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        let deployment_message: DeploymentMessage = deployment.into();
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let create_deployment_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Deployment as i32,
-            serialized_model: deployment_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
-            timestamp: Some(timestamp),
-        };
+        let create_deployment_event =
+            Self::create_event(&None, &Some(deployment), EventType::Created, &operation_id);
 
         self.event_stream.send(&create_deployment_event)?;
 
@@ -98,23 +97,9 @@ impl DeploymentService {
         }
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        let deployment_message: DeploymentMessage = deployment.into();
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let delete_deployment_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Deployment as i32,
-            serialized_model: deployment_message.encode_to_vec(),
-            event_type: EventType::Deleted as i32,
-            timestamp: Some(timestamp),
-        };
+        let delete_deployment_event =
+            Self::create_event(&Some(deployment), &None, EventType::Deleted, &operation_id);
 
         self.event_stream.send(&delete_deployment_event)?;
 

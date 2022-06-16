@@ -99,7 +99,7 @@ mod tests {
     const DEFAULT_MQTT_BROKER_URI: &str = "tcp://localhost:1883";
 
     #[test]
-    fn test_create_get_delete() {
+    fn test_send_create_host_event() {
         let host = HostMessage {
             id: "azure-eastus2-1".to_owned(),
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
@@ -122,7 +122,8 @@ mod tests {
         let create_host_event = Event {
             operation_id: Some(operation_id),
             model_type: ModelType::Host as i32,
-            serialized_model: host.encode_to_vec(),
+            serialized_current_model: Some(host.encode_to_vec()),
+            serialized_previous_model: None,
             event_type: EventType::Created as i32,
             timestamp: Some(timestamp),
         };
@@ -136,7 +137,8 @@ mod tests {
         assert_eq!(received_event.model_type, ModelType::Host as i32);
 
         let host: HostMessage =
-            HostMessage::decode(received_event.serialized_model.as_slice()).unwrap();
+            HostMessage::decode(received_event.serialized_current_model.unwrap().as_slice())
+                .unwrap();
 
         assert_eq!(host.id, "azure-eastus2-1");
     }

@@ -25,9 +25,10 @@ enum ModelType {
 };
 
 message Event {
-    google.protobuf.Timestamp timestamp = 1; 
+    google.protobuf.Timestamp timestamp = 1;
     akira.common.OperationId operation_id = 2;
     EventType event_type = 3;
     ModelType model_type = 4;
-    bytes serialized_model = 5;
+    optional bytes serialized_previous_model = 5;
+    optional bytes serialized_current_model = 6;
 }

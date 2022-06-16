@@ -10,10 +10,47 @@ use crate::{
 
 pub struct TargetService {
     pub persistence: Box<dyn Persistence<Target>>,
-    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl TargetService {
+    pub fn serialize_model(model: &Option<Target>) -> Option<Vec<u8>> {
+        match model {
+            Some(assignment) => {
+                let message: TargetMessage = assignment.clone().into();
+                Some(message.encode_to_vec())
+            }
+            None => None,
+        }
+    }
+
+    pub fn create_event(
+        previous_model: &Option<Target>,
+        current_model: &Option<Target>,
+        event_type: EventType,
+        operation_id: &OperationId,
+    ) -> Event {
+        let serialized_previous_model = Self::serialize_model(previous_model);
+        let serialized_current_model = Self::serialize_model(current_model);
+
+        let timestamp = Timestamp {
+            seconds: SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            nanos: 0,
+        };
+
+        Event {
+            operation_id: Some(operation_id.clone()),
+            model_type: ModelType::Target as i32,
+            serialized_previous_model,
+            serialized_current_model,
+            event_type: event_type as i32,
+            timestamp: Some(timestamp),
+        }
+    }
+
     pub fn create(
         &self,
         target: &Target,
@@ -28,25 +65,10 @@ impl TargetService {
         };
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        let target_message: TargetMessage = target.into();
+        let create_event =
+            Self::create_event(&None, &Some(target), EventType::Created, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let create_target_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Target as i32,
-            serialized_model: target_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&create_target_event)?;
+        self.event_stream.send(&create_event)?;
 
         Ok(operation_id)
     }
@@ -72,25 +94,10 @@ impl TargetService {
         }
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let target_message: TargetMessage = target.into();
+        let delete_event =
+            Self::create_event(&Some(target), &None, EventType::Deleted, &operation_id);
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let delete_target_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Target as i32,
-            serialized_model: target_message.encode_to_vec(),
-            event_type: EventType::Deleted as i32,
-            timestamp: Some(timestamp),
-        };
-
-        self.event_stream.send(&delete_target_event)?;
+        self.event_stream.send(&delete_event)?;
 
         Ok(operation_id)
     }

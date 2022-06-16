@@ -109,7 +109,10 @@ mod tests {
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
 
-        let template_service = Arc::new(TemplateService::new(template_persistence, event_stream));
+        let template_service = Arc::new(TemplateService {
+            persistence: template_persistence,
+            event_stream,
+        });
 
         let template_grpc_service = GrpcTemplateService::new(Arc::clone(&template_service));
 

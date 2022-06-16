@@ -16,12 +16,24 @@ pub struct HostService {
 }
 
 impl HostService {
+    pub fn serialize_model(model: &Option<Host>) -> Option<Vec<u8>> {
+        match model {
+            Some(assignment) => {
+                let message: HostMessage = assignment.clone().into();
+                Some(message.encode_to_vec())
+            }
+            None => None,
+        }
+    }
+
     pub fn create_event(
-        assignment: &Host,
+        previous_host: &Option<Host>,
+        current_host: &Option<Host>,
         event_type: EventType,
         operation_id: &OperationId,
     ) -> Event {
-        let host_message: HostMessage = assignment.clone().into();
+        let serialized_previous_model = Self::serialize_model(previous_host);
+        let serialized_current_model = Self::serialize_model(current_host);
 
         let timestamp = Timestamp {
             seconds: SystemTime::now()
@@ -34,7 +46,8 @@ impl HostService {
         Event {
             operation_id: Some(operation_id.clone()),
             model_type: ModelType::Host as i32,
-            serialized_model: host_message.encode_to_vec(),
+            serialized_previous_model,
+            serialized_current_model,
             event_type: event_type as i32,
             timestamp: Some(timestamp),
         }
@@ -54,23 +67,9 @@ impl HostService {
         };
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        let host_message: HostMessage = host.into();
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let create_host_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Host as i32,
-            serialized_model: host_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
-            timestamp: Some(timestamp),
-        };
+        let create_host_event =
+            Self::create_event(&None, &Some(host), EventType::Created, &operation_id);
 
         self.event_stream.send(&create_host_event)?;
 
@@ -102,23 +101,9 @@ impl HostService {
         }
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let host_message: HostMessage = host.into();
 
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        let delete_host_event = Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Host as i32,
-            serialized_model: host_message.encode_to_vec(),
-            event_type: EventType::Created as i32,
-            timestamp: Some(timestamp),
-        };
+        let delete_host_event =
+            Self::create_event(&Some(host), &None, EventType::Deleted, &operation_id);
 
         self.event_stream.send(&delete_host_event)?;
 
