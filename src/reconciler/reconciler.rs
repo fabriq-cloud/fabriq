@@ -8,12 +8,12 @@ use std::{collections::HashMap, sync::Arc};
 
 use akira_core::{
     DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId, TargetMessage,
-    TemplateMessage,
+    TemplateMessage, WorkloadMessage,
 };
 use prost::Message;
 
 use akira::{
-    models::{Assignment, Deployment, Host, Target, Template},
+    models::{Assignment, Deployment, Host, Target, Template, Workload},
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
         WorkloadService, WorkspaceService,
@@ -49,8 +49,7 @@ impl Reconciler {
                 self.process_template_event(event)
             }
             model_type if model_type == ModelType::Workload as i32 => {
-                // self.process_workload_event(event)
-                Ok(())
+                self.process_workload_event(event)
             }
             model_type if model_type == ModelType::Workspace as i32 => {
                 // NOP
@@ -60,6 +59,20 @@ impl Reconciler {
                 panic!("unsupported model type: {:?}", event);
             }
         }
+    }
+
+    fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
+        let workload = Self::get_current_or_previous_model::<WorkloadMessage, Workload>(event)?;
+        let deployments = self.deployment_service.get_by_workload_id(&workload.id)?;
+        for deployment in deployments {
+            self.process_deployment_event_impl(
+                &deployment,
+                deployment.host_count as usize,
+                &event.operation_id,
+            )?;
+        }
+
+        Ok(())
     }
 
     fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
@@ -441,6 +454,75 @@ mod tests {
         let event = akira::services::TargetService::create_event(
             &None,
             &Some(target),
+            EventType::Created,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
+    fn test_process_workload_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let host1 = Host {
+            id: "host1-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host1, &None).unwrap();
+
+        let host2 = Host {
+            id: "host3-id".to_owned(),
+            labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host2, &None).unwrap();
+
+        let host3 = Host {
+            id: "host3-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host3, &None).unwrap();
+
+        let deployment = Deployment {
+            id: "deployment-fixture".to_owned(),
+            target_id: "eastus2".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            template_id: None,
+            host_count: 2,
+        };
+
+        let operation_id = OperationId::create();
+
+        reconciler
+            .deployment_service
+            .create(&deployment, &Some(operation_id.clone()))
+            .unwrap();
+
+        let target = Target {
+            id: "eastus2".to_owned(),
+            labels: vec!["region:eastus2".to_owned()],
+        };
+
+        reconciler.target_service.create(&target, &None).unwrap();
+
+        let workload = Workload {
+            id: "workload-fixture".to_owned(),
+            template_id: "template-fixture".to_owned(),
+            workspace_id: "workspace-fixture".to_owned(),
+        };
+
+        reconciler.workload_service.create(&workload, None).unwrap();
+
+        let event = akira::services::WorkloadService::create_event(
+            &None,
+            &Some(workload),
             EventType::Created,
             &operation_id,
         );
