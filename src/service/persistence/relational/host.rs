@@ -102,6 +102,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_delete() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_host = Host {
             id: "host-under-test".to_owned(),

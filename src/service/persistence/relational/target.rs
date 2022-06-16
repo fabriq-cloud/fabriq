@@ -78,6 +78,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_get_delete() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_target = Target {
             id: "target-under-test".to_owned(),
@@ -104,6 +105,7 @@ mod tests {
     #[test]
     fn test_create_get_delete_many() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_target = Target {
             id: "target-under-many-test".to_owned(),

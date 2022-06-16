@@ -78,7 +78,6 @@ mod tests {
     #[test]
     fn test_create_get_delete() {
         dotenv().ok();
-
         crate::persistence::relational::ensure_fixtures();
 
         let new_workload = Workload {

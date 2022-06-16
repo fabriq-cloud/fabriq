@@ -78,6 +78,7 @@ mod tests {
     #[test]
     fn test_create_get_delete() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_workspace = Workspace {
             id: "workspace-under-test".to_owned(),
@@ -105,6 +106,7 @@ mod tests {
     #[test]
     fn test_create_get_delete_many() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_workspace = Workspace {
             id: "workspace-under-many-test".to_owned(),
