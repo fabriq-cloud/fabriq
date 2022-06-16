@@ -6,7 +6,9 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use akira_core::{DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId};
+use akira_core::{
+    DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId, TargetMessage,
+};
 use prost::Message;
 
 use akira::{
@@ -34,10 +36,7 @@ impl Reconciler {
         let model_type = event.model_type;
 
         match model_type {
-            model_type if model_type == ModelType::Assignment as i32 => {
-                // NOP
-                Ok(())
-            }
+            model_type if model_type == ModelType::Assignment as i32 => Ok(()),
             model_type if model_type == ModelType::Deployment as i32 => {
                 self.process_deployment_event(event)
             }
@@ -194,8 +193,20 @@ impl Reconciler {
         Ok(())
     }
 
-    fn process_target_event(&self, _event: &Event) -> anyhow::Result<()> {
-        Ok(())
+    fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
+        let mut spanning_targets: Vec<Target> = Vec::new();
+
+        if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
+            let previous_target = TargetMessage::decode(&*serialized_previous_model)?.into();
+            spanning_targets.push(previous_target);
+        }
+
+        if let Some(serialized_current_model) = event.serialized_current_model.clone() {
+            let current_target = TargetMessage::decode(&*serialized_current_model)?.into();
+            spanning_targets.push(current_target);
+        }
+
+        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
     }
 
     pub fn compute_assignment_changes(
@@ -348,6 +359,66 @@ mod tests {
             workload_service,
             workspace_service,
         })
+    }
+
+    #[test]
+    fn test_process_target_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let host1 = Host {
+            id: "host1-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host1, &None).unwrap();
+
+        let host2 = Host {
+            id: "host3-id".to_owned(),
+            labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host2, &None).unwrap();
+
+        let host3 = Host {
+            id: "host3-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
+
+        reconciler.host_service.create(&host3, &None).unwrap();
+
+        let deployment = Deployment {
+            id: "deployment-fixture".to_owned(),
+            target_id: "eastus2".to_owned(),
+            hosts: 2,
+            workload_id: "workload-fixture".to_owned(),
+        };
+
+        let operation_id = OperationId::create();
+
+        reconciler
+            .deployment_service
+            .create(&deployment, &Some(operation_id.clone()))
+            .unwrap();
+
+        let target = Target {
+            id: "eastus2".to_owned(),
+            labels: vec!["region:eastus2".to_owned()],
+        };
+
+        reconciler.target_service.create(&target, &None).unwrap();
+
+        let event = akira::services::TargetService::create_event(
+            &None,
+            &Some(target),
+            EventType::Created,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
     }
 
     #[test]
