@@ -78,12 +78,7 @@ impl DeploymentTrait for GrpcDeploymentService {
 
         let deployment_messages = deployments
             .iter()
-            .map(|deployment| DeploymentMessage {
-                id: deployment.id.clone(),
-                target_id: deployment.target_id.clone(),
-                workload_id: deployment.workload_id.clone(),
-                hosts: deployment.hosts,
-            })
+            .map(|deployment| deployment.clone().into())
             .collect();
 
         let response = ListDeploymentsResponse {
@@ -126,7 +121,8 @@ mod tests {
             id: "deployment-grpc-test".to_string(),
             target_id: "target-fixture".to_string(),
             workload_id: "workload-fixture".to_string(),
-            hosts: 2,
+            template_id: Some("external-service".to_string()),
+            host_count: 2,
         });
 
         let response = deployment_grpc_service

@@ -66,20 +66,6 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
 
         Ok(cloned_result)
     }
-
-    #[cfg(test)]
-    fn ensure_fixtures(&self) -> anyhow::Result<()> {
-        let deployment_fixture = Deployment {
-            id: "deployment-fixture".to_string(),
-            workload_id: "workload-fixture".to_string(),
-            target_id: "target-fixture".to_string(),
-            hosts: 2,
-        };
-
-        self.create(&deployment_fixture)?;
-
-        Ok(())
-    }
 }
 
 impl DeploymentPersistence for DeploymentRelationalPersistence {
@@ -104,12 +90,14 @@ mod tests {
     #[test]
     fn test_create_get_delete() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_deployment = Deployment {
             id: "deployment-under-test".to_owned(),
             workload_id: "workload-fixture".to_owned(),
             target_id: "target-fixture".to_owned(),
-            hosts: 2,
+            template_id: Some("template-fixture".to_string()),
+            host_count: 3,
         };
 
         let deployment_persistence = DeploymentRelationalPersistence::default();
@@ -132,14 +120,16 @@ mod tests {
     }
 
     #[test]
-    fn test_create_get_delete_many() {
+    fn test_create_delete_many() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_deployment = Deployment {
             id: "deployment-under-many-test".to_owned(),
             workload_id: "workload-fixture".to_owned(),
             target_id: "target-fixture".to_owned(),
-            hosts: 2,
+            template_id: None,
+            host_count: 3,
         };
 
         let deployment_persistence = DeploymentRelationalPersistence::default();
@@ -159,6 +149,7 @@ mod tests {
     #[test]
     fn test_get_by_target_id() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let deployment_persistence = DeploymentRelationalPersistence::default();
 

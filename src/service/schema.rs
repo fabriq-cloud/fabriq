@@ -21,7 +21,8 @@ table! {
         id -> Text,
         workload_id -> Text,
         target_id -> Text,
-        hosts -> Int4,
+        template_id -> Nullable<Text>,
+        host_count -> Int4,
     }
 }
 
@@ -65,6 +66,7 @@ table! {
 joinable!(assignments -> deployments (deployment_id));
 joinable!(assignments -> hosts (host_id));
 joinable!(deployments -> targets (target_id));
+joinable!(deployments -> templates (template_id));
 joinable!(deployments -> workloads (workload_id));
 joinable!(workloads -> templates (template_id));
 joinable!(workloads -> workspaces (workspace_id));

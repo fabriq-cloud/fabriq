@@ -32,6 +32,14 @@ pub fn args() -> Command<'static> {
                         .multiple_values(false),
                 )
                 .arg(
+                    Arg::new("template")
+                        .short('t')
+                        .long("template")
+                        .help("Template override for deployment")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(
                     Arg::new("hosts")
                         .short('h')
                         .long("hosts")
@@ -78,7 +86,8 @@ pub async fn handlers(
                 .value_of("target")
                 .expect("Target ID expected")
                 .to_string();
-            let hosts = add_match
+            let template_id: Option<String> = add_match.value_of("template").map(|s| s.to_string());
+            let host_count = add_match
                 .value_of("hosts")
                 .expect("hosts expected")
                 .parse::<i32>()?;
@@ -87,7 +96,8 @@ pub async fn handlers(
                 id: id.clone(),
                 workload_id,
                 target_id,
-                hosts,
+                host_count,
+                template_id,
             });
 
             client.create(request).await?;
@@ -123,7 +133,8 @@ pub async fn handlers(
                         deployment.id.to_string(),
                         deployment.workload_id.clone(),
                         deployment.target_id.clone(),
-                        deployment.hosts.to_string(),
+                        deployment.template_id.unwrap_or_else(|| "".to_string()),
+                        deployment.host_count.to_string(),
                     ]
                 })
                 .collect();
@@ -153,7 +164,12 @@ pub async fn handlers(
 
             ascii_table
                 .column(3)
-                .set_header("REPLICAS")
+                .set_header("TEMPLATE ID")
+                .set_align(Align::Left);
+
+            ascii_table
+                .column(4)
+                .set_header("HOST COUNT")
                 .set_align(Align::Left);
 
             ascii_table.print(table_data);

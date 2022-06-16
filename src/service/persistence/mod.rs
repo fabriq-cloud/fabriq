@@ -10,11 +10,6 @@ pub trait Persistence<Model>: Send + Sync {
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize>;
     fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Model>>;
     fn list(&self) -> anyhow::Result<Vec<Model>>;
-
-    #[cfg(test)]
-    fn ensure_fixtures(&self) -> anyhow::Result<()> {
-        Ok(())
-    }
 }
 
 pub trait PersistableModel<Model> {

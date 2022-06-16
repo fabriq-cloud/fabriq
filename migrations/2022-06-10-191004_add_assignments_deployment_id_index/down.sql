@@ -1,1 +1,0 @@
-DROP INDEX assignments_deployment_id;

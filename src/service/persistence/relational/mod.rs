@@ -26,7 +26,8 @@ pub fn ensure_fixtures() {
         id: "deployment-fixture".to_string(),
         workload_id: "workload-fixture".to_string(),
         target_id: "target-fixture".to_string(),
-        hosts: 2,
+        template_id: Some("template-fixture".to_string()),
+        host_count: 2,
     };
     let _ = deployment_persistence.create(&deployment_fixture);
 

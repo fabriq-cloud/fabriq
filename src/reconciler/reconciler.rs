@@ -45,8 +45,7 @@ impl Reconciler {
                 self.process_target_event(event)
             }
             model_type if model_type == ModelType::Template as i32 => {
-                // self.process_template_event(event)
-                Ok(())
+                self.process_template_event(event)
             }
             model_type if model_type == ModelType::Workload as i32 => {
                 // self.process_workload_event(event)
@@ -100,7 +99,7 @@ impl Reconciler {
         let desired_host_count: usize = if event.event_type == EventType::Deleted as i32 {
             0
         } else {
-            deployment.hosts as usize
+            deployment.host_count as usize
         };
 
         self.process_deployment_event_impl(
@@ -184,13 +183,20 @@ impl Reconciler {
                 self.process_deployment_event_impl(
                     &deployment,
                     target,
-                    deployment.hosts as usize,
+                    deployment.host_count as usize,
                     operation_id,
                 )?;
             }
         }
 
         Ok(())
+    }
+
+    fn process_template_event(&self, _event: &Event) -> anyhow::Result<()> {
+        Ok(())
+        // get all deployments that use this template
+
+        // self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
     }
 
     fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
@@ -389,8 +395,9 @@ mod tests {
         let deployment = Deployment {
             id: "deployment-fixture".to_owned(),
             target_id: "eastus2".to_owned(),
-            hosts: 2,
             workload_id: "workload-fixture".to_owned(),
+            template_id: None,
+            host_count: 2,
         };
 
         let operation_id = OperationId::create();
@@ -456,8 +463,9 @@ mod tests {
         let deployment = Deployment {
             id: "deployment-fixture".to_owned(),
             target_id: "eastus2".to_owned(),
-            hosts: 2,
             workload_id: "workload-fixture".to_owned(),
+            template_id: None,
+            host_count: 2,
         };
 
         let operation_id = OperationId::create();
@@ -523,8 +531,9 @@ mod tests {
         let deployment = Deployment {
             id: "deployment-fixture".to_owned(),
             target_id: "eastus2".to_owned(),
-            hosts: 2,
             workload_id: "workload-fixture".to_owned(),
+            template_id: None,
+            host_count: 2,
         };
 
         let operation_id = OperationId::create();
@@ -570,8 +579,9 @@ mod tests {
         let deployment = Deployment {
             id: "created-deployment".to_string(),
             target_id: "target-id".to_string(),
-            hosts: 1,
             workload_id: "workload-id".to_string(),
+            template_id: None,
+            host_count: 1,
         };
 
         let existing_assignments: Vec<Assignment> = Vec::new();
@@ -614,8 +624,9 @@ mod tests {
         let deployment = Deployment {
             id: "created-deployment".to_string(),
             target_id: "target-id".to_string(),
-            hosts: 2,
             workload_id: "workload-id".to_string(),
+            template_id: None,
+            host_count: 2,
         };
 
         let existing_assignments: Vec<Assignment> = vec![Assignment {
@@ -659,8 +670,9 @@ mod tests {
         let deployment = Deployment {
             id: "deployment-id".to_string(),
             target_id: "target-id".to_string(),
-            hosts: 2,
             workload_id: "workload-id".to_string(),
+            template_id: None,
+            host_count: 2,
         };
 
         let existing_assignments: Vec<Assignment> = vec![
@@ -711,8 +723,9 @@ mod tests {
         let deployment = Deployment {
             id: "deployment-id".to_string(),
             target_id: "target-id".to_string(),
-            hosts: 2,
             workload_id: "workload-id".to_string(),
+            template_id: None,
+            host_count: 2,
         };
 
         let existing_assignments: Vec<Assignment> = vec![
@@ -761,8 +774,9 @@ mod tests {
         let deployment = Deployment {
             id: "created-deployment".to_string(),
             target_id: "target-id".to_string(),
-            hosts: 2,
             workload_id: "workload-id".to_string(),
+            template_id: None,
+            host_count: 2,
         };
 
         let existing_assignments: Vec<Assignment> = vec![Assignment {

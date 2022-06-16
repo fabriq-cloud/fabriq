@@ -127,6 +127,7 @@ mod tests {
     #[test]
     fn test_create_get_delete_many() {
         dotenv().ok();
+        crate::persistence::relational::ensure_fixtures();
 
         let new_assignment = Assignment {
             id: "assignment-under-many-test".to_owned(),

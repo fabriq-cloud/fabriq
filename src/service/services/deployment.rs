@@ -133,7 +133,8 @@ mod tests {
             id: "deployment-service-under-test".to_owned(),
             workload_id: "workload-fixture".to_owned(),
             target_id: "target-fixture".to_owned(),
-            hosts: 3,
+            template_id: Some("external-service".to_string()),
+            host_count: 3,
         };
 
         let deployment_persistence = DeploymentMemoryPersistence::default();
