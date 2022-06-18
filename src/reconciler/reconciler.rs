@@ -393,7 +393,7 @@ mod tests {
             workload_service: Arc::clone(&workload_service),
         });
 
-        Ok(Reconciler {
+        let reconciler = Reconciler {
             assignment_service,
             deployment_service,
             host_service,
@@ -401,142 +401,7 @@ mod tests {
             template_service,
             workload_service,
             workspace_service,
-        })
-    }
-
-    #[test]
-    fn test_process_target_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
-
-        let host1 = Host {
-            id: "host1-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
         };
-
-        reconciler.host_service.create(&host1, &None).unwrap();
-
-        let host2 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host2, &None).unwrap();
-
-        let host3 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host3, &None).unwrap();
-
-        let deployment = Deployment {
-            id: "deployment-fixture".to_owned(),
-            target_id: "eastus2".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: None,
-            host_count: 2,
-        };
-
-        let operation_id = OperationId::create();
-
-        reconciler
-            .deployment_service
-            .create(&deployment, &Some(operation_id.clone()))
-            .unwrap();
-
-        let target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["region:eastus2".to_owned()],
-        };
-
-        reconciler.target_service.create(&target, &None).unwrap();
-
-        let event = akira::services::TargetService::create_event(
-            &None,
-            &Some(target),
-            EventType::Created,
-            &operation_id,
-        );
-
-        reconciler.process(&event).unwrap();
-
-        let assignments = reconciler.assignment_service.list().unwrap();
-
-        assert_eq!(assignments.len(), 2);
-    }
-
-    #[test]
-    fn test_process_workload_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
-
-        let host1 = Host {
-            id: "host1-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host1, &None).unwrap();
-
-        let host2 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host2, &None).unwrap();
-
-        let host3 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host3, &None).unwrap();
-
-        let deployment = Deployment {
-            id: "deployment-fixture".to_owned(),
-            target_id: "eastus2".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: None,
-            host_count: 2,
-        };
-
-        let operation_id = OperationId::create();
-
-        reconciler
-            .deployment_service
-            .create(&deployment, &Some(operation_id.clone()))
-            .unwrap();
-
-        let target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["region:eastus2".to_owned()],
-        };
-
-        reconciler.target_service.create(&target, &None).unwrap();
-
-        let workload = Workload {
-            id: "workload-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-        };
-
-        reconciler.workload_service.create(&workload, None).unwrap();
-
-        let event = akira::services::WorkloadService::create_event(
-            &None,
-            &Some(workload),
-            EventType::Created,
-            &operation_id,
-        );
-
-        reconciler.process(&event).unwrap();
-
-        let assignments = reconciler.assignment_service.list().unwrap();
-
-        assert_eq!(assignments.len(), 2);
-    }
-
-    #[test]
-    fn test_process_template_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
 
         let host1 = Host {
             id: "host1-id".to_owned(),
@@ -567,11 +432,9 @@ mod tests {
             host_count: 2,
         };
 
-        let operation_id = OperationId::create();
-
         reconciler
             .deployment_service
-            .create(&deployment, &Some(operation_id.clone()))
+            .create(&deployment, &None)
             .unwrap();
 
         let target = Target {
@@ -581,21 +444,87 @@ mod tests {
 
         reconciler.target_service.create(&target, &None).unwrap();
 
-        let new_template = Template {
+        let template = Template {
             id: "template-fixture".to_owned(),
             repository: "http://github.com/timfpark/deployment-templates".to_owned(),
             branch: "main".to_owned(),
             path: "external-service".to_owned(),
         };
 
-        reconciler
-            .template_service
-            .create(&new_template, Some(operation_id.clone()))
-            .unwrap();
+        reconciler.template_service.create(&template, None).unwrap();
+
+        Ok(reconciler)
+    }
+
+    #[test]
+    fn test_process_target_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let target = Target {
+            id: "eastus2".to_owned(),
+            labels: vec!["region:eastus2".to_owned()],
+        };
+
+        let operation_id = OperationId::create();
+
+        let event = akira::services::TargetService::create_event(
+            &None,
+            &Some(target),
+            EventType::Created,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
+    fn test_process_workload_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let workload = Workload {
+            id: "workload-fixture".to_owned(),
+            template_id: "template-fixture".to_owned(),
+            workspace_id: "workspace-fixture".to_owned(),
+        };
+
+        reconciler.workload_service.create(&workload, None).unwrap();
+
+        let operation_id = OperationId::create();
+
+        let event = akira::services::WorkloadService::create_event(
+            &None,
+            &Some(workload),
+            EventType::Created,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
+    fn test_process_template_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let operation_id = OperationId::create();
+
+        let template = Template {
+            id: "template-fixture".to_owned(),
+            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
+            branch: "main".to_owned(),
+            path: "external-service".to_owned(),
+        };
 
         let event = akira::services::TemplateService::create_event(
             &None,
-            &Some(new_template),
+            &Some(template),
             EventType::Created,
             &operation_id,
         );
@@ -611,33 +540,7 @@ mod tests {
     fn test_process_deployment_event() {
         let reconciler = create_reconciler_fixture().unwrap();
 
-        let host1 = Host {
-            id: "host1-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host1, &None).unwrap();
-
-        let host2 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host2, &None).unwrap();
-
-        let host3 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host3, &None).unwrap();
-
-        let target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["region:eastus2".to_owned()],
-        };
-
-        reconciler.target_service.create(&target, &None).unwrap();
+        let operation_id = OperationId::create();
 
         let deployment = Deployment {
             id: "deployment-fixture".to_owned(),
@@ -646,13 +549,6 @@ mod tests {
             template_id: None,
             host_count: 2,
         };
-
-        let operation_id = OperationId::create();
-
-        reconciler
-            .deployment_service
-            .create(&deployment, &Some(operation_id.clone()))
-            .unwrap();
 
         let event = akira::services::DeploymentService::create_event(
             &None,
@@ -672,55 +568,12 @@ mod tests {
     fn test_process_host_event() {
         let reconciler = create_reconciler_fixture().unwrap();
 
-        let host1 = Host {
-            id: "host1-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host1, &None).unwrap();
-
-        let host2 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host2, &None).unwrap();
-
-        let host3 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
-        reconciler.host_service.create(&host3, &None).unwrap();
-
         let host4 = Host {
             id: "host4-id".to_owned(),
             labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
         };
 
-        reconciler.host_service.create(&host4, &None).unwrap();
-
-        let target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["region:eastus2".to_owned()],
-        };
-
-        reconciler.target_service.create(&target, &None).unwrap();
-
-        let deployment = Deployment {
-            id: "deployment-fixture".to_owned(),
-            target_id: "eastus2".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: None,
-            host_count: 2,
-        };
-
         let operation_id = OperationId::create();
-
-        reconciler
-            .deployment_service
-            .create(&deployment, &Some(operation_id.clone()))
-            .unwrap();
 
         let event = akira::services::HostService::create_event(
             &None,
@@ -734,6 +587,11 @@ mod tests {
         let assignments = reconciler.assignment_service.list().unwrap();
 
         assert_eq!(assignments.len(), 0);
+
+        let host3 = Host {
+            id: "host3-id".to_owned(),
+            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
+        };
 
         let event = akira::services::HostService::create_event(
             &None,
