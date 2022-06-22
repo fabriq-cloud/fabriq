@@ -1,7 +1,9 @@
+use akira::models::Deployment;
 use akira_core::assignment::assignment_client::AssignmentClient;
 use akira_core::host::host_client::HostClient;
 use akira_core::target::target_client::TargetClient;
-use akira_core::{Event, EventType, ModelType};
+use akira_core::{DeploymentMessage, Event, EventType, ModelType};
+use prost::Message;
 use tonic::codegen::InterceptedService;
 use tonic::metadata::{Ascii, MetadataValue};
 use tonic::service::Interceptor;
@@ -18,7 +20,7 @@ pub struct GitOpsProcessor {
     token: MetadataValue<Ascii>,
 }
 
-impl GitOpsProcessor {
+impl<'a> GitOpsProcessor {
     pub async fn new(gitops_repo: GitRepo) -> anyhow::Result<Self> {
         let context = Context::default();
         let channel = Channel::from_static(context.endpoint).connect().await?;
@@ -31,18 +33,33 @@ impl GitOpsProcessor {
         })
     }
 
-    pub async fn start(&self) -> anyhow::Result<()> {
-        self.gitops_repo.clone()
+    fn get_current_or_previous_model<ModelMessage: Default + Message, Model: From<ModelMessage>>(
+        event: &Event,
+    ) -> anyhow::Result<Model> {
+        let message: ModelMessage =
+            if let Some(serialized_current_model) = &event.serialized_current_model {
+                ModelMessage::decode(&**serialized_current_model)?
+            } else if let Some(serialized_previous_model) = &event.serialized_previous_model {
+                ModelMessage::decode(&**serialized_previous_model)?
+            } else {
+                return Err(anyhow::anyhow!(
+                    "Event received without previous or current model {:?}",
+                    event
+                ));
+            };
+
+        Ok(message.into())
     }
 
-    pub async fn process(&self, event: &Event) -> anyhow::Result<()> {
+    pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
         println!("Processing event: {:?}", event);
 
         let model_type = event.model_type;
 
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
-                // link workload to host in host directory
+                // create / update: link workload to host in host directory
+                // delete: unlink workload from host in host directory
                 self.process_assignment_event(event).await
             }
             model_type if model_type == ModelType::Deployment as i32 => {
@@ -51,7 +68,7 @@ impl GitOpsProcessor {
                 self.process_deployment_event(event).await
             }
             model_type if model_type == ModelType::Host as i32 => {
-                // NOP
+                // delete: remove host directory
                 self.process_host_event(event).await
             }
             model_type if model_type == ModelType::Target as i32 => {
@@ -128,12 +145,18 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    async fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_deployment_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
+        let _deployment =
+            Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
+
+        self.gitops_repo.add("path")?;
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                // let _deployment = DeploymentMessage::decode(&*event.serialized_current_model)?;
-
+                // Delete current deployment
+                // Render deployment into deployments / workspace / workload / deployment
+                // Commit in GitOps folder
                 let _assignment_client = self.create_assignment_client();
                 let _host_client = self.create_host_client();
                 let _target_client = self.create_target_client();
@@ -152,7 +175,13 @@ impl GitOpsProcessor {
             }
         }
 
-        Ok(())
+        self.gitops_repo.commit(
+            "Tim Park",
+            "timfpark@gmail.com",
+            "Processed deployment event",
+        )?;
+
+        self.gitops_repo.push()
     }
 
     async fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
