@@ -65,7 +65,6 @@ impl EventStream for MqttEventStream {
     }
 
     fn send_many(&self, events: &[Event]) -> anyhow::Result<()> {
-        // TODO: Is there a send many method?
         for event in events.iter() {
             self.send(event)?;
         }
@@ -76,9 +75,7 @@ impl EventStream for MqttEventStream {
     fn receive(&self) -> Box<dyn Iterator<Item = Option<Event>> + '_> {
         Box::new(self.rx.iter().map(|msg| {
             if let Some(msg) = msg {
-                let payload = msg.payload();
-                let event = Event::decode(payload).unwrap();
-                Some(event)
+                Event::decode(msg.payload()).ok()
             } else {
                 None
             }

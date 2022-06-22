@@ -46,7 +46,12 @@ impl GitRepo {
         let mut auth_callback = RemoteCallbacks::new();
 
         auth_callback.credentials(|_url, username_from_url, _allowed_types| {
-            Cred::ssh_key_from_memory(username_from_url.unwrap(), None, private_ssh_key, None)
+            let username = match username_from_url {
+                Some(username) => username,
+                None => return Err(git2::Error::from_str("No username found in URL")),
+            };
+
+            Cred::ssh_key_from_memory(username, None, private_ssh_key, None)
         });
 
         auth_callback

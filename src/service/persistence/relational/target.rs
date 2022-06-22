@@ -50,7 +50,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
     fn list(&self) -> anyhow::Result<Vec<Target>> {
         let connection = crate::db::get_connection()?;
 
-        let results = targets.load::<Target>(&connection).unwrap();
+        let results = targets.load::<Target>(&connection)?;
 
         Ok(results)
     }

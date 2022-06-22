@@ -64,7 +64,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
     fn list(&self) -> anyhow::Result<Vec<Assignment>> {
         let connection = crate::db::get_connection()?;
 
-        let results = assignments.load::<Assignment>(&connection).unwrap();
+        let results = assignments.load::<Assignment>(&connection)?;
 
         Ok(results)
     }

@@ -50,7 +50,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
     fn list(&self) -> anyhow::Result<Vec<Template>> {
         let connection = crate::db::get_connection()?;
 
-        let results = templates.load::<Template>(&connection).unwrap();
+        let results = templates.load::<Template>(&connection)?;
 
         Ok(results)
     }

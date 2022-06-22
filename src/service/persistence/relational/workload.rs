@@ -50,7 +50,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
     fn list(&self) -> anyhow::Result<Vec<Workload>> {
         let connection = crate::db::get_connection()?;
 
-        let results = workloads.load::<Workload>(&connection).unwrap();
+        let results = workloads.load::<Workload>(&connection)?;
 
         Ok(results)
     }
