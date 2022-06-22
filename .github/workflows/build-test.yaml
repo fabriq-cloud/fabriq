@@ -48,6 +48,7 @@ jobs:
           version: "0.20.0"
           args: "--workspace --ignore-tests --skip-clean --exclude-files spikes/* --exclude-files samples/*"
         env:
+          PRIVATE_SSH_KEY: ${{ secrets.PRIVATE_SSH_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Archive code coverage results
         uses: actions/upload-artifact@v1
