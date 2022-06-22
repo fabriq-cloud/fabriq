@@ -9,19 +9,30 @@ use tonic::transport::Channel;
 use tonic::Request;
 
 use crate::context::Context;
+use crate::repo::GitRepo;
 
 pub struct GitOpsProcessor {
+    gitops_repo: GitRepo,
+
     channel: Channel,
     token: MetadataValue<Ascii>,
 }
 
 impl GitOpsProcessor {
-    pub async fn new() -> anyhow::Result<Self> {
+    pub async fn new(gitops_repo: GitRepo) -> anyhow::Result<Self> {
         let context = Context::default();
         let channel = Channel::from_static(context.endpoint).connect().await?;
         let token: MetadataValue<Ascii> = context.token.parse()?;
 
-        Ok(Self { channel, token })
+        Ok(Self {
+            channel,
+            gitops_repo,
+            token,
+        })
+    }
+
+    pub async fn start(&self) -> anyhow::Result<()> {
+        self.gitops_repo.clone()
     }
 
     pub async fn process(&self, event: &Event) -> anyhow::Result<()> {
@@ -31,24 +42,34 @@ impl GitOpsProcessor {
 
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
+                // link workload to host in host directory
                 self.process_assignment_event(event).await
             }
             model_type if model_type == ModelType::Deployment as i32 => {
+                // render and commit deployment if created or updated
+                // delete deployment directory if deleted
                 self.process_deployment_event(event).await
             }
             model_type if model_type == ModelType::Host as i32 => {
+                // NOP
                 self.process_host_event(event).await
             }
             model_type if model_type == ModelType::Target as i32 => {
+                // NOP
                 self.process_target_event(event).await
             }
             model_type if model_type == ModelType::Template as i32 => {
+                // create/update: rerender all deployments or workloads using template
+                // delete: NOP, shouldn't be any deployments using
                 self.process_template_event(event).await
             }
             model_type if model_type == ModelType::Workload as i32 => {
+                // create/update: rerender all deployments using workload
+                // delete: remove whole workload directory from git repo
                 self.process_workload_event(event).await
             }
             model_type if model_type == ModelType::Workspace as i32 => {
+                // NOP
                 self.process_workspace_event(event).await
             }
             _ => {
