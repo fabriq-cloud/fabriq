@@ -5,7 +5,8 @@ import "common.proto";
 
 service Workload {
     rpc Create(WorkloadMessage) returns (akira.common.OperationId);
-    rpc Delete(DeleteWorkloadRequest) returns (akira.common.OperationId);
+    rpc Delete(akira.common.WorkloadIdRequest) returns (akira.common.OperationId);
+    rpc GetById(akira.common.WorkloadIdRequest) returns (WorkloadMessage);
     rpc List(ListWorkloadsRequest) returns (ListWorkloadsResponse);
 }
 
@@ -15,12 +16,8 @@ message ListWorkloadsResponse {
     repeated WorkloadMessage workloads = 1;
 }
 
-message DeleteWorkloadRequest {
-    string id = 1;
-}
-
 message WorkloadMessage {
     string id = 1;    
+    string workspace_id = 2;
     string template_id = 3;
-    string workspace_id = 4;
 }

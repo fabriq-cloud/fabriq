@@ -2,6 +2,7 @@ use akira::models::Deployment;
 use akira_core::assignment::assignment_client::AssignmentClient;
 use akira_core::host::host_client::HostClient;
 use akira_core::target::target_client::TargetClient;
+use akira_core::workload::workload_client::WorkloadClient;
 use akira_core::{DeploymentMessage, Event, EventType, ModelType};
 use prost::Message;
 use tonic::codegen::InterceptedService;
@@ -125,6 +126,16 @@ impl<'a> GitOpsProcessor {
         })
     }
 
+    pub fn _create_workload_client(
+        &self,
+    ) -> WorkloadClient<InterceptedService<Channel, impl Interceptor + '_>> {
+        WorkloadClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
+            req.metadata_mut()
+                .insert("authorization", self.token.clone());
+            Ok(req)
+        })
+    }
+
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         match event_type {
@@ -147,15 +158,33 @@ impl<'a> GitOpsProcessor {
 
     async fn process_deployment_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
-        let _deployment =
+        let deployment =
             Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
 
-        self.gitops_repo.add("path")?;
+        /*
+                let workload_client = self.create_workload_client();
+
+                let workload_request = Request::new(WorkloadIdRequest {
+                    workload_id: deployment.workload_id.clone(),
+                });
+
+                let workload = workload_client
+                    .get_by_id(workload_request)
+                    .await?
+                    .into_inner();
+        */
+
+        // deployments / workspace / workload / deployment
+        let deployment_repo_path = format!(
+            "deployments/{}/{}/{}",
+            "workspace", deployment.workload_id, deployment.id
+        );
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 // Delete current deployment
-                // Render deployment into deployments / workspace / workload / deployment
+
+                // Render deployment into
                 // Commit in GitOps folder
                 let _assignment_client = self.create_assignment_client();
                 let _host_client = self.create_host_client();
@@ -166,8 +195,8 @@ impl<'a> GitOpsProcessor {
                 tracing::info!("deployment updated (NOP): {:?}", event);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                // Delete assignments for deployment (Assignment Deleted event will handle unlinking host from deployment)
                 // Remove deployment from GitOps folder
+                self.gitops_repo.remove_dir(&deployment_repo_path)?;
                 tracing::info!("deployment deleted (NOP): {:?}", event);
             }
             _ => {

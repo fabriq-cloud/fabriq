@@ -16,3 +16,7 @@ message OperationId {
 message TargetIdRequest {
     string target_id = 1;
 }
+
+message WorkloadIdRequest {
+    string workload_id = 1;
+}

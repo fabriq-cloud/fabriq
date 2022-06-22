@@ -4,7 +4,7 @@ pub mod common {
     tonic::include_proto!("akira.common");
 }
 
-pub use common::{DeploymentIdRequest, OperationId, TargetIdRequest};
+pub use common::{DeploymentIdRequest, OperationId, TargetIdRequest, WorkloadIdRequest};
 
 impl OperationId {
     pub fn create() -> Self {
@@ -118,9 +118,7 @@ pub mod workload {
 }
 
 pub use workload::workload_server::{Workload as WorkloadTrait, WorkloadServer};
-pub use workload::{
-    DeleteWorkloadRequest, ListWorkloadsRequest, ListWorkloadsResponse, WorkloadMessage,
-};
+pub use workload::{ListWorkloadsRequest, ListWorkloadsResponse, WorkloadMessage};
 
 // workspace protobufs
 

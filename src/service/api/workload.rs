@@ -1,6 +1,6 @@
 use akira_core::{
-    DeleteWorkloadRequest, ListWorkloadsRequest, ListWorkloadsResponse, OperationId,
-    WorkloadMessage, WorkloadTrait,
+    ListWorkloadsRequest, ListWorkloadsResponse, OperationId, WorkloadIdRequest, WorkloadMessage,
+    WorkloadTrait,
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
@@ -40,12 +40,12 @@ impl WorkloadTrait for GrpcWorkloadService {
 
     async fn delete(
         &self,
-        request: Request<DeleteWorkloadRequest>,
+        request: Request<WorkloadIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
         // TODO: Check that no workloads are currently still using workload
         // Query workload service for workloads by workload_id
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None) {
+        let operation_id = match self.service.delete(&request.into_inner().workload_id, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -56,6 +56,37 @@ impl WorkloadTrait for GrpcWorkloadService {
         };
 
         Ok(Response::new(operation_id))
+    }
+
+    async fn get_by_id(
+        &self,
+        request: Request<WorkloadIdRequest>,
+    ) -> Result<Response<WorkloadMessage>, Status> {
+        let workload_id = request.into_inner().workload_id;
+        let workload = match self.service.get_by_id(&workload_id) {
+            Ok(workload) => workload,
+            Err(err) => {
+                tracing::error!("get target with id {}: failed: {}", workload_id, err);
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    format!("get target with id {}: failed", &workload_id),
+                ));
+            }
+        };
+
+        let workload = match workload {
+            Some(workload) => workload,
+            None => {
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!("get workload with id {}: not found", &workload_id),
+                ))
+            }
+        };
+
+        let workload_message: WorkloadMessage = workload.into();
+
+        Ok(Response::new(workload_message))
     }
 
     async fn list(
@@ -91,7 +122,7 @@ impl WorkloadTrait for GrpcWorkloadService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::{DeleteWorkloadRequest, EventStream, ListWorkloadsRequest, WorkloadTrait};
+    use akira_core::{EventStream, ListWorkloadsRequest, WorkloadIdRequest, WorkloadTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
@@ -138,8 +169,16 @@ mod tests {
 
         assert_eq!(list_response.workloads.len(), 1);
 
-        let request = Request::new(DeleteWorkloadRequest {
-            id: "cribbage-api".to_owned(),
+        let request = Request::new(WorkloadIdRequest {
+            workload_id: "cribbage-api".to_owned(),
+        });
+
+        let get_by_id_response = workload_grpc_service.get_by_id(request).await.unwrap();
+
+        assert_eq!(get_by_id_response.into_inner().id, "cribbage-api");
+
+        let request = Request::new(WorkloadIdRequest {
+            workload_id: "cribbage-api".to_owned(),
         });
 
         let delete_response = workload_grpc_service

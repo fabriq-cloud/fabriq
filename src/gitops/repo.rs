@@ -57,8 +57,12 @@ impl GitRepo {
         auth_callback
     }
 
-    pub fn add(&mut self, path: &str) -> anyhow::Result<()> {
+    pub fn _add(&mut self, path: &str) -> anyhow::Result<()> {
         Ok(self.index.add_path(Path::new(path))?)
+    }
+
+    pub fn remove_dir(&mut self, path: &str) -> anyhow::Result<()> {
+        Ok(self.index.remove_dir(Path::new(path), 0)?)
     }
 
     pub fn commit(&mut self, name: &str, email: &str, message: &str) -> anyhow::Result<Oid> {
@@ -138,7 +142,7 @@ mod tests {
         let data = Uuid::new_v4().to_string();
         fs::write(host_path, data).expect("Unable to write host file");
 
-        gitops_repo.add(host_repo_path).unwrap();
+        gitops_repo._add(host_repo_path).unwrap();
 
         gitops_repo
             .commit(

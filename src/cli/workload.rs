@@ -1,5 +1,5 @@
 use akira_core::workload::workload_client::WorkloadClient;
-use akira_core::{DeleteWorkloadRequest, ListWorkloadsRequest, WorkloadMessage};
+use akira_core::{ListWorkloadsRequest, WorkloadIdRequest, WorkloadMessage};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
 use tonic::metadata::MetadataValue;
@@ -85,7 +85,9 @@ pub async fn handlers(
         }
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("workload id expected");
-            let request = tonic::Request::new(DeleteWorkloadRequest { id: id.to_string() });
+            let request = tonic::Request::new(WorkloadIdRequest {
+                workload_id: id.to_string(),
+            });
 
             client.delete(request).await?;
 
