@@ -3,7 +3,7 @@ use akira_core::assignment::assignment_client::AssignmentClient;
 use akira_core::host::host_client::HostClient;
 use akira_core::target::target_client::TargetClient;
 use akira_core::workload::workload_client::WorkloadClient;
-use akira_core::{DeploymentMessage, Event, EventType, ModelType};
+use akira_core::{DeploymentMessage, Event, EventType, ModelType, WorkloadIdRequest};
 use prost::Message;
 use tonic::codegen::InterceptedService;
 use tonic::metadata::{Ascii, MetadataValue};
@@ -126,7 +126,7 @@ impl<'a> GitOpsProcessor {
         })
     }
 
-    pub fn _create_workload_client(
+    pub fn create_workload_client(
         &self,
     ) -> WorkloadClient<InterceptedService<Channel, impl Interceptor + '_>> {
         WorkloadClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
@@ -161,24 +161,24 @@ impl<'a> GitOpsProcessor {
         let deployment =
             Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
 
-        /*
-                let workload_client = self.create_workload_client();
+        let mut workload_client = self.create_workload_client();
 
-                let workload_request = Request::new(WorkloadIdRequest {
-                    workload_id: deployment.workload_id.clone(),
-                });
+        let workload_request = Request::new(WorkloadIdRequest {
+            workload_id: deployment.workload_id.clone(),
+        });
 
-                let workload = workload_client
-                    .get_by_id(workload_request)
-                    .await?
-                    .into_inner();
-        */
+        let workload = workload_client
+            .get_by_id(workload_request)
+            .await?
+            .into_inner();
 
         // deployments / workspace / workload / deployment
         let deployment_repo_path = format!(
             "deployments/{}/{}/{}",
-            "workspace", deployment.workload_id, deployment.id
+            workload.workspace_id, deployment.workload_id, deployment.id
         );
+
+        self.gitops_repo.add(&deployment_repo_path).await?;
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
@@ -196,7 +196,7 @@ impl<'a> GitOpsProcessor {
             }
             event_type if event_type == EventType::Deleted as i32 => {
                 // Remove deployment from GitOps folder
-                self.gitops_repo.remove_dir(&deployment_repo_path)?;
+                self.gitops_repo.remove_dir(&deployment_repo_path).await?;
                 tracing::info!("deployment deleted (NOP): {:?}", event);
             }
             _ => {
@@ -204,11 +204,13 @@ impl<'a> GitOpsProcessor {
             }
         }
 
-        self.gitops_repo.commit(
-            "Tim Park",
-            "timfpark@gmail.com",
-            "Processed deployment event",
-        )?;
+        self.gitops_repo
+            .commit(
+                "Tim Park",
+                "timfpark@gmail.com",
+                "Processed deployment event",
+            )
+            .await?;
 
         self.gitops_repo.push()
     }

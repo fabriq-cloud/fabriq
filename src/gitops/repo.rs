@@ -3,9 +3,10 @@ use std::path::Path;
 use git2::{
     Cred, Direction, Index, ObjectType, Oid, PushOptions, RemoteCallbacks, Repository, Signature,
 };
+use tokio::sync::Mutex;
 
 pub struct GitRepo {
-    pub index: Index,
+    pub index: Mutex<Index>,
     pub repository: Repository,
 
     pub branch: String,
@@ -32,7 +33,7 @@ impl GitRepo {
 
         let repository = repo_builder.clone(repo_url, local_path)?;
 
-        let index = repository.index()?;
+        let index = Mutex::new(repository.index()?);
 
         Ok(Self {
             branch: branch.to_string(),
@@ -57,16 +58,19 @@ impl GitRepo {
         auth_callback
     }
 
-    pub fn _add(&mut self, path: &str) -> anyhow::Result<()> {
-        Ok(self.index.add_path(Path::new(path))?)
+    pub async fn add(&self, path: &str) -> anyhow::Result<()> {
+        let mut index = self.index.lock().await;
+        Ok(index.add_path(Path::new(path))?)
     }
 
-    pub fn remove_dir(&mut self, path: &str) -> anyhow::Result<()> {
-        Ok(self.index.remove_dir(Path::new(path), 0)?)
+    pub async fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
+        let mut index = self.index.lock().await;
+        Ok(index.remove_dir(Path::new(path), 0)?)
     }
 
-    pub fn commit(&mut self, name: &str, email: &str, message: &str) -> anyhow::Result<Oid> {
-        let oid = self.index.write_tree()?;
+    pub async fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<Oid> {
+        let mut index = self.index.lock().await;
+        let oid = index.write_tree()?;
 
         let signature = Signature::now(name, email)?;
 
@@ -92,7 +96,7 @@ impl GitRepo {
         )?)
     }
 
-    pub fn push(&mut self) -> anyhow::Result<()> {
+    pub fn push(&self) -> anyhow::Result<()> {
         let mut remote = self.repository.find_remote("origin")?;
 
         let connect_auth_callback = GitRepo::get_auth_callback(&self.private_ssh_key);
@@ -119,8 +123,8 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_clone_repo() {
+    #[tokio::test]
+    async fn test_clone_repo() {
         dotenv().ok();
 
         let branch = "main";
@@ -131,7 +135,7 @@ mod tests {
         let _ = fs::remove_dir_all(local_path);
         fs::create_dir_all(local_path).unwrap();
 
-        let mut gitops_repo = GitRepo::new(local_path, repo_url, branch, &private_ssh_key).unwrap();
+        let gitops_repo = GitRepo::new(local_path, repo_url, branch, &private_ssh_key).unwrap();
 
         let hosts_path = format!("{}/hosts", local_path);
         let hosts_path = Path::new(&hosts_path);
@@ -142,7 +146,7 @@ mod tests {
         let data = Uuid::new_v4().to_string();
         fs::write(host_path, data).expect("Unable to write host file");
 
-        gitops_repo._add(host_repo_path).unwrap();
+        gitops_repo.add(host_repo_path).await.unwrap();
 
         gitops_repo
             .commit(
@@ -150,6 +154,7 @@ mod tests {
                 "timfpark@gmail.com",
                 "Create azure-eastus2-1 host",
             )
+            .await
             .unwrap();
 
         gitops_repo.push().unwrap();
