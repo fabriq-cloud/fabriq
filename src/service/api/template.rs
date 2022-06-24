@@ -1,3 +1,4 @@
+use akira_core::common::TemplateIdRequest;
 use akira_core::{
     DeleteTemplateRequest, ListTemplatesRequest, ListTemplatesResponse, OperationId,
     TemplateMessage, TemplateTrait,
@@ -58,6 +59,37 @@ impl TemplateTrait for GrpcTemplateService {
         Ok(Response::new(operation_id))
     }
 
+    async fn get_by_id(
+        &self,
+        request: Request<TemplateIdRequest>,
+    ) -> Result<Response<TemplateMessage>, Status> {
+        let template_id = request.into_inner().template_id;
+        let template = match self.service.get_by_id(&template_id) {
+            Ok(template) => template,
+            Err(err) => {
+                tracing::error!("get target with id {}: failed: {}", template_id, err);
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    format!("get target with id {}: failed", &template_id),
+                ));
+            }
+        };
+
+        let template = match template {
+            Some(template) => template,
+            None => {
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!("get template with id {}: not found", &template_id),
+                ))
+            }
+        };
+
+        let template_message: TemplateMessage = template.into();
+
+        Ok(Response::new(template_message))
+    }
+
     async fn list(
         &self,
         _request: Request<ListTemplatesRequest>,
@@ -92,6 +124,7 @@ impl TemplateTrait for GrpcTemplateService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::common::TemplateIdRequest;
     use akira_core::{DeleteTemplateRequest, EventStream, ListTemplatesRequest, TemplateTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
@@ -140,6 +173,14 @@ mod tests {
             .into_inner();
 
         assert_eq!(list_response.templates.len(), 1);
+
+        let request = Request::new(TemplateIdRequest {
+            template_id: "external-service".to_owned(),
+        });
+
+        let get_by_id_response = template_grpc_service.get_by_id(request).await.unwrap();
+
+        assert_eq!(get_by_id_response.into_inner().id, "external-service");
 
         let request = Request::new(DeleteTemplateRequest {
             id: "external-service".to_owned(),

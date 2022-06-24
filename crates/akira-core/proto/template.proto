@@ -6,6 +6,7 @@ import "common.proto";
 service Template {
     rpc Create(TemplateMessage) returns (akira.common.OperationId);
     rpc Delete(DeleteTemplateRequest) returns (akira.common.OperationId);
+    rpc GetById(akira.common.TemplateIdRequest) returns (TemplateMessage);
     rpc List(ListTemplatesRequest) returns (ListTemplatesResponse);
 }
 

@@ -1,9 +1,15 @@
-use akira::models::Deployment;
-use akira_core::assignment::assignment_client::AssignmentClient;
-use akira_core::host::host_client::HostClient;
-use akira_core::target::target_client::TargetClient;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
+
+use akira_core::common::TemplateIdRequest;
+use akira_core::template::template_client::TemplateClient;
 use akira_core::workload::workload_client::WorkloadClient;
-use akira_core::{DeploymentMessage, Event, EventType, ModelType, WorkloadIdRequest};
+use akira_core::{
+    DeploymentMessage, Event, EventType, ModelType, TemplateMessage, WorkloadIdRequest,
+    WorkloadMessage,
+};
+use handlebars::Handlebars;
 use prost::Message;
 use tonic::codegen::InterceptedService;
 use tonic::metadata::{Ascii, MetadataValue};
@@ -28,15 +34,36 @@ impl<'a> GitOpsProcessor {
         let token: MetadataValue<Ascii> = context.token.parse()?;
 
         Ok(Self {
-            channel,
             gitops_repo,
+
+            channel,
             token,
         })
     }
 
-    fn get_current_or_previous_model<ModelMessage: Default + Message, Model: From<ModelMessage>>(
+    fn create_template_client(
+        &self,
+    ) -> TemplateClient<InterceptedService<Channel, impl Interceptor + '_>> {
+        TemplateClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
+            req.metadata_mut()
+                .insert("authorization", self.token.clone());
+            Ok(req)
+        })
+    }
+
+    fn create_workload_client(
+        &self,
+    ) -> WorkloadClient<InterceptedService<Channel, impl Interceptor + '_>> {
+        WorkloadClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
+            req.metadata_mut()
+                .insert("authorization", self.token.clone());
+            Ok(req)
+        })
+    }
+
+    fn get_current_or_previous_model<ModelMessage: Default + Message>(
         event: &Event,
-    ) -> anyhow::Result<Model> {
+    ) -> anyhow::Result<ModelMessage> {
         let message: ModelMessage =
             if let Some(serialized_current_model) = &event.serialized_current_model {
                 ModelMessage::decode(&**serialized_current_model)?
@@ -49,7 +76,7 @@ impl<'a> GitOpsProcessor {
                 ));
             };
 
-        Ok(message.into())
+        Ok(message)
     }
 
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
@@ -96,46 +123,6 @@ impl<'a> GitOpsProcessor {
         }
     }
 
-    pub fn create_assignment_client(
-        &self,
-    ) -> AssignmentClient<InterceptedService<Channel, impl Interceptor + '_>> {
-        AssignmentClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
-            req.metadata_mut()
-                .insert("authorization", self.token.clone());
-            Ok(req)
-        })
-    }
-
-    pub fn create_host_client(
-        &self,
-    ) -> HostClient<InterceptedService<Channel, impl Interceptor + '_>> {
-        HostClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
-            req.metadata_mut()
-                .insert("authorization", self.token.clone());
-            Ok(req)
-        })
-    }
-
-    pub fn create_target_client(
-        &self,
-    ) -> TargetClient<InterceptedService<Channel, impl Interceptor + '_>> {
-        TargetClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
-            req.metadata_mut()
-                .insert("authorization", self.token.clone());
-            Ok(req)
-        })
-    }
-
-    pub fn create_workload_client(
-        &self,
-    ) -> WorkloadClient<InterceptedService<Channel, impl Interceptor + '_>> {
-        WorkloadClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
-            req.metadata_mut()
-                .insert("authorization", self.token.clone());
-            Ok(req)
-        })
-    }
-
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         match event_type {
@@ -156,18 +143,81 @@ impl<'a> GitOpsProcessor {
         Ok(())
     }
 
+    async fn fetch_template_repo(&self, template: &TemplateMessage) -> anyhow::Result<GitRepo> {
+        // TODO: Do we want to use the same private key for all deployments?
+        let template_path = format!("templates/{}", template.id);
+
+        GitRepo::new(
+            &template_path,
+            &template.repository,
+            &template.branch,
+            &self.gitops_repo.private_ssh_key,
+        )
+    }
+
+    async fn render_deployment(
+        &self,
+        workload: &WorkloadMessage,
+        deployment: &DeploymentMessage,
+    ) -> anyhow::Result<()> {
+        let template_id = deployment
+            .template_id
+            .clone()
+            .unwrap_or_else(|| workload.template_id.clone());
+        let template_request = tonic::Request::new(TemplateIdRequest {
+            template_id: template_id.clone(),
+        });
+
+        let template = self
+            .create_template_client()
+            .get_by_id(template_request)
+            .await?
+            .into_inner();
+
+        let template_repo = self.fetch_template_repo(&template).await?;
+
+        let template_repo_path = format!("templates/{}/{}", template_id, template.path);
+
+        let template_paths = fs::read_dir(template_repo_path)?;
+
+        // deployments / workspace / workload / deployment
+        let deployment_repo_path = format!(
+            "deployments/{}/{}/{}",
+            workload.workspace_id, deployment.workload_id, deployment.id
+        );
+
+        for template_path in template_paths {
+            let template_path = template_path?.path();
+            let template_string = fs::read_to_string(template_path.clone())?;
+
+            let mut handlebars = Handlebars::new();
+            handlebars.register_template_string(&template.id, template_string)?;
+
+            let file_name = template_path.file_name().unwrap();
+            let file_path = Path::new(&deployment_repo_path).join(file_name);
+            let mut values: HashMap<&str, &str> = HashMap::new();
+            values.insert("key", "value");
+
+            let rendered_template = handlebars.render(&template.id, &values)?;
+
+            template_repo
+                .write_text_file(file_path, &rendered_template)
+                .await?;
+        }
+
+        Ok(())
+    }
+
     async fn process_deployment_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
-        let deployment =
-            Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
-
-        let mut workload_client = self.create_workload_client();
+        let deployment = Self::get_current_or_previous_model::<DeploymentMessage>(event)?;
 
         let workload_request = Request::new(WorkloadIdRequest {
             workload_id: deployment.workload_id.clone(),
         });
 
-        let workload = workload_client
+        let workload = self
+            .create_workload_client()
             .get_by_id(workload_request)
             .await?
             .into_inner();
@@ -178,26 +228,21 @@ impl<'a> GitOpsProcessor {
             workload.workspace_id, deployment.workload_id, deployment.id
         );
 
-        self.gitops_repo.add(&deployment_repo_path).await?;
+        // Create / Update / Delete all remove current deployment from GitOps folder
+        self.gitops_repo.remove_dir(&deployment_repo_path).await?;
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                // Delete current deployment
-
-                // Render deployment into
-                // Commit in GitOps folder
-                let _assignment_client = self.create_assignment_client();
-                let _host_client = self.create_host_client();
-                let _target_client = self.create_target_client();
+                tracing::info!("deployment created {:?}", deployment);
+                self.render_deployment(&workload, &deployment).await?;
             }
             event_type if event_type == EventType::Updated as i32 => {
-                // Render deployment and commit in GitOps folder
-                tracing::info!("deployment updated (NOP): {:?}", event);
+                tracing::info!("deployment updated: {:?}", event);
+                self.render_deployment(&workload, &deployment).await?;
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                // Remove deployment from GitOps folder
-                self.gitops_repo.remove_dir(&deployment_repo_path).await?;
-                tracing::info!("deployment deleted (NOP): {:?}", event);
+                tracing::info!("deployment deleted: {:?}", event);
+                // just commit deleted deployment
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);

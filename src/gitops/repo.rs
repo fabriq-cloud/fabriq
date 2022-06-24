@@ -1,4 +1,7 @@
-use std::path::Path;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use git2::{
     Cred, Direction, Index, ObjectType, Oid, PushOptions, RemoteCallbacks, Repository, Signature,
@@ -11,6 +14,7 @@ pub struct GitRepo {
 
     pub branch: String,
     pub private_ssh_key: String,
+    pub local_path: PathBuf,
 }
 
 impl GitRepo {
@@ -40,6 +44,7 @@ impl GitRepo {
             index,
             private_ssh_key: private_ssh_key.to_string(),
             repository,
+            local_path: local_path.to_path_buf(),
         })
     }
 
@@ -58,9 +63,9 @@ impl GitRepo {
         auth_callback
     }
 
-    pub async fn add(&self, path: &str) -> anyhow::Result<()> {
+    pub async fn add(&self, repo_path: &Path) -> anyhow::Result<()> {
         let mut index = self.index.lock().await;
-        Ok(index.add_path(Path::new(path))?)
+        Ok(index.add_path(repo_path)?)
     }
 
     pub async fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
@@ -112,6 +117,16 @@ impl GitRepo {
 
         Ok(())
     }
+
+    pub async fn write_text_file(&self, repo_path: PathBuf, contents: &str) -> anyhow::Result<()> {
+        let file_path = self.local_path.join(repo_path.clone());
+
+        fs::write(file_path.clone(), contents).expect("Unable to write host file");
+
+        self.add(&repo_path).await?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -141,12 +156,13 @@ mod tests {
         let hosts_path = Path::new(&hosts_path);
         assert!(hosts_path.exists());
 
-        let host_repo_path = "hosts/azure-eastus2-1.yaml";
-        let host_path = format!("{}/{}", local_path, host_repo_path);
+        let host_repo_path = Path::new("hosts/azure-eastus2-1.yaml").to_path_buf();
         let data = Uuid::new_v4().to_string();
-        fs::write(host_path, data).expect("Unable to write host file");
 
-        gitops_repo.add(host_repo_path).await.unwrap();
+        gitops_repo
+            .write_text_file(host_repo_path, &data)
+            .await
+            .unwrap();
 
         gitops_repo
             .commit(

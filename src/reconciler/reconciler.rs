@@ -37,7 +37,10 @@ impl Reconciler {
         let model_type = event.model_type;
 
         match model_type {
-            model_type if model_type == ModelType::Assignment as i32 => Ok(()),
+            model_type if model_type == ModelType::Assignment as i32 => {
+                // NOP
+                Ok(())
+            }
             model_type if model_type == ModelType::Deployment as i32 => {
                 self.process_deployment_event(event)
             }
