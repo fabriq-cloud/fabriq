@@ -1,9 +1,7 @@
-use std::{sync::Arc, time::SystemTime};
+use std::sync::Arc;
 
 use crate::{models::Assignment, persistence::AssignmentPersistence};
-use akira_core::{AssignmentMessage, Event, EventStream, EventType, ModelType, OperationId};
-use prost::Message;
-use prost_types::Timestamp;
+use akira_core::{create_event, AssignmentMessage, EventStream, EventType, ModelType, OperationId};
 
 pub struct AssignmentService {
     pub persistence: Box<dyn AssignmentPersistence>,
@@ -11,43 +9,6 @@ pub struct AssignmentService {
 }
 
 impl AssignmentService {
-    pub fn serialize_model(model: &Option<Assignment>) -> Option<Vec<u8>> {
-        match model {
-            Some(assignment) => {
-                let message: AssignmentMessage = assignment.clone().into();
-                Some(message.encode_to_vec())
-            }
-            None => None,
-        }
-    }
-
-    pub fn create_event(
-        previous_assignment: &Option<Assignment>,
-        current_assignment: &Option<Assignment>,
-        event_type: EventType,
-        operation_id: &OperationId,
-    ) -> Event {
-        let serialized_current_model = Self::serialize_model(current_assignment);
-        let serialized_previous_model = Self::serialize_model(previous_assignment);
-
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Assignment as i32,
-            serialized_previous_model,
-            serialized_current_model,
-            event_type: event_type as i32,
-            timestamp: Some(timestamp),
-        }
-    }
-
     pub fn create(
         &self,
         assignment: &Assignment,
@@ -57,14 +18,15 @@ impl AssignmentService {
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
-        let create_assignment_event = Self::create_event(
+        let create_event = create_event::<AssignmentMessage>(
             &None,
-            &Some(assignment.clone()),
+            &Some(assignment.clone().into()),
             EventType::Created,
+            ModelType::Assignment,
             &operation_id,
         );
 
-        self.event_stream.send(&create_assignment_event)?;
+        self.event_stream.send(&create_event)?;
 
         Ok(operation_id)
     }
@@ -80,10 +42,11 @@ impl AssignmentService {
         let create_assignment_events = assignments
             .iter()
             .map(|assignment| {
-                Self::create_event(
+                create_event::<AssignmentMessage>(
                     &None,
-                    &Some(assignment.clone()),
+                    &Some(assignment.clone().into()),
                     EventType::Created,
+                    ModelType::Assignment,
                     &operation_id,
                 )
             })
@@ -112,10 +75,15 @@ impl AssignmentService {
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
-        let delete_assignment_event =
-            Self::create_event(&Some(assignment), &None, EventType::Deleted, &operation_id);
+        let delete_event = create_event::<AssignmentMessage>(
+            &None,
+            &Some(assignment.into()),
+            EventType::Deleted,
+            ModelType::Assignment,
+            &operation_id,
+        );
 
-        self.event_stream.send(&delete_assignment_event)?;
+        self.event_stream.send(&delete_event)?;
 
         Ok(operation_id)
     }
@@ -135,10 +103,11 @@ impl AssignmentService {
         let delete_assignment_events = assignments
             .iter()
             .map(|assignment| {
-                Self::create_event(
-                    &Some(assignment.clone()),
+                create_event::<AssignmentMessage>(
                     &None,
+                    &Some(assignment.clone().into()),
                     EventType::Deleted,
+                    ModelType::Assignment,
                     &operation_id,
                 )
             })

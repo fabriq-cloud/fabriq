@@ -1,8 +1,5 @@
-use std::{sync::Arc, time::SystemTime};
-
-use akira_core::{DeploymentMessage, Event, EventStream, EventType, ModelType, OperationId};
-use prost::Message;
-use prost_types::Timestamp;
+use akira_core::{create_event, DeploymentMessage, EventStream, EventType, ModelType, OperationId};
+use std::sync::Arc;
 
 use crate::{models::Deployment, persistence::DeploymentPersistence};
 
@@ -12,43 +9,6 @@ pub struct DeploymentService {
 }
 
 impl DeploymentService {
-    pub fn serialize_model(model: &Option<Deployment>) -> Option<Vec<u8>> {
-        match model {
-            Some(assignment) => {
-                let message: DeploymentMessage = assignment.clone().into();
-                Some(message.encode_to_vec())
-            }
-            None => None,
-        }
-    }
-
-    pub fn create_event(
-        previous_deployment: &Option<Deployment>,
-        current_deployment: &Option<Deployment>,
-        event_type: EventType,
-        operation_id: &OperationId,
-    ) -> Event {
-        let serialized_previous_model = Self::serialize_model(previous_deployment);
-        let serialized_current_model = Self::serialize_model(current_deployment);
-
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Deployment as i32,
-            serialized_previous_model,
-            serialized_current_model,
-            event_type: event_type as i32,
-            timestamp: Some(timestamp),
-        }
-    }
-
     pub fn create(
         &self,
         deployment: &Deployment,
@@ -67,11 +27,15 @@ impl DeploymentService {
         };
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
+        let create_event = create_event::<DeploymentMessage>(
+            &None,
+            &Some(deployment.into()),
+            EventType::Created,
+            ModelType::Deployment,
+            &operation_id,
+        );
 
-        let create_deployment_event =
-            Self::create_event(&None, &Some(deployment), EventType::Created, &operation_id);
-
-        self.event_stream.send(&create_deployment_event)?;
+        self.event_stream.send(&create_event)?;
 
         Ok(operation_id)
     }
@@ -98,10 +62,15 @@ impl DeploymentService {
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
-        let delete_deployment_event =
-            Self::create_event(&Some(deployment), &None, EventType::Deleted, &operation_id);
+        let delete_event = create_event::<DeploymentMessage>(
+            &None,
+            &Some(deployment.into()),
+            EventType::Deleted,
+            ModelType::Deployment,
+            &operation_id,
+        );
 
-        self.event_stream.send(&delete_deployment_event)?;
+        self.event_stream.send(&delete_event)?;
 
         Ok(operation_id)
     }

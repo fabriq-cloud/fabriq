@@ -27,7 +27,7 @@ pub struct GitOpsProcessor {
     token: MetadataValue<Ascii>,
 }
 
-impl<'a> GitOpsProcessor {
+impl GitOpsProcessor {
     pub async fn new(gitops_repo: GitRepo) -> anyhow::Result<Self> {
         let context = Context::default();
         let channel = Channel::from_static(context.endpoint).connect().await?;
@@ -399,4 +399,51 @@ impl<'a> GitOpsProcessor {
 
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use akira_core::{
+        create_event, DeploymentMessage, EventStream, EventType, ModelType, OperationId,
+    };
+    use akira_memory_stream::MemoryEventStream;
+    use std::sync::Arc;
+
+    fn create_processor_fixture() -> anyhow::Result<()> {
+        let _event_stream: Arc<Box<dyn EventStream>> =
+            Arc::new(Box::new(MemoryEventStream::new()?));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_process_deployment_create_event() {
+        let _processor = create_processor_fixture().unwrap();
+
+        let deployment = DeploymentMessage {
+            id: "deployment-fixture".to_owned(),
+            target_id: "eastus2".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            template_id: Some("template-fixture".to_owned()),
+            host_count: 2,
+        };
+
+        let operation_id = OperationId::create();
+
+        let _event = create_event(
+            &None,
+            &Some(deployment),
+            EventType::Created,
+            ModelType::Deployment,
+            &operation_id,
+        );
+
+        // processor.process(&event);
+    }
+
+    #[test]
+    fn test_process_deployment_update_event() {}
+
+    #[test]
+    fn test_process_deployment_delete_event() {}
 }

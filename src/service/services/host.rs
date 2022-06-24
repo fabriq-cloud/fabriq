@@ -1,9 +1,5 @@
+use akira_core::{create_event, EventStream, EventType, HostMessage, ModelType, OperationId};
 use std::sync::Arc;
-use std::time::SystemTime;
-
-use akira_core::{Event, EventStream, EventType, HostMessage, ModelType, OperationId};
-use prost::Message;
-use prost_types::Timestamp;
 
 use crate::{
     models::{Host, Target},
@@ -16,43 +12,6 @@ pub struct HostService {
 }
 
 impl HostService {
-    pub fn serialize_model(model: &Option<Host>) -> Option<Vec<u8>> {
-        match model {
-            Some(assignment) => {
-                let message: HostMessage = assignment.clone().into();
-                Some(message.encode_to_vec())
-            }
-            None => None,
-        }
-    }
-
-    pub fn create_event(
-        previous_host: &Option<Host>,
-        current_host: &Option<Host>,
-        event_type: EventType,
-        operation_id: &OperationId,
-    ) -> Event {
-        let serialized_previous_model = Self::serialize_model(previous_host);
-        let serialized_current_model = Self::serialize_model(current_host);
-
-        let timestamp = Timestamp {
-            seconds: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            nanos: 0,
-        };
-
-        Event {
-            operation_id: Some(operation_id.clone()),
-            model_type: ModelType::Host as i32,
-            serialized_previous_model,
-            serialized_current_model,
-            event_type: event_type as i32,
-            timestamp: Some(timestamp),
-        }
-    }
-
     pub fn create(
         &self,
         host: &Host,
@@ -68,10 +27,15 @@ impl HostService {
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
-        let create_host_event =
-            Self::create_event(&None, &Some(host), EventType::Created, &operation_id);
+        let create_event = create_event::<HostMessage>(
+            &None,
+            &Some(host.into()),
+            EventType::Created,
+            ModelType::Host,
+            &operation_id,
+        );
 
-        self.event_stream.send(&create_host_event)?;
+        self.event_stream.send(&create_event)?;
 
         Ok(operation_id)
     }
@@ -102,10 +66,15 @@ impl HostService {
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
 
-        let delete_host_event =
-            Self::create_event(&Some(host), &None, EventType::Deleted, &operation_id);
+        let delete_event = create_event::<HostMessage>(
+            &None,
+            &Some(host.into()),
+            EventType::Deleted,
+            ModelType::Host,
+            &operation_id,
+        );
 
-        self.event_stream.send(&delete_host_event)?;
+        self.event_stream.send(&delete_event)?;
 
         Ok(operation_id)
     }

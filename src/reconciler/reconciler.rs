@@ -344,7 +344,7 @@ mod tests {
         AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
         MemoryPersistence, WorkloadMemoryPersistence,
     };
-    use akira_core::EventStream;
+    use akira_core::{create_event, EventStream};
     use akira_memory_stream::MemoryEventStream;
 
     use super::*;
@@ -470,10 +470,11 @@ mod tests {
 
         let operation_id = OperationId::create();
 
-        let event = akira::services::TargetService::create_event(
+        let event = create_event::<TargetMessage>(
             &None,
-            &Some(target),
+            &Some(target.into()),
             EventType::Created,
+            ModelType::Target,
             &operation_id,
         );
 
@@ -498,10 +499,11 @@ mod tests {
 
         let operation_id = OperationId::create();
 
-        let event = akira::services::WorkloadService::create_event(
+        let event = create_event::<WorkloadMessage>(
             &None,
-            &Some(workload),
+            &Some(workload.into()),
             EventType::Created,
+            ModelType::Workload,
             &operation_id,
         );
 
@@ -525,10 +527,11 @@ mod tests {
             path: "external-service".to_owned(),
         };
 
-        let event = akira::services::TemplateService::create_event(
+        let event = create_event::<TemplateMessage>(
             &None,
-            &Some(template),
+            &Some(template.into()),
             EventType::Created,
+            ModelType::Template,
             &operation_id,
         );
 
@@ -553,10 +556,11 @@ mod tests {
             host_count: 2,
         };
 
-        let event = akira::services::DeploymentService::create_event(
+        let event = create_event::<DeploymentMessage>(
             &None,
-            &Some(deployment),
+            &Some(deployment.into()),
             EventType::Created,
+            ModelType::Deployment,
             &operation_id,
         );
 
@@ -578,10 +582,11 @@ mod tests {
 
         let operation_id = OperationId::create();
 
-        let event = akira::services::HostService::create_event(
+        let event = create_event::<HostMessage>(
             &None,
-            &Some(host4),
+            &Some(host4.into()),
             EventType::Created,
+            ModelType::Host,
             &operation_id,
         );
 
@@ -596,10 +601,11 @@ mod tests {
             labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
         };
 
-        let event = akira::services::HostService::create_event(
+        let event = create_event::<HostMessage>(
             &None,
-            &Some(host3),
+            &Some(host3.into()),
             EventType::Created,
+            ModelType::Host,
             &operation_id,
         );
 

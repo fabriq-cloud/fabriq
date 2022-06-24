@@ -1,3 +1,6 @@
+use std::time::SystemTime;
+
+use prost_types::Timestamp;
 use uuid::Uuid;
 
 pub mod common {
@@ -43,6 +46,42 @@ pub use deployment::{DeploymentMessage, ListDeploymentsRequest, ListDeploymentsR
 
 pub mod event {
     tonic::include_proto!("akira.event");
+}
+
+pub fn serialize_message_option<ModelMessage: prost::Message>(
+    message_option: &Option<ModelMessage>,
+) -> Option<Vec<u8>> {
+    message_option
+        .as_ref()
+        .map(|message| message.encode_to_vec())
+}
+
+pub fn create_event<ModelMessage: prost::Message>(
+    previous_model: &Option<ModelMessage>,
+    current_model: &Option<ModelMessage>,
+    event_type: EventType,
+    model_type: ModelType,
+    operation_id: &OperationId,
+) -> Event {
+    let serialized_previous_model = serialize_message_option::<ModelMessage>(previous_model);
+    let serialized_current_model = serialize_message_option::<ModelMessage>(current_model);
+
+    let timestamp = Timestamp {
+        seconds: SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64,
+        nanos: 0,
+    };
+
+    Event {
+        operation_id: Some(operation_id.clone()),
+        model_type: model_type as i32,
+        serialized_previous_model,
+        serialized_current_model,
+        event_type: event_type as i32,
+        timestamp: Some(timestamp),
+    }
 }
 
 pub use event::{Event, EventType, ModelType};
