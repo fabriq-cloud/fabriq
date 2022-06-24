@@ -143,10 +143,11 @@ mod tests {
         dotenv().ok();
 
         let branch = "main";
-        let local_path = "fixtures/temp";
+        let local_path = "fixtures/git-repo-test";
         let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
         let repo_url = "git@github.com:timfpark/akira-clone-repo-test.git";
 
+        // if this fails, it just means the repo hasn't been created yet
         let _ = fs::remove_dir_all(local_path);
         fs::create_dir_all(local_path).unwrap();
 

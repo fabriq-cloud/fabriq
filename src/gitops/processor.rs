@@ -155,29 +155,15 @@ impl GitOpsProcessor {
         )
     }
 
-    async fn render_deployment(
+    async fn render_deployment_template(
         &self,
-        workload: &WorkloadMessage,
         deployment: &DeploymentMessage,
+        template: &TemplateMessage,
+        workload: &WorkloadMessage,
     ) -> anyhow::Result<()> {
-        let template_id = deployment
-            .template_id
-            .clone()
-            .unwrap_or_else(|| workload.template_id.clone());
-        let template_request = tonic::Request::new(TemplateIdRequest {
-            template_id: template_id.clone(),
-        });
+        self.fetch_template_repo(template).await?;
 
-        let template = self
-            .create_template_client()
-            .get_by_id(template_request)
-            .await?
-            .into_inner();
-
-        let template_repo = self.fetch_template_repo(&template).await?;
-
-        let template_repo_path = format!("templates/{}/{}", template_id, template.path);
-
+        let template_repo_path = format!("templates/{}/{}", template.id, template.path);
         let template_paths = fs::read_dir(template_repo_path)?;
 
         // deployments / workspace / workload / deployment
@@ -200,10 +186,36 @@ impl GitOpsProcessor {
 
             let rendered_template = handlebars.render(&template.id, &values)?;
 
-            template_repo
+            self.gitops_repo
                 .write_text_file(file_path, &rendered_template)
                 .await?;
         }
+
+        Ok(())
+    }
+
+    async fn render_deployment(
+        &self,
+        workload: &WorkloadMessage,
+        deployment: &DeploymentMessage,
+    ) -> anyhow::Result<()> {
+        let template_id = deployment
+            .template_id
+            .clone()
+            .unwrap_or_else(|| workload.template_id.clone());
+
+        let template_request = tonic::Request::new(TemplateIdRequest {
+            template_id: template_id.clone(),
+        });
+
+        let template = self
+            .create_template_client()
+            .get_by_id(template_request)
+            .await?
+            .into_inner();
+
+        self.render_deployment_template(deployment, &template, workload)
+            .await?;
 
         Ok(())
     }
@@ -403,22 +415,30 @@ impl GitOpsProcessor {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::{
-        create_event, DeploymentMessage, EventStream, EventType, ModelType, OperationId,
-    };
-    use akira_memory_stream::MemoryEventStream;
-    use std::sync::Arc;
+    use std::{env, fs};
 
-    fn create_processor_fixture() -> anyhow::Result<()> {
-        let _event_stream: Arc<Box<dyn EventStream>> =
-            Arc::new(Box::new(MemoryEventStream::new()?));
+    use crate::repo::GitRepo;
 
-        Ok(())
+    use super::GitOpsProcessor;
+
+    async fn _create_processor_fixture() -> GitOpsProcessor {
+        let branch = "main";
+        let local_path = "fixtures/gitops-processor-test";
+        let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
+        let repo_url = "git@github.com:timfpark/akira-clone-repo-test.git";
+
+        // if this fails, it just means the repo hasn't been created yet
+        let _ = fs::remove_dir_all(local_path);
+        fs::create_dir_all(local_path).unwrap();
+
+        let gitops_repo = GitRepo::new(local_path, repo_url, branch, &private_ssh_key).unwrap();
+        GitOpsProcessor::new(gitops_repo).await.unwrap()
     }
 
-    #[test]
-    fn test_process_deployment_create_event() {
-        let _processor = create_processor_fixture().unwrap();
+    #[tokio::test]
+    async fn test_process_deployment_create_event() {
+        /*
+        let mut _processor = create_processor_fixture().await;
 
         let deployment = DeploymentMessage {
             id: "deployment-fixture".to_owned(),
@@ -438,7 +458,8 @@ mod tests {
             &operation_id,
         );
 
-        // processor.process(&event);
+        processor.process(&event).await.unwrap();
+        */
     }
 
     #[test]
