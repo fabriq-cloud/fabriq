@@ -23,4 +23,4 @@ jobs:
           components: clippy, rustfmt
       - run: rustup toolchain install nightly
       - run: cargo install cargo-udeps --locked
-      - run: cargo +nightly udeps
+      - run: cargo +nightly udeps --all-targets
