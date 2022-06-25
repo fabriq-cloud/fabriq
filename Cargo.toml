@@ -31,6 +31,11 @@ uuid = { version = "1.1", features = ["v4"] }
 
 [dev-dependencies]
 akira-memory-stream = { path = "crates/akira-memory-stream" }
+criterion = { version = "0.3.5", features = ["async", "async_tokio", "html_reports"] }
+futures = "0.3"
+
+[profile.release]
+lto = true
 
 [lib]
 name = "akira"
@@ -51,3 +56,7 @@ path = "src/gitops/main.rs"
 [[bin]]
 name = "service"
 path = "src/service/main.rs"
+
+[[bench]]
+name = "list_template_grpc"
+harness = false
