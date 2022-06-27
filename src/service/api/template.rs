@@ -94,7 +94,23 @@ impl TemplateTrait for GrpcTemplateService {
         &self,
         _request: Request<ListTemplatesRequest>,
     ) -> Result<Response<ListTemplatesResponse>, Status> {
-        let templates = match self.service.list() {
+        /*
+        let service_clone = Arc::clone(&self.service);
+        let blocking_result = tokio::task::spawn_blocking(move || service_clone.list()).await;
+
+        let list_result = if let Err(err) = blocking_result {
+            return Err(Status::new(
+                tonic::Code::Internal,
+                format!("listing templates failed with {}", err),
+            ));
+        } else {
+            blocking_result.unwrap()
+        };
+        */
+
+        let list_result = self.service.list();
+
+        let templates = match list_result {
             Ok(templates) => templates,
             Err(err) => {
                 return Err(Status::new(

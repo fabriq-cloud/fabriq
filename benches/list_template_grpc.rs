@@ -11,6 +11,7 @@ const PARALLELISM: i32 = 50;
 const REQUESTS_PER_ASYNC_TASK: i32 = 1000;
 
 // This construct allows us to have one mutable client per REQUESTS_PER_ASYNC_TASK calls of the GRPC endpoint.
+// We add async parallelism on top of this to discover concurrency.
 async fn perform_call_block() {
     let channel = Channel::from_static("http://[::1]:50051")
         .connect()
@@ -31,7 +32,7 @@ async fn perform_call_block() {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let mut group = c.benchmark_group("get_template_grpc");
+    let mut group = c.benchmark_group("list_template_grpc");
 
     for parallelism_index in [PARALLELISM] {
         group.sample_size(10);
