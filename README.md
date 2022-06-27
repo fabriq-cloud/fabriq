@@ -21,7 +21,7 @@ Automatically creates a group for the user and makes it the default
 Let's use a sample node.js application to see how easy it is to deploy. To do this, we need a service, so let's template out a quick one using our CLI:
 
 ```
-$ akira service init hello-service --service-template nodejs-service
+$ akira service init hello-service --seed microsoft/nodejs-service-api
 ```
 
 This is just a convience function and we could have templated it from GitHub itself. Show that it created a repo called hello-service in my Github account and clones it to the
@@ -35,7 +35,7 @@ This is just a convience function and we could have templated it from GitHub its
 ## Deploy node.js application
 
 ```
-$ akira service create hello-service --deployment-template external-service
+$ akira service create hello-service --template external-service
 ```
 
 This registers this service with `akira`, specifying that we would like deployments of this service to, by default, use the `external-service` deployment template.

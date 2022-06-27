@@ -1,3 +1,5 @@
+use std::env;
+
 use akira_core::workload::workload_client::WorkloadClient;
 use akira_core::{ListWorkloadsRequest, WorkloadIdRequest, WorkloadMessage};
 use ascii_table::{Align, AsciiTable};
@@ -38,6 +40,20 @@ pub fn args() -> Command<'static> {
             Command::new("delete")
                 .about("Delete workload")
                 .arg(arg!(<ID> "ID of workload"))
+                .arg_required_else_help(true),
+        )
+        .subcommand(
+            Command::new("init")
+                .about("initialize service")
+                .arg(
+                    Arg::new("seed")
+                        .short('s')
+                        .long("seed")
+                        .help("Seed this workload should be initialized from")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(arg!(<ID> "Workload ID"))
                 .arg_required_else_help(true),
         )
         .subcommand(Command::new("list").about("List workloads"))
@@ -83,8 +99,47 @@ pub async fn handlers(
 
             Ok(())
         }
-        Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("workload id expected");
+        Some(("init", init_match)) => {
+            let id = init_match
+                .value_of("ID")
+                .expect("Workload name expected")
+                .to_string();
+            let seed = init_match
+                .value_of("seed")
+                .expect("Seed expected")
+                .to_string();
+
+            let seed_parts = seed.split('/').collect::<Vec<_>>();
+
+            if seed_parts.len() != 2 {
+                return Err(anyhow::anyhow!(
+                    "Invalid seed format: Expected Github org/repo."
+                ));
+            }
+
+            let pat = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
+
+            let octocrab = octocrab::OctocrabBuilder::new()
+                .personal_token(pat)
+                .build()?;
+
+            let user = octocrab.current().user().await?;
+
+            octocrab
+                .repos(seed_parts[0], seed_parts[1])
+                .generate(&id)
+                .owner(user.login)
+                .include_all_branches(true)
+                .private(true)
+                .send()
+                .await?;
+
+            tracing::info!("workload initialized");
+
+            Ok(())
+        }
+        Some(("delete", delete_match)) => {
+            let id = delete_match.value_of("ID").expect("workload id expected");
             let request = tonic::Request::new(WorkloadIdRequest {
                 workload_id: id.to_string(),
             });

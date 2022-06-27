@@ -20,6 +20,7 @@ dotenv = "0.15.0"
 git2 = "0.14"
 handlebars = "4.3"
 lazy_static = "1.3"
+octocrab = "0.16"
 prost = "0.10"
 prost-types = "0.10"
 tokio = { version = "1.14", features = ["macros", "rt", "rt-multi-thread"] }
