@@ -1,9 +1,10 @@
 CREATE TABLE configs (
-  id         TEXT      PRIMARY KEY,
+  id           TEXT PRIMARY KEY,
 
-  model_type SMALLINT  NOT NULL,
-  model_id   TEXT      NOT NULL,
+  owning_model TEXT NOT NULL,
 
-  key        TEXT      NOT NULL,
-  value      TEXT      NOT NULL
+  key          TEXT NOT NULL,
+  value        TEXT NOT NULL
 );
+
+CREATE INDEX configs_owning_model ON configs(owning_model);

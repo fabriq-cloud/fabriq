@@ -33,6 +33,15 @@ pub mod assignment {
 pub use assignment::assignment_server::{Assignment as AssignmentTrait, AssignmentServer};
 pub use assignment::{AssignmentMessage, ListAssignmentsRequest, ListAssignmentsResponse};
 
+// config protobufs
+
+pub mod config {
+    tonic::include_proto!("akira.config");
+}
+
+pub use config::config_server::{Config as ConfigTrait, ConfigServer};
+pub use config::{ConfigIdRequest, ConfigMessage, QueryConfigRequest, QueryConfigResponse};
+
 // deployment protobufs
 
 pub mod deployment {
@@ -107,6 +116,7 @@ impl From<i32> for ModelType {
             4 => ModelType::Template,
             5 => ModelType::Workload,
             6 => ModelType::Workspace,
+            7 => ModelType::Config,
             _ => panic!("invalid model type"),
         }
     }

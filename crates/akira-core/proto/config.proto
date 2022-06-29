@@ -1,0 +1,32 @@
+syntax = "proto3";
+package akira.config;
+
+import "common.proto";
+
+service Config {
+    rpc Create(ConfigMessage) returns (akira.common.OperationId);
+    rpc Delete(ConfigIdRequest) returns (akira.common.OperationId);
+    rpc Query(QueryConfigRequest) returns (QueryConfigResponse);
+}
+
+message ConfigIdRequest {
+    string config_id = 1;
+}
+
+message QueryConfigRequest {
+    string deployment_id = 1;
+    string workload_id = 2;
+}
+
+message QueryConfigResponse {
+    repeated ConfigMessage config = 1;
+}
+
+message ConfigMessage {
+    string id = 1;
+
+    string key = 2;
+    string value = 3;
+
+    string owning_model = 4; // deployment:342 || workload:123
+}

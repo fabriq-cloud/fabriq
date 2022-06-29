@@ -1,4 +1,5 @@
 mod assignment;
+mod config;
 mod deployment;
 mod health;
 mod host;
@@ -8,6 +9,7 @@ mod workload;
 mod workspace;
 
 pub use assignment::GrpcAssignmentService;
+pub use config::GrpcConfigService;
 pub use deployment::GrpcDeploymentService;
 pub use health::GrpcHealthService;
 pub use host::GrpcHostService;

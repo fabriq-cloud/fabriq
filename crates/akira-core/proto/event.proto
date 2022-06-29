@@ -22,6 +22,7 @@ enum ModelType {
     Template = 4;
     Workload = 5;
     Workspace = 6;
+    Config = 7;
 };
 
 message Event {

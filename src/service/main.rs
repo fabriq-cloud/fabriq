@@ -1,8 +1,8 @@
-use akira_core::EventStream;
 use akira_core::{
     AssignmentServer, DeploymentServer, HealthServer, HostServer, TargetServer, TemplateServer,
     WorkloadServer, WorkspaceServer,
 };
+use akira_core::{ConfigServer, EventStream};
 use akira_mqtt_stream::MqttEventStream;
 use dotenv::dotenv;
 use std::env;
@@ -11,20 +11,21 @@ use tonic::transport::Server;
 
 use akira::acl;
 use akira::api::{
-    GrpcAssignmentService, GrpcDeploymentService, GrpcHealthService, GrpcHostService,
-    GrpcTargetService, GrpcTemplateService, GrpcWorkloadService, GrpcWorkspaceService,
+    GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
+    GrpcHostService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
+    GrpcWorkspaceService,
 };
 use akira::persistence::relational::{
-    AssignmentRelationalPersistence, DeploymentRelationalPersistence, HostRelationalPersistence,
-    TargetRelationalPersistence, WorkspaceRelationalPersistence,
+    AssignmentRelationalPersistence, ConfigRelationalPersistence, DeploymentRelationalPersistence,
+    HostRelationalPersistence, TargetRelationalPersistence, WorkspaceRelationalPersistence,
 };
 use akira::persistence::relational::{
     TemplateRelationalPersistence, WorkloadRelationalPersistence,
 };
 
 use akira::services::{
-    AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
-    WorkloadService, WorkspaceService,
+    AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
+    TemplateService, WorkloadService, WorkspaceService,
 };
 
 const DEFAULT_RECONCILER_CLIENT_ID: &str = "reconciler";
@@ -49,6 +50,12 @@ async fn main() -> anyhow::Result<()> {
     let assignment_persistence = Box::new(AssignmentRelationalPersistence::default());
     let assignment_service = Arc::new(AssignmentService {
         persistence: assignment_persistence,
+        event_stream: Arc::clone(&event_stream),
+    });
+
+    let config_persistence = Box::new(ConfigRelationalPersistence::default());
+    let config_service = Arc::new(ConfigService {
+        persistence: config_persistence,
         event_stream: Arc::clone(&event_stream),
     });
 
@@ -98,6 +105,11 @@ async fn main() -> anyhow::Result<()> {
         acl::authorize,
     );
 
+    let config_grpc_service = ConfigServer::with_interceptor(
+        GrpcConfigService::new(Arc::clone(&config_service)),
+        acl::authorize,
+    );
+
     let deployment_grpc_service = DeploymentServer::with_interceptor(
         GrpcDeploymentService::new(Arc::clone(&deployment_service)),
         acl::authorize,
@@ -135,6 +147,7 @@ async fn main() -> anyhow::Result<()> {
 
     Server::builder()
         .add_service(tonic_web::enable(assignment_grpc_service))
+        .add_service(tonic_web::enable(config_grpc_service))
         .add_service(tonic_web::enable(deployment_grpc_service))
         .add_service(tonic_web::enable(health_grpc_service))
         .add_service(tonic_web::enable(host_grpc_service))

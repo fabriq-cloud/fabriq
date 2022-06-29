@@ -9,8 +9,7 @@ table! {
 table! {
     configs (id) {
         id -> Text,
-        model_type -> Int2,
-        model_id -> Text,
+        owning_model -> Text,
         key -> Text,
         value -> Text,
     }

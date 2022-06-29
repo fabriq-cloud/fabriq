@@ -89,8 +89,8 @@ impl DeploymentService {
         self.persistence.get_by_template_id(template_id)
     }
 
-    pub fn get_by_workload_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
-        self.persistence.get_by_workload_id(template_id)
+    pub fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
+        self.persistence.get_by_workload_id(workload_id)
     }
 }
 

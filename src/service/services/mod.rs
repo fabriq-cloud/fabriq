@@ -1,4 +1,5 @@
 mod assignment;
+mod config;
 mod deployment;
 mod host;
 mod target;
@@ -7,6 +8,7 @@ mod workload;
 mod workspace;
 
 pub use assignment::AssignmentService;
+pub use config::ConfigService;
 pub use deployment::DeploymentService;
 pub use host::HostService;
 pub use target::TargetService;

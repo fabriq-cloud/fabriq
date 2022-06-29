@@ -155,6 +155,18 @@ impl GitOpsProcessor {
         )
     }
 
+    fn make_deployment_path(workspace_id: &str, workload_id: &str, deployment_id: &str) -> String {
+        // deployments / workspace / workload / deployment
+        format!(
+            "deployments/{}/{}/{}",
+            workspace_id, workload_id, deployment_id
+        )
+    }
+
+    fn make_template_path(template_id: &str, template_path: &str) -> String {
+        format!("templates/{}/{}", template_id, template_path)
+    }
+
     async fn render_deployment_template(
         &self,
         deployment: &DeploymentMessage,
@@ -163,13 +175,13 @@ impl GitOpsProcessor {
     ) -> anyhow::Result<()> {
         self.fetch_template_repo(template).await?;
 
-        let template_repo_path = format!("templates/{}/{}", template.id, template.path);
+        let template_repo_path = Self::make_template_path(&template.id, &template.path);
         let template_paths = fs::read_dir(template_repo_path)?;
 
-        // deployments / workspace / workload / deployment
-        let deployment_repo_path = format!(
-            "deployments/{}/{}/{}",
-            workload.workspace_id, deployment.workload_id, deployment.id
+        let deployment_repo_path = Self::make_deployment_path(
+            &workload.workspace_id,
+            &deployment.workload_id,
+            &deployment.id,
         );
 
         for template_path in template_paths {
@@ -181,8 +193,14 @@ impl GitOpsProcessor {
 
             let file_name = template_path.file_name().unwrap();
             let file_path = Path::new(&deployment_repo_path).join(file_name);
-            let mut values: HashMap<&str, &str> = HashMap::new();
-            values.insert("key", "value");
+
+            let values: HashMap<&str, &str> = HashMap::new();
+            /*
+            for config in configs {
+
+                values.insert(config.key, config.value);
+            }
+            */
 
             let rendered_template = handlebars.render(&template.id, &values)?;
 
@@ -234,10 +252,10 @@ impl GitOpsProcessor {
             .await?
             .into_inner();
 
-        // deployments / workspace / workload / deployment
-        let deployment_repo_path = format!(
-            "deployments/{}/{}/{}",
-            workload.workspace_id, deployment.workload_id, deployment.id
+        let deployment_repo_path = Self::make_deployment_path(
+            &workload.workspace_id,
+            &deployment.workload_id,
+            &deployment.id,
         );
 
         // Create / Update / Delete all remove current deployment from GitOps folder
@@ -261,6 +279,7 @@ impl GitOpsProcessor {
             }
         }
 
+        // TODO: Need to figure out how to plumb user effecting these changes here.
         self.gitops_repo
             .commit(
                 "Tim Park",
@@ -435,10 +454,11 @@ mod tests {
         GitOpsProcessor::new(gitops_repo).await.unwrap()
     }
 
+    /*
+    use akira_core::{create_event, DeploymentMessage, EventType, ModelType, OperationId};
     #[tokio::test]
     async fn test_process_deployment_create_event() {
-        /*
-        let mut _processor = create_processor_fixture().await;
+        let _processor = create_processor_fixture().await;
 
         let deployment = DeploymentMessage {
             id: "deployment-fixture".to_owned(),
@@ -458,9 +478,11 @@ mod tests {
             &operation_id,
         );
 
-        processor.process(&event).await.unwrap();
-        */
+        // processor.process(&event).await.unwrap();
+
+        // check filesystem to make sure deployment was created
     }
+    */
 
     #[test]
     fn test_process_deployment_update_event() {}

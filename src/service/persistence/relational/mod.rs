@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 
 mod assignment;
+mod config;
 mod deployment;
 mod host;
 mod target;
@@ -11,6 +12,7 @@ mod workload;
 mod workspace;
 
 pub use assignment::AssignmentRelationalPersistence;
+pub use config::ConfigRelationalPersistence;
 pub use deployment::DeploymentRelationalPersistence;
 pub use host::HostRelationalPersistence;
 pub use target::TargetRelationalPersistence;
