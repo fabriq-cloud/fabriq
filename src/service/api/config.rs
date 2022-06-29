@@ -77,7 +77,7 @@ impl ConfigTrait for GrpcConfigService {
         let config_messages = configs.iter().map(|config| config.clone().into()).collect();
 
         let response = QueryConfigResponse {
-            config: config_messages,
+            configs: config_messages,
         };
 
         Ok(Response::new(response))

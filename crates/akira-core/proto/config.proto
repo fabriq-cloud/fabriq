@@ -13,13 +13,15 @@ message ConfigIdRequest {
     string config_id = 1;
 }
 
+message ListConfigRequest {}
+
 message QueryConfigRequest {
     string deployment_id = 1;
     string workload_id = 2;
 }
 
 message QueryConfigResponse {
-    repeated ConfigMessage config = 1;
+    repeated ConfigMessage configs = 1;
 }
 
 message ConfigMessage {

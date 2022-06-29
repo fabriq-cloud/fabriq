@@ -45,3 +45,6 @@ jobs:
       - name: Test
         run: cargo test
         id: test
+        env:
+          PRIVATE_SSH_KEY: ${{ secrets.PRIVATE_SSH_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

@@ -1,6 +1,7 @@
 use clap::Command;
 
 mod assignment;
+mod config;
 mod context;
 mod deployment;
 mod host;
@@ -19,6 +20,7 @@ fn cli() -> Command<'static> {
         .arg_required_else_help(true)
         .author("Tim Park")
         .subcommand(assignment::args())
+        .subcommand(config::args())
         .subcommand(deployment::args())
         .subcommand(host::args())
         .subcommand(target::args())
@@ -40,6 +42,7 @@ async fn main() -> anyhow::Result<()> {
 
     match matches.subcommand() {
         Some(("assignment", submatches)) => Ok(assignment::handlers(submatches, &context).await?),
+        Some(("config", submatches)) => Ok(config::handlers(submatches, &context).await?),
         Some(("deployment", submatches)) => Ok(deployment::handlers(submatches, &context).await?),
         Some(("host", submatches)) => Ok(host::handlers(submatches, &context).await?),
         Some(("target", submatches)) => Ok(target::handlers(submatches, &context).await?),
