@@ -102,14 +102,12 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
     use crate::models::Deployment;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_deployment = Deployment {
@@ -141,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_create_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_deployment = Deployment {
@@ -168,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_get_by_target_id() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let deployment_persistence = DeploymentRelationalPersistence::default();
@@ -182,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_get_by_template_id() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let deployment_persistence = DeploymentRelationalPersistence::default();

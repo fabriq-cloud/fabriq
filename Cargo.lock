@@ -32,7 +32,6 @@ dependencies = [
  "diesel",
  "dotenv",
  "futures",
- "git2",
  "handlebars",
  "lazy_static",
  "octocrab",
@@ -52,6 +51,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "dotenv",
+ "git2",
  "prost",
  "prost-types",
  "serde",

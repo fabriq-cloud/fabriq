@@ -96,14 +96,13 @@ impl TemplateService {
 #[cfg(test)]
 mod tests {
     use akira_memory_stream::MemoryEventStream;
-    use dotenv::dotenv;
 
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_template = Template {
             id: "external-service".to_owned(),

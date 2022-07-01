@@ -111,7 +111,6 @@ impl WorkspaceService {
 #[cfg(test)]
 mod tests {
     use akira_memory_stream::MemoryEventStream;
-    use dotenv::dotenv;
 
     use super::*;
     use crate::{
@@ -121,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let event_stream =
             Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);

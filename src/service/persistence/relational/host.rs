@@ -95,13 +95,11 @@ impl HostPersistence for HostRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
 
     #[tokio::test]
     async fn test_create_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_host = Host {
@@ -127,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_get_by_id() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let host_persistence = HostRelationalPersistence::default();
@@ -138,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_get_matching_target() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let host_persistence = HostRelationalPersistence::default();
@@ -168,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_host = Host {
             id: "host-under-many-test".to_owned(),

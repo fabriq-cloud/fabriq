@@ -70,14 +70,12 @@ impl Persistence<Workspace> for WorkspaceRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
     use crate::models::Workspace;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_workspace = Workspace {
@@ -105,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_workspace = Workspace {

@@ -34,23 +34,21 @@ async fn perform_call_block() {
 fn criterion_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("list_template_grpc");
 
-    for parallelism_index in [PARALLELISM] {
-        group.sample_size(10);
-        group.bench_with_input(
-            BenchmarkId::from_parameter(PARALLELISM * REQUESTS_PER_ASYNC_TASK),
-            &parallelism_index,
-            |b, &_parallelism_index| {
-                b.to_async(tokio::runtime::Runtime::new().unwrap())
-                    .iter(|| async {
-                        let mut futures = Vec::new();
-                        for _ in 0..PARALLELISM {
-                            futures.push(perform_call_block());
-                        }
-                        join_all(futures).await;
-                    })
-            },
-        );
-    }
+    group.sample_size(10);
+    group.bench_with_input(
+        BenchmarkId::from_parameter(PARALLELISM * REQUESTS_PER_ASYNC_TASK),
+        &PARALLELISM,
+        |b, &_| {
+            b.to_async(tokio::runtime::Runtime::new().unwrap())
+                .iter(|| async {
+                    let mut futures = Vec::new();
+                    for _ in 0..PARALLELISM {
+                        futures.push(perform_call_block());
+                    }
+                    join_all(futures).await;
+                })
+        },
+    );
 
     group.finish();
 }

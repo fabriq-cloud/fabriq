@@ -96,15 +96,13 @@ impl DeploymentService {
 
 #[cfg(test)]
 mod tests {
-    use akira_memory_stream::MemoryEventStream;
-    use dotenv::dotenv;
-
     use super::*;
     use crate::persistence::memory::DeploymentMemoryPersistence;
+    use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_deployment = Deployment {
             id: "deployment-service-under-test".to_owned(),

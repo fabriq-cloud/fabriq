@@ -1,12 +1,16 @@
-use std::{env, sync::Arc};
+use std::{env, fs, sync::Arc};
 
 mod context;
 mod processor;
-mod repo;
 
-use akira_core::EventStream;
+use akira_core::{git::RemoteGitRepo, EventStream};
 use akira_mqtt_stream::MqttEventStream;
+use context::Context;
 use processor::GitOpsProcessor;
+use tonic::{
+    metadata::{Ascii, MetadataValue},
+    transport::Channel,
+};
 
 const DEFAULT_GITOPS_CLIENT_ID: &str = "reconciler";
 
@@ -27,11 +31,33 @@ async fn main() -> anyhow::Result<()> {
     let repo_branch = env::var("GITOPS_REPO_BRANCH").expect("GITOPS_REPO_BRANCH must be set");
     let private_ssh_key_path =
         env::var("GITOPS_PRIVATE_SSH_KEY_PATH").expect("GITOPS_PRIVATE_SSH_KEY_PATH must be set");
+    let private_ssh_key = fs::read_to_string(&private_ssh_key_path)?;
 
-    let gitops_repo =
-        repo::GitRepo::new(&local_path, &repo_url, &repo_branch, &private_ssh_key_path)?;
+    let gitops_repo = Arc::new(RemoteGitRepo::new(
+        &local_path,
+        &repo_url,
+        &repo_branch,
+        &private_ssh_key_path,
+    )?);
 
-    let mut gitops_processor = GitOpsProcessor::new(gitops_repo).await?;
+    let context = Context::default();
+    let channel = Channel::from_static(context.endpoint).connect().await?;
+    let token: MetadataValue<Ascii> = context.token.parse()?;
+
+    let template_client = Arc::new(akira_core::api::client::WrappedTemplateClient::new(
+        channel.clone(),
+        token.clone(),
+    ));
+    let workload_client = Arc::new(akira_core::api::client::WrappedWorkloadClient::new(
+        channel, token,
+    ));
+
+    let mut gitops_processor = GitOpsProcessor {
+        gitops_repo,
+        private_ssh_key,
+        template_client,
+        workload_client,
+    };
 
     for event in event_stream.receive().into_iter().flatten() {
         gitops_processor.process(&event).await?;

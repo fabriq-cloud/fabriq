@@ -89,7 +89,6 @@ impl HostService {
 #[cfg(test)]
 mod tests {
     use akira_memory_stream::MemoryEventStream;
-    use dotenv::dotenv;
 
     use crate::persistence::memory::HostMemoryPersistence;
 
@@ -97,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_host = Host {
             id: "azure-eastus2-1".to_owned(),

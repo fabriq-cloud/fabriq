@@ -102,15 +102,13 @@ impl TargetService {
 
 #[cfg(test)]
 mod tests {
-    use akira_memory_stream::MemoryEventStream;
-    use dotenv::dotenv;
-
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
+    use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_target = Target {
             id: "eastus2".to_owned(),
@@ -141,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_get_matching_host() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let host = Host {
             id: "azure-eastus2-1".to_owned(),

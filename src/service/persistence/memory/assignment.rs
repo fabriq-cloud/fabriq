@@ -99,13 +99,11 @@ impl Default for AssignmentMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_assignment = Assignment {
             id: "assignment-under-test".to_owned(),
@@ -139,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_assignment = Assignment {
             id: "assignment-under-test".to_owned(),

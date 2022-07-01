@@ -83,7 +83,7 @@ pub fn ensure_fixtures() {
             id: "template-fixture".to_string(),
             repository: "https://github.com/timfpark/deployment-templates".to_string(),
             branch: "main".to_string(),
-            path: "./test-template".to_string(),
+            path: "./external-service".to_string(),
         };
         template_persistence.create(&template_fixture).unwrap();
     }

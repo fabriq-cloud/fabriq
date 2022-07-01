@@ -135,15 +135,13 @@ impl AssignmentService {
 
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
     use crate::persistence::memory::AssignmentMemoryPersistence;
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_assignment = Assignment {
             id: "external-service".to_owned(),
@@ -180,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_assignment = Assignment {
             id: "assignment-service-under-many-test".to_owned(),

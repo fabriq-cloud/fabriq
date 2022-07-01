@@ -2,6 +2,6 @@
 
 diesel migration run
 cargo test --lib --bins --tests --examples
-cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings
+cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes
 cargo fmt --all -- --check
 cargo +nightly udeps

@@ -1,87 +1,28 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 use akira_core::common::TemplateIdRequest;
-use akira_core::template::template_client::TemplateClient;
-use akira_core::workload::workload_client::WorkloadClient;
+use akira_core::git::{GitRepo, RemoteGitRepo};
+
 use akira_core::{
-    DeploymentMessage, Event, EventType, ModelType, TemplateMessage, WorkloadIdRequest,
-    WorkloadMessage,
+    get_current_or_previous_model, DeploymentMessage, Event, EventType, ModelType, TemplateMessage,
+    TemplateTrait, WorkloadIdRequest, WorkloadMessage, WorkloadTrait,
 };
 use handlebars::Handlebars;
-use prost::Message;
-use tonic::codegen::InterceptedService;
-use tonic::metadata::{Ascii, MetadataValue};
-use tonic::service::Interceptor;
-use tonic::transport::Channel;
 use tonic::Request;
 
-use crate::context::Context;
-use crate::repo::GitRepo;
-
 pub struct GitOpsProcessor {
-    gitops_repo: GitRepo,
+    pub gitops_repo: Arc<dyn GitRepo>,
+    pub private_ssh_key: String,
 
-    channel: Channel,
-    token: MetadataValue<Ascii>,
+    pub template_client: Arc<dyn TemplateTrait>,
+    pub workload_client: Arc<dyn WorkloadTrait>,
 }
 
 impl GitOpsProcessor {
-    pub async fn new(gitops_repo: GitRepo) -> anyhow::Result<Self> {
-        let context = Context::default();
-        let channel = Channel::from_static(context.endpoint).connect().await?;
-        let token: MetadataValue<Ascii> = context.token.parse()?;
-
-        Ok(Self {
-            gitops_repo,
-
-            channel,
-            token,
-        })
-    }
-
-    fn create_template_client(
-        &self,
-    ) -> TemplateClient<InterceptedService<Channel, impl Interceptor + '_>> {
-        TemplateClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
-            req.metadata_mut()
-                .insert("authorization", self.token.clone());
-            Ok(req)
-        })
-    }
-
-    fn create_workload_client(
-        &self,
-    ) -> WorkloadClient<InterceptedService<Channel, impl Interceptor + '_>> {
-        WorkloadClient::with_interceptor(self.channel.clone(), move |mut req: Request<()>| {
-            req.metadata_mut()
-                .insert("authorization", self.token.clone());
-            Ok(req)
-        })
-    }
-
-    fn get_current_or_previous_model<ModelMessage: Default + Message>(
-        event: &Event,
-    ) -> anyhow::Result<ModelMessage> {
-        let message: ModelMessage =
-            if let Some(serialized_current_model) = &event.serialized_current_model {
-                ModelMessage::decode(&**serialized_current_model)?
-            } else if let Some(serialized_previous_model) = &event.serialized_previous_model {
-                ModelMessage::decode(&**serialized_previous_model)?
-            } else {
-                return Err(anyhow::anyhow!(
-                    "Event received without previous or current model {:?}",
-                    event
-                ));
-            };
-
-        Ok(message)
-    }
-
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
-        println!("Processing event: {:?}", event);
-
         let model_type = event.model_type;
 
         match model_type {
@@ -125,6 +66,7 @@ impl GitOpsProcessor {
 
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 tracing::info!("assignment created (NOP): {:?}", event);
@@ -143,15 +85,18 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    async fn fetch_template_repo(&self, template: &TemplateMessage) -> anyhow::Result<GitRepo> {
-        // TODO: Do we want to use the same private key for all deployments?
+    async fn fetch_template_repo(
+        &self,
+        template: &TemplateMessage,
+    ) -> anyhow::Result<RemoteGitRepo> {
         let template_path = format!("templates/{}", template.id);
 
-        GitRepo::new(
+        // TODO: Ability to use a different private ssh key for each template
+        RemoteGitRepo::new(
             &template_path,
             &template.repository,
             &template.branch,
-            &self.gitops_repo.private_ssh_key,
+            &self.private_ssh_key,
         )
     }
 
@@ -205,8 +150,7 @@ impl GitOpsProcessor {
             let rendered_template = handlebars.render(&template.id, &values)?;
 
             self.gitops_repo
-                .write_text_file(file_path, &rendered_template)
-                .await?;
+                .write_file(file_path, rendered_template.as_bytes())?;
         }
 
         Ok(())
@@ -222,12 +166,12 @@ impl GitOpsProcessor {
             .clone()
             .unwrap_or_else(|| workload.template_id.clone());
 
-        let template_request = tonic::Request::new(TemplateIdRequest {
+        let template_request = Request::new(TemplateIdRequest {
             template_id: template_id.clone(),
         });
 
         let template = self
-            .create_template_client()
+            .template_client
             .get_by_id(template_request)
             .await?
             .into_inner();
@@ -240,14 +184,14 @@ impl GitOpsProcessor {
 
     async fn process_deployment_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
-        let deployment = Self::get_current_or_previous_model::<DeploymentMessage>(event)?;
+        let deployment = get_current_or_previous_model::<DeploymentMessage>(event)?;
 
         let workload_request = Request::new(WorkloadIdRequest {
             workload_id: deployment.workload_id.clone(),
         });
 
         let workload = self
-            .create_workload_client()
+            .workload_client
             .get_by_id(workload_request)
             .await?
             .into_inner();
@@ -259,7 +203,7 @@ impl GitOpsProcessor {
         );
 
         // Create / Update / Delete all remove current deployment from GitOps folder
-        self.gitops_repo.remove_dir(&deployment_repo_path).await?;
+        self.gitops_repo.remove_dir(&deployment_repo_path)?;
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
@@ -280,13 +224,11 @@ impl GitOpsProcessor {
         }
 
         // TODO: Need to figure out how to plumb user effecting these changes here.
-        self.gitops_repo
-            .commit(
-                "Tim Park",
-                "timfpark@gmail.com",
-                "Processed deployment event",
-            )
-            .await?;
+        self.gitops_repo.commit(
+            "Tim Park",
+            "timfpark@gmail.com",
+            "Processed deployment event",
+        )?;
 
         self.gitops_repo.push()
     }
@@ -434,31 +376,38 @@ impl GitOpsProcessor {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, fs};
+    use akira_core::{
+        create_event,
+        git::{GitRepo, MemoryGitRepo},
+        DeploymentMessage, EventType, ModelType, OperationId,
+    };
 
-    use crate::repo::GitRepo;
+    use std::{env, fs, path::Path, sync::Arc};
 
     use super::GitOpsProcessor;
 
-    async fn _create_processor_fixture() -> GitOpsProcessor {
-        let branch = "main";
-        let local_path = "fixtures/gitops-processor-test";
+    async fn create_processor_fixture(
+        gitops_repo: Arc<dyn GitRepo>,
+    ) -> anyhow::Result<GitOpsProcessor> {
         let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
-        let repo_url = "git@github.com:timfpark/akira-clone-repo-test.git";
 
-        // if this fails, it just means the repo hasn't been created yet
-        let _ = fs::remove_dir_all(local_path);
-        fs::create_dir_all(local_path).unwrap();
+        let template_client = Arc::new(akira_core::api::mock::MockTemplateClient {});
+        let workload_client = Arc::new(akira_core::api::mock::MockWorkloadClient {});
 
-        let gitops_repo = GitRepo::new(local_path, repo_url, branch, &private_ssh_key).unwrap();
-        GitOpsProcessor::new(gitops_repo).await.unwrap()
+        Ok(GitOpsProcessor {
+            gitops_repo,
+            private_ssh_key,
+
+            template_client,
+            workload_client,
+        })
     }
 
-    /*
-    use akira_core::{create_event, DeploymentMessage, EventType, ModelType, OperationId};
-    #[tokio::test]
-    async fn test_process_deployment_create_event() {
-        let _processor = create_processor_fixture().await;
+    async fn deployment_event_impl(gitops_repo: Arc<MemoryGitRepo>, event_type: EventType) {
+        let processor_gitops_repo: Arc<dyn GitRepo> = Arc::<MemoryGitRepo>::clone(&gitops_repo);
+        let mut processor = create_processor_fixture(processor_gitops_repo)
+            .await
+            .unwrap();
 
         let deployment = DeploymentMessage {
             id: "deployment-fixture".to_owned(),
@@ -470,23 +419,43 @@ mod tests {
 
         let operation_id = OperationId::create();
 
-        let _event = create_event(
+        let event = create_event(
             &None,
             &Some(deployment),
-            EventType::Created,
+            event_type,
             ModelType::Deployment,
             &operation_id,
         );
 
-        // processor.process(&event).await.unwrap();
-
-        // check filesystem to make sure deployment was created
+        processor.process(&event).await.unwrap();
     }
-    */
+    #[tokio::test]
+    async fn test_process_deployment_events() {
+        let deployment_path = "deployments/workspace-fixture/workload-fixture/deployment-fixture";
+        let _ = fs::remove_dir_all(deployment_path);
 
-    #[test]
-    fn test_process_deployment_update_event() {}
+        let gitops_repo = Arc::new(MemoryGitRepo::new());
 
-    #[test]
-    fn test_process_deployment_delete_event() {}
+        deployment_event_impl(Arc::clone(&gitops_repo), EventType::Created).await;
+
+        let deployment_contents = gitops_repo
+            .read_file(format!("{}/deployment.yaml", deployment_path).into())
+            .unwrap();
+
+        assert!(!deployment_contents.is_empty());
+
+        let _ = fs::remove_dir_all(deployment_path);
+
+        deployment_event_impl(Arc::clone(&gitops_repo), EventType::Updated).await;
+
+        let deployment_contents = gitops_repo
+            .read_file(format!("{}/deployment.yaml", deployment_path).into())
+            .unwrap();
+
+        assert!(!deployment_contents.is_empty());
+
+        deployment_event_impl(Arc::clone(&gitops_repo), EventType::Deleted).await;
+
+        assert!(!Path::new(deployment_path).exists());
+    }
 }

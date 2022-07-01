@@ -92,15 +92,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
 
     use crate::models::Host;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_host = Host {
             id: "azure-eastus2-1".to_owned(),
@@ -125,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
 
         let new_host = Host {
             id: "host-under-test".to_owned(),

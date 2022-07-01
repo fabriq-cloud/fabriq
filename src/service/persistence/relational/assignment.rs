@@ -83,14 +83,12 @@ impl AssignmentPersistence for AssignmentRelationalPersistence {
 }
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
     use crate::models::Assignment;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_assignment = Assignment {
@@ -126,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_create_get_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_assignment = Assignment {

@@ -96,14 +96,12 @@ impl ConfigPersistence for ConfigRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use dotenv::dotenv;
-
     use super::*;
     use crate::models::Config;
 
     #[test]
     fn test_create_get_delete() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_config = Config {
@@ -138,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_create_delete_many() {
-        dotenv().ok();
+        dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
         let new_config = Config {
