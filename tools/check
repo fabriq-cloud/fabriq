@@ -5,3 +5,4 @@ cargo test --lib --bins --tests --examples
 cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes
 cargo fmt --all -- --check
 cargo +nightly udeps
+cargo audit --ignore RUSTSEC-2020-0071
