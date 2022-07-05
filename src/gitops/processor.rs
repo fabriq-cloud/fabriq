@@ -6,9 +6,10 @@ use akira_core::common::TemplateIdRequest;
 use akira_core::git::{GitRepo, RemoteGitRepo};
 
 use akira_core::{
-    get_current_or_previous_model, AssignmentMessage, DeploymentIdRequest, DeploymentMessage,
-    DeploymentTrait, Event, EventType, ModelType, TemplateMessage, TemplateTrait,
-    WorkloadIdRequest, WorkloadMessage, WorkloadTrait,
+    get_current_or_previous_model, AssignmentMessage, ConfigMessage, ConfigTrait,
+    DeploymentIdRequest, DeploymentMessage, DeploymentTrait, Event, EventType, ModelType,
+    QueryConfigRequest, TemplateMessage, TemplateTrait, WorkloadIdRequest, WorkloadMessage,
+    WorkloadTrait,
 };
 use handlebars::Handlebars;
 use std::fs;
@@ -18,6 +19,7 @@ pub struct GitOpsProcessor {
     pub gitops_repo: Arc<dyn GitRepo>,
     pub private_ssh_key: String,
 
+    pub config_client: Arc<dyn ConfigTrait>,
     pub deployment_client: Arc<dyn DeploymentTrait>,
     pub template_client: Arc<dyn TemplateTrait>,
     pub workload_client: Arc<dyn WorkloadTrait>,
@@ -209,6 +211,7 @@ impl GitOpsProcessor {
 
     async fn render_deployment_template(
         &self,
+        configs: &[ConfigMessage],
         deployment: &DeploymentMessage,
         template: &TemplateMessage,
         workload: &WorkloadMessage,
@@ -235,13 +238,15 @@ impl GitOpsProcessor {
             let file_path = Path::new(&deployment_repo_path).join(file_name);
             let string_path = file_path.to_string_lossy();
 
-            let values: HashMap<&str, &str> = HashMap::new();
-            /*
-            for config in configs {
+            let mut values: HashMap<String, String> = HashMap::new();
 
-                values.insert(config.key, config.value);
+            for config in configs {
+                values.insert(config.key.clone(), config.value.clone());
             }
-            */
+
+            values.insert("workspace".to_owned(), workload.workspace_id.clone());
+            values.insert("workload".to_owned(), workload.id.clone());
+            values.insert("deployment".to_owned(), deployment.id.clone());
 
             let rendered_template = handlebars.render(&template.id, &values)?;
 
@@ -254,6 +259,7 @@ impl GitOpsProcessor {
 
     async fn render_deployment(
         &self,
+        configs: &[ConfigMessage],
         workload: &WorkloadMessage,
         deployment: &DeploymentMessage,
     ) -> anyhow::Result<()> {
@@ -272,7 +278,7 @@ impl GitOpsProcessor {
             .await?
             .into_inner();
 
-        self.render_deployment_template(deployment, &template, workload)
+        self.render_deployment_template(configs, deployment, &template, workload)
             .await?;
 
         Ok(())
@@ -292,6 +298,14 @@ impl GitOpsProcessor {
             .await?
             .into_inner();
 
+        let config_request = Request::new(QueryConfigRequest {
+            deployment_id: deployment.id.clone(),
+            workload_id: deployment.workload_id.clone(),
+        });
+
+        let response = self.config_client.query(config_request).await?.into_inner();
+        let configs = response.configs;
+
         let deployment_repo_path = Self::make_deployment_path(
             &workload.workspace_id,
             &deployment.workload_id,
@@ -304,11 +318,13 @@ impl GitOpsProcessor {
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 tracing::info!("deployment created {:?}", deployment);
-                self.render_deployment(&workload, &deployment).await?;
+                self.render_deployment(&configs, &workload, &deployment)
+                    .await?;
             }
             event_type if event_type == EventType::Updated as i32 => {
                 tracing::info!("deployment updated: {:?}", event);
-                self.render_deployment(&workload, &deployment).await?;
+                self.render_deployment(&configs, &workload, &deployment)
+                    .await?;
             }
             event_type if event_type == EventType::Deleted as i32 => {
                 tracing::info!("deployment deleted: {:?}", event);
@@ -454,6 +470,7 @@ mod tests {
     ) -> anyhow::Result<GitOpsProcessor> {
         let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
 
+        let config_client = Arc::new(akira_core::api::mock::MockConfigClient {});
         let deployment_client = Arc::new(akira_core::api::mock::MockDeploymentClient {});
         let template_client = Arc::new(akira_core::api::mock::MockTemplateClient {});
         let workload_client = Arc::new(akira_core::api::mock::MockWorkloadClient {});
@@ -462,6 +479,7 @@ mod tests {
             gitops_repo,
             private_ssh_key,
 
+            config_client,
             deployment_client,
             template_client,
             workload_client,
@@ -509,6 +527,12 @@ mod tests {
 
         assert!(!deployment_contents.is_empty());
 
+        let mut hasher = DefaultHasher::new();
+        deployment_contents.hash(&mut hasher);
+        let deployment_hash = hasher.finish();
+
+        assert_eq!(deployment_hash, 7141064955703910222);
+
         let _ = fs::remove_dir_all(deployment_path);
 
         deployment_event_impl(Arc::clone(&gitops_repo), EventType::Updated).await;
@@ -518,6 +542,12 @@ mod tests {
             .unwrap();
 
         assert!(!deployment_contents.is_empty());
+
+        let mut hasher = DefaultHasher::new();
+        deployment_contents.hash(&mut hasher);
+        let deployment_hash = hasher.finish();
+
+        assert_eq!(deployment_hash, 7141064955703910222);
 
         deployment_event_impl(Arc::clone(&gitops_repo), EventType::Deleted).await;
 

@@ -44,6 +44,11 @@ async fn main() -> anyhow::Result<()> {
     let channel = Channel::from_static(context.endpoint).connect().await?;
     let token: MetadataValue<Ascii> = context.token.parse()?;
 
+    let config_client = Arc::new(akira_core::api::client::WrappedConfigClient::new(
+        channel.clone(),
+        token.clone(),
+    ));
+
     let deployment_client = Arc::new(akira_core::api::client::WrappedDeploymentClient::new(
         channel.clone(),
         token.clone(),
@@ -62,6 +67,7 @@ async fn main() -> anyhow::Result<()> {
         gitops_repo,
         private_ssh_key,
 
+        config_client,
         deployment_client,
         template_client,
         workload_client,
