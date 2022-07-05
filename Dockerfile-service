@@ -25,7 +25,7 @@ RUN mv $HOME/protoc/bin/protoc /usr/bin/protoc
 RUN cargo build --release
 
 #############################################################x#######################################
-## Final image
+## Final service container image
 ####################################################################################################
 FROM alpine:latest
 
