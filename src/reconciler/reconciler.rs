@@ -32,7 +32,7 @@ pub struct Reconciler {
 
 impl Reconciler {
     pub fn process(&self, event: &Event) -> anyhow::Result<()> {
-        println!("Processing event: {:?}", event);
+        tracing::info!("processing event: {:?}", event);
 
         let model_type = event.model_type;
 

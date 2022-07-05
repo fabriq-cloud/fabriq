@@ -1,8 +1,8 @@
 use tonic::{Request, Response, Status};
 
 use crate::{
-    common::TemplateIdRequest, DeleteTemplateRequest, ListTemplatesRequest, ListTemplatesResponse,
-    OperationId, TemplateMessage, TemplateTrait,
+    common::TemplateIdRequest, ListTemplatesRequest, ListTemplatesResponse, OperationId,
+    TemplateMessage, TemplateTrait,
 };
 
 pub struct MockTemplateClient {}
@@ -18,7 +18,7 @@ impl TemplateTrait for MockTemplateClient {
 
     async fn delete(
         &self,
-        _request: Request<DeleteTemplateRequest>,
+        _request: Request<TemplateIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
         Ok(Response::new(OperationId::create()))
     }

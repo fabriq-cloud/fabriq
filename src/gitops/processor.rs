@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -7,16 +6,19 @@ use akira_core::common::TemplateIdRequest;
 use akira_core::git::{GitRepo, RemoteGitRepo};
 
 use akira_core::{
-    get_current_or_previous_model, DeploymentMessage, Event, EventType, ModelType, TemplateMessage,
-    TemplateTrait, WorkloadIdRequest, WorkloadMessage, WorkloadTrait,
+    get_current_or_previous_model, AssignmentMessage, DeploymentIdRequest, DeploymentMessage,
+    DeploymentTrait, Event, EventType, ModelType, TemplateMessage, TemplateTrait,
+    WorkloadIdRequest, WorkloadMessage, WorkloadTrait,
 };
 use handlebars::Handlebars;
+use std::fs;
 use tonic::Request;
 
 pub struct GitOpsProcessor {
     pub gitops_repo: Arc<dyn GitRepo>,
     pub private_ssh_key: String,
 
+    pub deployment_client: Arc<dyn DeploymentTrait>,
     pub template_client: Arc<dyn TemplateTrait>,
     pub workload_client: Arc<dyn WorkloadTrait>,
 }
@@ -41,8 +43,12 @@ impl GitOpsProcessor {
                 self.process_host_event(event).await
             }
             model_type if model_type == ModelType::Target as i32 => {
-                // NOP
-                self.process_target_event(event).await
+                // Handled in reconciler:
+                // => Will materialize as Assignment creation / deletion events
+                //    here in terms of GitOps concerns.
+                tracing::info!("Target event => NOP");
+
+                Ok(())
             }
             model_type if model_type == ModelType::Template as i32 => {
                 // create/update: rerender all deployments or workloads using template
@@ -64,15 +70,85 @@ impl GitOpsProcessor {
         }
     }
 
+    async fn render_assignment(
+        &self,
+        host_id: &str,
+        workspace_id: &str,
+        workload_id: &str,
+        deployment_id: &str,
+    ) -> anyhow::Result<()> {
+        let assignment_path = GitOpsProcessor::make_assignment_path(
+            host_id,
+            workspace_id,
+            workload_id,
+            deployment_id,
+        );
+
+        let deployment_path =
+            GitOpsProcessor::make_deployment_path(workspace_id, workload_id, deployment_id);
+
+        let host_relative_deployment_path = format!("../../../../../{}", deployment_path);
+        let template_string = fs::read_to_string("templates/assignment.yaml")?;
+
+        let mut handlebars = Handlebars::new();
+        handlebars.register_template_string("assignment", template_string)?;
+
+        let key = "relative_deployment_path".to_owned();
+        let mut values: HashMap<&str, &str> = HashMap::new();
+        values.insert(&key, &host_relative_deployment_path);
+
+        let rendered_assignment = handlebars.render("assignment", &values)?;
+
+        self.gitops_repo
+            .write_file(&assignment_path, rendered_assignment.as_bytes())?;
+
+        Ok(())
+    }
+
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
+        let assignment = get_current_or_previous_model::<AssignmentMessage>(event)?;
+
+        let deployment_request = Request::new(DeploymentIdRequest {
+            deployment_id: assignment.deployment_id.clone(),
+        });
+
+        let deployment = self
+            .deployment_client
+            .get_by_id(deployment_request)
+            .await?
+            .into_inner();
+
+        let workload_request = Request::new(WorkloadIdRequest {
+            workload_id: deployment.workload_id.clone(),
+        });
+
+        let workload = self
+            .workload_client
+            .get_by_id(workload_request)
+            .await?
+            .into_inner();
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                tracing::info!("assignment created (NOP): {:?}", event);
+                tracing::info!("assignment created {:?}", assignment);
+                self.render_assignment(
+                    &assignment.host_id,
+                    &workload.workspace_id,
+                    &deployment.workload_id,
+                    &deployment.id,
+                )
+                .await?;
             }
             event_type if event_type == EventType::Updated as i32 => {
-                tracing::info!("assignment updated (NOP): {:?}", event);
+                tracing::info!("assignment updated {:?}", assignment);
+                self.render_assignment(
+                    &assignment.host_id,
+                    &workload.workspace_id,
+                    &deployment.workload_id,
+                    &deployment.id,
+                )
+                .await?;
             }
             event_type if event_type == EventType::Deleted as i32 => {
                 tracing::info!("assignment deleted (NOP): {:?}", event);
@@ -82,7 +158,15 @@ impl GitOpsProcessor {
             }
         }
 
-        Ok(())
+        // TODO: Add generic capability to handle commit
+        // TODO: Need to figure out how to plumb user effecting these changes here.
+        self.gitops_repo.commit(
+            "Tim Park",
+            "timfpark@gmail.com",
+            "Processed deployment event",
+        )?;
+
+        self.gitops_repo.push()
     }
 
     async fn fetch_template_repo(
@@ -100,8 +184,19 @@ impl GitOpsProcessor {
         )
     }
 
+    fn make_assignment_path(
+        host_id: &str,
+        workspace_id: &str,
+        workload_id: &str,
+        deployment_id: &str,
+    ) -> String {
+        format!(
+            "hosts/{}/{}/{}/{}/kustomization.yaml",
+            host_id, workspace_id, workload_id, deployment_id
+        )
+    }
+
     fn make_deployment_path(workspace_id: &str, workload_id: &str, deployment_id: &str) -> String {
-        // deployments / workspace / workload / deployment
         format!(
             "deployments/{}/{}/{}",
             workspace_id, workload_id, deployment_id
@@ -138,6 +233,7 @@ impl GitOpsProcessor {
 
             let file_name = template_path.file_name().unwrap();
             let file_path = Path::new(&deployment_repo_path).join(file_name);
+            let string_path = file_path.to_string_lossy();
 
             let values: HashMap<&str, &str> = HashMap::new();
             /*
@@ -150,7 +246,7 @@ impl GitOpsProcessor {
             let rendered_template = handlebars.render(&template.id, &values)?;
 
             self.gitops_repo
-                .write_file(file_path, rendered_template.as_bytes())?;
+                .write_file(&string_path, rendered_template.as_bytes())?;
         }
 
         Ok(())
@@ -223,6 +319,7 @@ impl GitOpsProcessor {
             }
         }
 
+        // TODO: Add generic capability to handle commit
         // TODO: Need to figure out how to plumb user effecting these changes here.
         self.gitops_repo.commit(
             "Tim Park",
@@ -237,49 +334,13 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                // Load targets, filter down to the ones that match the host
-                // For each target, load all deployments
-                // For each deployment, load all assignments
-                // Run assignment check to see if we should add/delete an assignment for this host.
-                // If so, create/delete assignment for this host.
                 tracing::info!("host created (NOP): {:?}", event);
             }
             event_type if event_type == EventType::Updated as i32 => {
-                // Load targets, filter down to the ones that match the host
-                // For each target, load all deployments
-                // For each deployment, load all assignments
-                // Run assignment check to see if we should add/delete an assignment for this host.
-                // If so, create/delete assignment for this host.
                 tracing::info!("host updated (NOP): {:?}", event);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                // NOP: By definition a host can't be deleted until all of its assignments are removed.
                 tracing::info!("host deleted (NOP): {:?}", event);
-            }
-            _ => {
-                panic!("unsupported event type: {:?}", event);
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
-        let event_type = event.event_type;
-        match event_type {
-            event_type if event_type == EventType::Created as i32 => {
-                // NOP: By definition no deployment can be created without a target
-                tracing::info!("target created (NOP): {:?}", event);
-            }
-            event_type if event_type == EventType::Updated as i32 => {
-                // Load all deployments that depend on this target.
-                // For each, check assignments vs. target and adjust assignments as necessary.
-                // Create / delete these assignments (linking the new hosts to the deployment will happen through Assignment Created event)
-                tracing::info!("target updated (NOP): {:?}", event);
-            }
-            event_type if event_type == EventType::Deleted as i32 => {
-                // NOP: By definition no deployment can still exist if this target could be deleted
-                tracing::info!("target deleted (NOP): {:?}", event);
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);
@@ -293,16 +354,12 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                // NOP: By definition no deployment can be created without a template
                 tracing::info!("template created (NOP): {:?}", event);
             }
             event_type if event_type == EventType::Updated as i32 => {
-                // 1. Query for all deployments that use this template
-                // 2. Re-render deployment for all of these deployments.
                 tracing::info!("template updated (NOP): {:?}", event);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                // NOP: By definition no deployment can still exist if this target could be deleted
                 tracing::info!("template deleted (NOP): {:?}", event);
             }
             _ => {
@@ -379,10 +436,16 @@ mod tests {
     use akira_core::{
         create_event,
         git::{GitRepo, MemoryGitRepo},
-        DeploymentMessage, EventType, ModelType, OperationId,
+        AssignmentMessage, DeploymentMessage, EventType, ModelType, OperationId,
     };
 
-    use std::{env, fs, path::Path, sync::Arc};
+    use std::{
+        collections::hash_map::DefaultHasher,
+        env, fs,
+        hash::{Hash, Hasher},
+        path::Path,
+        sync::Arc,
+    };
 
     use super::GitOpsProcessor;
 
@@ -391,6 +454,7 @@ mod tests {
     ) -> anyhow::Result<GitOpsProcessor> {
         let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
 
+        let deployment_client = Arc::new(akira_core::api::mock::MockDeploymentClient {});
         let template_client = Arc::new(akira_core::api::mock::MockTemplateClient {});
         let workload_client = Arc::new(akira_core::api::mock::MockWorkloadClient {});
 
@@ -398,6 +462,7 @@ mod tests {
             gitops_repo,
             private_ssh_key,
 
+            deployment_client,
             template_client,
             workload_client,
         })
@@ -429,6 +494,7 @@ mod tests {
 
         processor.process(&event).await.unwrap();
     }
+
     #[tokio::test]
     async fn test_process_deployment_events() {
         let deployment_path = "deployments/workspace-fixture/workload-fixture/deployment-fixture";
@@ -438,9 +504,8 @@ mod tests {
 
         deployment_event_impl(Arc::clone(&gitops_repo), EventType::Created).await;
 
-        let deployment_contents = gitops_repo
-            .read_file(format!("{}/deployment.yaml", deployment_path).into())
-            .unwrap();
+        let deployment_pathbuf = format!("{}/deployment.yaml", deployment_path).into();
+        let deployment_contents = gitops_repo.read_file(deployment_pathbuf).unwrap();
 
         assert!(!deployment_contents.is_empty());
 
@@ -457,5 +522,78 @@ mod tests {
         deployment_event_impl(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
         assert!(!Path::new(deployment_path).exists());
+    }
+
+    async fn assignment_event_impl(gitops_repo: Arc<MemoryGitRepo>, event_type: EventType) {
+        let processor_gitops_repo: Arc<dyn GitRepo> = Arc::<MemoryGitRepo>::clone(&gitops_repo);
+        let mut processor = create_processor_fixture(processor_gitops_repo)
+            .await
+            .unwrap();
+
+        let assignment = AssignmentMessage {
+            id: "deployment-fixture".to_owned(),
+            host_id: "host-fixture".to_owned(),
+            deployment_id: "deployment-fixture".to_owned(),
+        };
+
+        let operation_id = OperationId::create();
+
+        let event = create_event(
+            &None,
+            &Some(assignment),
+            event_type,
+            ModelType::Assignment,
+            &operation_id,
+        );
+
+        processor.process(&event).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_process_assignment_events() {
+        let assignment_path = GitOpsProcessor::make_assignment_path(
+            "host-fixture",
+            "workspace-fixture",
+            "workload-fixture",
+            "deployment-fixture",
+        );
+
+        let _ = fs::remove_dir_all(&assignment_path);
+
+        let gitops_repo = Arc::new(MemoryGitRepo::new());
+
+        assignment_event_impl(Arc::clone(&gitops_repo), EventType::Created).await;
+
+        let assignment_contents = gitops_repo
+            .read_file(assignment_path.clone().into())
+            .unwrap();
+
+        assert!(!assignment_contents.is_empty());
+
+        let mut hasher = DefaultHasher::new();
+        assignment_contents.hash(&mut hasher);
+        let assignment_hash = hasher.finish();
+
+        assert_eq!(assignment_hash, 15009592673730869112);
+
+        let _ = fs::remove_dir_all(&assignment_path);
+
+        assignment_event_impl(Arc::clone(&gitops_repo), EventType::Updated).await;
+
+        let deployment_contents = gitops_repo
+            .read_file(assignment_path.clone().into())
+            .unwrap();
+
+        assert!(!deployment_contents.is_empty());
+
+        let mut hasher = DefaultHasher::new();
+        assignment_contents.hash(&mut hasher);
+        let assignment_hash = hasher.finish();
+
+        assert_eq!(assignment_hash, 15009592673730869112);
+
+        assignment_event_impl(Arc::clone(&gitops_repo), EventType::Deleted).await;
+
+        assert!(!Path::new(&assignment_path).exists());
     }
 }

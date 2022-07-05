@@ -62,6 +62,37 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(operation_id))
     }
 
+    async fn get_by_id(
+        &self,
+        request: Request<DeploymentIdRequest>,
+    ) -> Result<Response<DeploymentMessage>, Status> {
+        let deployment_id = request.into_inner().deployment_id;
+        let deployment = match self.service.get_by_id(&deployment_id) {
+            Ok(deployment) => deployment,
+            Err(err) => {
+                tracing::error!("get target with id {}: failed: {}", deployment_id, err);
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    format!("get target with id {}: failed", &deployment_id),
+                ));
+            }
+        };
+
+        let deployment = match deployment {
+            Some(deployment) => deployment,
+            None => {
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!("get workload with id {}: not found", &deployment_id),
+                ))
+            }
+        };
+
+        let deployment_message: DeploymentMessage = deployment.into();
+
+        Ok(Response::new(deployment_message))
+    }
+
     async fn list(
         &self,
         _request: Request<ListDeploymentsRequest>,
@@ -133,12 +164,26 @@ mod tests {
 
         assert_eq!(response.id.len(), 36);
 
+        let request = Request::new(DeploymentIdRequest {
+            deployment_id: "deployment-grpc-test".to_string(),
+        });
+
+        let response = deployment_grpc_service
+            .get_by_id(request)
+            .await
+            .unwrap()
+            .into_inner();
+
+        assert_eq!(response.id, "deployment-grpc-test");
+
         let request = Request::new(ListDeploymentsRequest {});
-        let _ = deployment_grpc_service
+        let response = deployment_grpc_service
             .list(request)
             .await
             .unwrap()
             .into_inner();
+
+        assert_eq!(response.deployments.len(), 1);
 
         let request = Request::new(DeploymentIdRequest {
             deployment_id: "deployment-grpc-test".to_string(),

@@ -156,9 +156,7 @@ pub mod template {
 }
 
 pub use template::template_server::{Template as TemplateTrait, TemplateServer};
-pub use template::{
-    DeleteTemplateRequest, ListTemplatesRequest, ListTemplatesResponse, TemplateMessage,
-};
+pub use template::{ListTemplatesRequest, ListTemplatesResponse, TemplateMessage};
 
 // workload protobufs
 

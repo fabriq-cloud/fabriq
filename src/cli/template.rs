@@ -1,5 +1,5 @@
 use akira_core::template::template_client::TemplateClient;
-use akira_core::{DeleteTemplateRequest, ListTemplatesRequest, TemplateMessage};
+use akira_core::{common::TemplateIdRequest, ListTemplatesRequest, TemplateMessage};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
 use tonic::metadata::MetadataValue;
@@ -92,7 +92,9 @@ pub async fn handlers(
         }
         Some(("delete", create_match)) => {
             let id = create_match.value_of("ID").expect("Template id expected");
-            let request = tonic::Request::new(DeleteTemplateRequest { id: id.to_string() });
+            let request = tonic::Request::new(TemplateIdRequest {
+                template_id: id.to_string(),
+            });
 
             client.delete(request).await?;
 

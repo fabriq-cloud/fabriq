@@ -59,11 +59,10 @@ impl GitRepo for MemoryGitRepo {
         Ok(())
     }
 
-    fn write_file(&self, repo_path: PathBuf, contents: &[u8]) -> anyhow::Result<()> {
-        let string_path = repo_path.to_string_lossy().to_string();
+    fn write_file(&self, repo_path: &str, contents: &[u8]) -> anyhow::Result<()> {
         let mut files = self.files.lock().unwrap();
 
-        files.insert(string_path, contents.to_vec());
+        files.insert(repo_path.to_string(), contents.to_vec());
 
         Ok(())
     }
@@ -81,7 +80,7 @@ mod tests {
         let path =
             "deployments/workspace-fixture/workload-fixture/deployment-fixture/deployment.yaml";
 
-        repo.write_file(path.into(), contents)?;
+        repo.write_file(path, contents)?;
         let read_contents = repo.read_file(path.into())?;
         assert_eq!(read_contents, contents);
 

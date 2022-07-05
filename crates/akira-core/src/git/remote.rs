@@ -124,7 +124,7 @@ impl GitRepo for RemoteGitRepo {
         Ok(())
     }
 
-    fn write_file(&self, repo_path: PathBuf, contents: &[u8]) -> anyhow::Result<()> {
+    fn write_file(&self, repo_path: &str, contents: &[u8]) -> anyhow::Result<()> {
         let file_path = Path::new(&self.local_path).join(repo_path);
 
         fs::write(file_path, contents).expect("Unable to write host file");
@@ -161,11 +161,10 @@ mod tests {
         let hosts_path = Path::new(&hosts_path);
         assert!(hosts_path.exists());
 
-        let host_repo_path = Path::new("hosts/azure-eastus2-1.yaml").to_path_buf();
         let data = Uuid::new_v4().to_string();
 
         gitops_repo
-            .write_file(host_repo_path, data.as_bytes())
+            .write_file("hosts/azure-eastus2-1.yaml", data.as_bytes())
             .unwrap();
 
         gitops_repo

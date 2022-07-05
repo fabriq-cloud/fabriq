@@ -8,30 +8,31 @@ use tonic::{
 };
 
 use crate::{
-    common::TemplateIdRequest, template::template_client::TemplateClient, ListTemplatesRequest,
-    ListTemplatesResponse, OperationId, TemplateMessage, TemplateTrait,
+    common::DeploymentIdRequest, deployment::deployment_client::DeploymentClient,
+    DeploymentMessage, DeploymentTrait, ListDeploymentsRequest, ListDeploymentsResponse,
+    OperationId,
 };
 
 use super::interceptor::ClientInterceptor;
 
-pub struct WrappedTemplateClient {
-    inner: Arc<Mutex<TemplateClient<InterceptedService<Channel, ClientInterceptor>>>>,
+pub struct WrappedDeploymentClient {
+    inner: Arc<Mutex<DeploymentClient<InterceptedService<Channel, ClientInterceptor>>>>,
 }
 
-impl WrappedTemplateClient {
+impl WrappedDeploymentClient {
     pub fn new(channel: Channel, token: MetadataValue<Ascii>) -> Self {
-        let inner = TemplateClient::with_interceptor(channel, ClientInterceptor { token });
+        let inner = DeploymentClient::with_interceptor(channel, ClientInterceptor { token });
         let inner = Arc::new(Mutex::new(inner));
 
-        WrappedTemplateClient { inner }
+        WrappedDeploymentClient { inner }
     }
 }
 
 #[tonic::async_trait]
-impl TemplateTrait for WrappedTemplateClient {
+impl DeploymentTrait for WrappedDeploymentClient {
     async fn create(
         &self,
-        request: Request<TemplateMessage>,
+        request: Request<DeploymentMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let mut inner = self.inner.lock().await;
         inner.create(request).await
@@ -39,7 +40,7 @@ impl TemplateTrait for WrappedTemplateClient {
 
     async fn delete(
         &self,
-        request: Request<TemplateIdRequest>,
+        request: Request<DeploymentIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
         let mut inner = self.inner.lock().await;
         inner.delete(request).await
@@ -47,16 +48,16 @@ impl TemplateTrait for WrappedTemplateClient {
 
     async fn get_by_id(
         &self,
-        request: Request<TemplateIdRequest>,
-    ) -> Result<Response<TemplateMessage>, Status> {
+        request: Request<DeploymentIdRequest>,
+    ) -> Result<Response<DeploymentMessage>, Status> {
         let mut inner = self.inner.lock().await;
         inner.get_by_id(request).await
     }
 
     async fn list(
         &self,
-        request: Request<ListTemplatesRequest>,
-    ) -> Result<Response<ListTemplatesResponse>, Status> {
+        request: Request<ListDeploymentsRequest>,
+    ) -> Result<Response<ListDeploymentsResponse>, Status> {
         let mut inner = self.inner.lock().await;
         inner.list(request).await
     }

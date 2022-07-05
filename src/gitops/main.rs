@@ -44,10 +44,16 @@ async fn main() -> anyhow::Result<()> {
     let channel = Channel::from_static(context.endpoint).connect().await?;
     let token: MetadataValue<Ascii> = context.token.parse()?;
 
+    let deployment_client = Arc::new(akira_core::api::client::WrappedDeploymentClient::new(
+        channel.clone(),
+        token.clone(),
+    ));
+
     let template_client = Arc::new(akira_core::api::client::WrappedTemplateClient::new(
         channel.clone(),
         token.clone(),
     ));
+
     let workload_client = Arc::new(akira_core::api::client::WrappedWorkloadClient::new(
         channel, token,
     ));
@@ -55,6 +61,8 @@ async fn main() -> anyhow::Result<()> {
     let mut gitops_processor = GitOpsProcessor {
         gitops_repo,
         private_ssh_key,
+
+        deployment_client,
         template_client,
         workload_client,
     };

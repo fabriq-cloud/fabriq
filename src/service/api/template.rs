@@ -1,6 +1,5 @@
-use akira_core::common::TemplateIdRequest;
 use akira_core::{
-    DeleteTemplateRequest, ListTemplatesRequest, ListTemplatesResponse, OperationId,
+    common::TemplateIdRequest, ListTemplatesRequest, ListTemplatesResponse, OperationId,
     TemplateMessage, TemplateTrait,
 };
 use std::sync::Arc;
@@ -41,12 +40,12 @@ impl TemplateTrait for GrpcTemplateService {
 
     async fn delete(
         &self,
-        request: Request<DeleteTemplateRequest>,
+        request: Request<TemplateIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
         // TODO: Check that no workloads are currently still using template
         // Query workload service for workloads by template_id
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None) {
+        let operation_id = match self.service.delete(&request.into_inner().template_id, None) {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -141,7 +140,7 @@ impl TemplateTrait for GrpcTemplateService {
 #[cfg(test)]
 mod tests {
     use akira_core::common::TemplateIdRequest;
-    use akira_core::{DeleteTemplateRequest, EventStream, ListTemplatesRequest, TemplateTrait};
+    use akira_core::{EventStream, ListTemplatesRequest, TemplateTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
@@ -198,8 +197,8 @@ mod tests {
 
         assert_eq!(get_by_id_response.into_inner().id, "external-service");
 
-        let request = Request::new(DeleteTemplateRequest {
-            id: "external-service".to_owned(),
+        let request = Request::new(TemplateIdRequest {
+            template_id: "external-service".to_owned(),
         });
 
         let delete_response = template_grpc_service

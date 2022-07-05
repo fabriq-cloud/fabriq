@@ -5,7 +5,7 @@ import "common.proto";
 
 service Template {
     rpc Create(TemplateMessage) returns (akira.common.OperationId);
-    rpc Delete(DeleteTemplateRequest) returns (akira.common.OperationId);
+    rpc Delete(akira.common.TemplateIdRequest) returns (akira.common.OperationId);
     rpc GetById(akira.common.TemplateIdRequest) returns (TemplateMessage);
     rpc List(ListTemplatesRequest) returns (ListTemplatesResponse);
 }
@@ -14,10 +14,6 @@ message ListTemplatesRequest {}
 
 message ListTemplatesResponse {
     repeated TemplateMessage templates = 1;
-}
-
-message DeleteTemplateRequest {
-    string id = 1;
 }
 
 message TemplateMessage {

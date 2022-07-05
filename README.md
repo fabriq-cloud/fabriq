@@ -14,7 +14,7 @@ $ akira login timfpark@gmail.com
 
 Logs in with Github
 Creates PAT for CLI and stores it locally?
-Automatically creates a group for the user and makes it the default
+Automatically creates a group for the user and makes it the default?
 
 ## Seed sample node.js application
 
@@ -28,47 +28,64 @@ This is just a convience function and we could have templated it from GitHub its
 
 ## Seed walkthrough
 
-- Prints "Hello {name}" in response to incoming query.
-- Includes Github Action to build container
-- Includes metrics and logging
+- Run It
+- Show it prints "Hello {name}" in response to incoming query.
+- Show it includes Github Action to build container
+- Show it includes metrics and logging (v2)
 
 ## Deploy node.js application
 
+Let's deploy it. First, we want to register our service:
+
 ```
-$ akira service create hello-service --template external-service
+$ akira service create hello-service --template external-service --target eastus
 ```
 
-This registers this service with `akira`, specifying that we would like deployments of this service to, by default, use the `external-service` deployment template.
+This registers this service with `akira`, specifying that we would like deployments of this service to, by default, use the `external-service` deployment template and target hosts matching `eastus`.
 
 By default, it uses your user group for this service, but alternatively you can use `--group {group}` to specify the group to use for the service.
 
 It also creates an .akira/workload.yaml and adds details about this service (name, group, deployment template).
 
-`akira` enables you to make multiple deployments of your service, so let's make our first one now to deploy the application:
+`akira` enables you to make multiple deployments of your service so let's make our first one now:
 
 ```
-$ akira deployment create main --target eastus
+$ akira deployment create
+deployment created:
+   name: main (default from git branch)
+   service: hello-service
+   template: external-service (inherited from service)
+   target: eastus (inherited from service)
+   group: timfpark
 ```
 
-Here we are creating a `main` deployment and saying that we would like it hosted in on a host matching `eastus`.
+We could name this deployment with a `name` parameter, but by default `akira` will choose the name of the current branch of our Git repo.
 
-`[--service hello-service]` `[--group timfpark]` is assumed in the above because of you are running the command in the `hello-service` directory and Akira will pull defaults from `.akira/service.yaml`.
+`[--service hello-service]` is assumed in the above because of you are running the command in the `hello-service` service repo and Akira will pull defaults from `.akira/service.yaml`.
 
-Behind the scenes this will create a deployment for the service and places it by default at `main.hello-world.timfpark.akira.network`. This is a specific example of the default form `{deployment}.{service}.{group}.akira.network`.
+Likewise, since we didn't override them, the deployment will inherit the same deployment template and target from the service. This is usually what you want, but if you can override them, if, for example you have a very large production deployment or very small dev deployment that you want to do.
 
-## Fetching Metrics and Logs from Production
+Behind the scenes this will create a deployment for the service, will match it to a host that matches our `eastus` target, and because we used an `external-service` deployment template, will surface it by default at `main.hello-world.timfpark.akira.network`. This is a specific example of the default form `{deployment}.{service}.{group}.akira.network`.
+
+Additionally, each time that we push a commit to our `main` branch, our GitHub CI will build our service, update our `main` deployment.
 
 ## Container Promotion
 
-For production deployments you don't want the build of a container to immediately be pressed into production service.
-
-Instead, these containers are usually promoted in a copy exactly manner (no new container build) from one of the other environments to production.
+For production deployments you don't want the build of a container to immediately be deployed. Instead service teams typically test a build in another environment and then promote it in a copy exactly manner (no new container build) to production.
 
 Let's first create a `prod` deployment for our workload:
 
 ```
-$ akira deployment create prod --target eastus
+$ akira deployment create prod
+deployment created:
+   name: prod
+   service: hello-service
+   template: external-service (inherited from service)
+   target: eastus (inherited from service)
+   group: timfpark
 ```
+
+In this case we are not letting Akira default to the name of our current branch, but instead specifying `prod` explicitly.
 
 And then we can promote our `main` development build to production with:
 
