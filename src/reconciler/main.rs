@@ -11,6 +11,7 @@ use akira::{
 };
 use akira_core::EventStream;
 use akira_mqtt_stream::MqttEventStream;
+use dotenv::dotenv;
 use std::{env, sync::Arc};
 
 mod reconciler;
@@ -20,6 +21,13 @@ pub use reconciler::Reconciler;
 const DEFAULT_RECONCILER_CLIENT_ID: &str = "reconciler";
 
 fn main() -> anyhow::Result<()> {
+    dotenv().ok();
+
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
     let gitops_client_id = env::var("RECONCILER_CLIENT_ID")
         .unwrap_or_else(|_| DEFAULT_RECONCILER_CLIENT_ID.to_string());
@@ -74,6 +82,8 @@ fn main() -> anyhow::Result<()> {
         workload_service: Arc::clone(&workload_service),
     });
 
+    tracing::info!("reconciler: starting");
+
     let reconciler = Reconciler {
         assignment_service,
         deployment_service,
@@ -83,6 +93,8 @@ fn main() -> anyhow::Result<()> {
         workload_service,
         workspace_service,
     };
+
+    tracing::info!("reconciler: started");
 
     for event in event_stream.receive().into_iter().flatten() {
         reconciler.process(&event)?;

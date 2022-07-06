@@ -28,7 +28,7 @@ use akira::services::{
     TemplateService, WorkloadService, WorkspaceService,
 };
 
-const DEFAULT_RECONCILER_CLIENT_ID: &str = "reconciler";
+const DEFAULT_SERVICE_CLIENT_ID: &str = "service";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -40,8 +40,8 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
-    let reconciler_client_id = env::var("RECONCILER_CLIENT_ID")
-        .unwrap_or_else(|_| DEFAULT_RECONCILER_CLIENT_ID.to_string());
+    let reconciler_client_id =
+        env::var("RECONCILER_CLIENT_ID").unwrap_or_else(|_| DEFAULT_SERVICE_CLIENT_ID.to_string());
 
     let mqtt_event_stream = MqttEventStream::new(&mqtt_broker_uri, &reconciler_client_id, true)?;
 
