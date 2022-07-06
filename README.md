@@ -1,5 +1,7 @@
 # akira
 
+A PaaS for Multicloud 
+
 Let's do a walkthrough to best understand how it works
 
 ## Install CLI
@@ -65,7 +67,12 @@ We could have named this deployment by adding a `name` parameter, but by default
 
 Likewise, since we didn't override them, the deployment will inherit the same deployment template and target from the service. This is usually what you want, but you can override them, if, for example you have a very large production deployment or very small dev deployment that you want to do. (too much detail?)
 
-Behind the scenes this will create a deployment for the service, matching it to a host that matches our `eastus` target, and because we used an `external-service` deployment template, and will surface it on `main.hello-world.timfpark.akira.network` as a specific example of the general form `{deployment}.{service}.{group}.akira.network`.
+Behind the scenes this will create a deployment for the service, matching it to a host that matches our `eastus` target, and because 
+we used an `external-service` deployment template, and will surface it on `main.hello-world.timfpark.akira.network` as a specific example 
+of the general form `{deployment}.{service}.{group}.akira.network`.
+
+TODO: Can we use a service operator within the `external-service` template to automatically point DNS to the host it is configured on?
+TODO: Use a host probe to identify the ingress IP address such that Akira knows it?  Or can we just establish a CNAME for the host and then point the deployment to that CNAME?
 
 Additionally, each time that we push a commit to our `main` branch, our GitHub CI will build our service's container, and assuming its test pass, update our `main` deployment so that we can test it.
 
@@ -94,3 +101,33 @@ $ akira deployment promote main prod
 ```
 
 This copies the image tag from `main` deployment and applies it as config to the `prod` deployment, triggering the first deployment of `prod` and surfacing it on `prod.hello-world.timfpark.akira.network`.
+
+## Metrics
+
+Deployment is only the first step in managing a production service.  We also want to be able to watch metrics from our service.
+
+Akira automatically provisions observability tools for our service, including Prometheus and Grafana for metrics.  We can access them via
+the command line by executing in our repo:
+
+```
+$ akira observe metrics
+```
+
+This opens a browser window and directs you to Grafana where you can access your metrics.  In this case, we have a 
+set of metrics dashboards for our service...
+
+TODO: How do we provision metrics dashboards for our application?
+TODO: Can we query on just the specific deployment in grafana automatically?
+TODO: Can we configure the app to label metrics with the branch our deployment is in?
+
+## Logs
+
+TODO: What to use for logs?
+
+```
+$ akira observe logs
+```
+
+## Inter Service Communication
+
+TODO: Can we use service mesh to do dynamic routing between the service deployments?
