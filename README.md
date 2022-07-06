@@ -1,10 +1,10 @@
 # akira
 
-Let's do a walkthrough
+Let's do a walkthrough to best understand how it works
 
 ## Install CLI
 
-One line instructions to install the CLI
+One line instructions to install the CLI...
 
 ## Login
 
@@ -18,13 +18,15 @@ Automatically creates a group for the user and makes it the default?
 
 ## Seed sample node.js application
 
-Let's use a sample node.js application to see how easy it is to deploy. To do this, we need a service, so let's template out a quick one using our CLI:
+Let's use a sample node.js application to see how easy it is to deploy. 
+
+Let's template out a simple service from a Github template:
 
 ```
-$ akira service init hello-service --seed microsoft/nodejs-service-api
+$ akira service template hello-service --from microsoft/nodejs-service-api
 ```
 
-This is just a convience function and we could have templated it from GitHub itself. Show that it created a repo called hello-service in my Github account and clones it to the
+This is just a convience function and we could have templated it from GitHub itself. 
 
 ## Seed walkthrough
 
@@ -41,13 +43,11 @@ Let's deploy it. First, we want to register our service:
 $ akira service create hello-service --template external-service --target eastus
 ```
 
-This registers this service with `akira`, specifying that we would like deployments of this service to, by default, use the `external-service` deployment template and target hosts matching `eastus`.
+This registers this service, specifying that we would like deployments of this service to, by default, use the `external-service` deployment template and place these deployments on hosts matching `eastus`.
 
-By default, it uses your user group for this service, but alternatively you can use `--group {group}` to specify the group to use for the service.
+By default, it uses your user group for this service, but alternatively you can use `--group {group}` to specify the group to use for the service. It also creates an .akira/workload.yaml and adds details about this service (name, group, deployment template). (too much detail for now?)
 
-It also creates an .akira/workload.yaml and adds details about this service (name, group, deployment template).
-
-`akira` enables you to make multiple deployments of your service so let's make our first one now:
+`akira` enables you to make multiple deployments of your service so you can progressively roll out changes.  Let's make our first one now:
 
 ```
 $ akira deployment create
@@ -59,21 +59,21 @@ deployment created:
    group: timfpark
 ```
 
-We could name this deployment with a `name` parameter, but by default `akira` will choose the name of the current branch of our Git repo.
+We could have named this deployment by adding a `name` parameter, but by default `akira` will choose the name of the current branch of our Git repo.
 
 `[--service hello-service]` is assumed in the above because of you are running the command in the `hello-service` service repo and Akira will pull defaults from `.akira/service.yaml`.
 
-Likewise, since we didn't override them, the deployment will inherit the same deployment template and target from the service. This is usually what you want, but if you can override them, if, for example you have a very large production deployment or very small dev deployment that you want to do.
+Likewise, since we didn't override them, the deployment will inherit the same deployment template and target from the service. This is usually what you want, but you can override them, if, for example you have a very large production deployment or very small dev deployment that you want to do. (too much detail?)
 
-Behind the scenes this will create a deployment for the service, will match it to a host that matches our `eastus` target, and because we used an `external-service` deployment template, will surface it by default at `main.hello-world.timfpark.akira.network`. This is a specific example of the default form `{deployment}.{service}.{group}.akira.network`.
+Behind the scenes this will create a deployment for the service, matching it to a host that matches our `eastus` target, and because we used an `external-service` deployment template, and will surface it on `main.hello-world.timfpark.akira.network` as a specific example of the general form `{deployment}.{service}.{group}.akira.network`.
 
-Additionally, each time that we push a commit to our `main` branch, our GitHub CI will build our service, update our `main` deployment.
+Additionally, each time that we push a commit to our `main` branch, our GitHub CI will build our service's container, and assuming its test pass, update our `main` deployment so that we can test it.
 
 ## Container Promotion
 
 For production deployments you don't want the build of a container to immediately be deployed. Instead service teams typically test a build in another environment and then promote it in a copy exactly manner (no new container build) to production.
 
-Let's first create a `prod` deployment for our workload:
+Let's first create a `prod` deployment for our workload that we can promote our `main` builds to production:
 
 ```
 $ akira deployment create prod
@@ -85,7 +85,7 @@ deployment created:
    group: timfpark
 ```
 
-In this case we are not letting Akira default to the name of our current branch, but instead specifying `prod` explicitly.
+In this case we are specifying the name `prod` explicitly, but `akira` will default to all of the previous settings.
 
 And then we can promote our `main` development build to production with:
 
@@ -93,4 +93,4 @@ And then we can promote our `main` development build to production with:
 $ akira deployment promote main prod
 ```
 
-This copies the image tag from `main` deployment and applies it as config to the `prod` deployment, deploying it in `prod`.
+This copies the image tag from `main` deployment and applies it as config to the `prod` deployment, triggering the first deployment of `prod` and surfacing it on `prod.hello-world.timfpark.akira.network`.
