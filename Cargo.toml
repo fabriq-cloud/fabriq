@@ -20,13 +20,16 @@ dotenv = "0.15.0"
 handlebars = "4.3"
 lazy_static = "1.3"
 octocrab = { version = "0.16", default-features = false }
+opentelemetry = { version = "0.17" }
+opentelemetry-jaeger = { version = "0.16" }
 prost = "0.10"
 prost-types = "0.10"
 tokio = { version = "1.14", features = ["fs", "macros", "rt", "rt-multi-thread"] }
 tonic = "0.7"
 tonic-web = "0.3"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
+tracing-opentelemetry = "0.17"
 uuid = { version = "1.1", features = ["v4"] }
 
 [dev-dependencies]

@@ -8,6 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Template;
 use crate::services::TemplateService;
 
+#[derive(Debug)]
 pub struct GrpcTemplateService {
     service: Arc<TemplateService>,
 }
@@ -19,6 +20,7 @@ impl GrpcTemplateService {
 
 #[tonic::async_trait]
 impl TemplateTrait for GrpcTemplateService {
+    #[tracing::instrument(name = "grpc::template::create")]
     async fn create(
         &self,
         request: Request<TemplateMessage>,
@@ -38,6 +40,7 @@ impl TemplateTrait for GrpcTemplateService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::target::delete")]
     async fn delete(
         &self,
         request: Request<TemplateIdRequest>,
@@ -58,6 +61,7 @@ impl TemplateTrait for GrpcTemplateService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::target::get_by_id")]
     async fn get_by_id(
         &self,
         request: Request<TemplateIdRequest>,
@@ -89,24 +93,11 @@ impl TemplateTrait for GrpcTemplateService {
         Ok(Response::new(template_message))
     }
 
+    #[tracing::instrument(name = "grpc::target::list")]
     async fn list(
         &self,
         _request: Request<ListTemplatesRequest>,
     ) -> Result<Response<ListTemplatesResponse>, Status> {
-        /*
-        let service_clone = Arc::clone(&self.service);
-        let blocking_result = tokio::task::spawn_blocking(move || service_clone.list()).await;
-
-        let list_result = if let Err(err) = blocking_result {
-            return Err(Status::new(
-                tonic::Code::Internal,
-                format!("listing templates failed with {}", err),
-            ));
-        } else {
-            blocking_result.unwrap()
-        };
-        */
-
         let list_result = self.service.list();
 
         let templates = match list_result {

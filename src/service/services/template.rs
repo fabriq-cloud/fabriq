@@ -3,12 +3,14 @@ use std::sync::Arc;
 
 use crate::{models::Template, persistence::Persistence};
 
+#[derive(Debug)]
 pub struct TemplateService {
     pub persistence: Box<dyn Persistence<Template>>,
     pub event_stream: Arc<Box<dyn EventStream + 'static>>,
 }
 
 impl TemplateService {
+    #[tracing::instrument(name = "service::template::create")]
     pub fn create(
         &self,
         template: &Template,
@@ -52,10 +54,12 @@ impl TemplateService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::template::get_by_id")]
     pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Template>> {
         self.persistence.get_by_id(host_id)
     }
 
+    #[tracing::instrument(name = "service::template::delete")]
     pub fn delete(
         &self,
         template_id: &str,
@@ -86,6 +90,7 @@ impl TemplateService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::template::list")]
     pub fn list(&self) -> anyhow::Result<Vec<Template>> {
         let results = self.persistence.list()?;
 

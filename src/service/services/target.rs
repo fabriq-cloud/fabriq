@@ -6,12 +6,14 @@ use crate::{
     persistence::Persistence,
 };
 
+#[derive(Debug)]
 pub struct TargetService {
     pub persistence: Box<dyn Persistence<Target>>,
     pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl TargetService {
+    #[tracing::instrument(name = "service::target::create")]
     pub fn create(
         &self,
         target: &Target,
@@ -39,10 +41,12 @@ impl TargetService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::target::get_by_id")]
     pub fn get_by_id(&self, target_id: &str) -> anyhow::Result<Option<Target>> {
         self.persistence.get_by_id(target_id)
     }
 
+    #[tracing::instrument(name = "service::target::delete")]
     pub fn delete(
         &self,
         target_id: &str,
@@ -73,12 +77,14 @@ impl TargetService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::target::list")]
     pub fn list(&self) -> anyhow::Result<Vec<Target>> {
         let results = self.persistence.list()?;
 
         Ok(results)
     }
 
+    #[tracing::instrument(name = "service::target::get_matching_host")]
     pub fn get_matching_host(&self, host: &Host) -> anyhow::Result<Vec<Target>> {
         // TODO: Naive implementation, use proper query
         let targets = self.list()?;

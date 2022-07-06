@@ -3,12 +3,14 @@ use std::sync::Arc;
 
 use crate::{models::Config, persistence::ConfigPersistence};
 
+#[derive(Debug)]
 pub struct ConfigService {
     pub persistence: Box<dyn ConfigPersistence>,
     pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl ConfigService {
+    #[tracing::instrument(name = "service::config::create")]
     pub fn create(
         &self,
         config: &Config,
@@ -36,10 +38,12 @@ impl ConfigService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::config::get_by_id")]
     pub fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
         self.persistence.get_by_id(config_id)
     }
 
+    #[tracing::instrument(name = "service::config::delete")]
     pub fn delete(
         &self,
         config_id: &str,
@@ -71,6 +75,7 @@ impl ConfigService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::config::query")]
     pub fn query(&self, deployment_id: &str, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let mut configs = self.persistence.get_by_workload_id(workload_id)?;
         let mut deployment_config = self.persistence.get_by_deployment_id(deployment_id)?;
@@ -80,10 +85,12 @@ impl ConfigService {
         Ok(configs)
     }
 
+    #[tracing::instrument(name = "service::config::get_by_deployment_id")]
     pub fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         self.persistence.get_by_deployment_id(deployment_id)
     }
 
+    #[tracing::instrument(name = "service::config::get_by_workload_id")]
     pub fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         self.persistence.get_by_workload_id(workload_id)
     }

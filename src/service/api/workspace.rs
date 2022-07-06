@@ -8,6 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Workspace;
 use crate::services::WorkspaceService;
 
+#[derive(Debug)]
 pub struct GrpcWorkspaceService {
     service: Arc<WorkspaceService>,
 }
@@ -19,6 +20,7 @@ impl GrpcWorkspaceService {
 
 #[tonic::async_trait]
 impl WorkspaceTrait for GrpcWorkspaceService {
+    #[tracing::instrument(name = "grpc::workspace::create")]
     async fn create(
         &self,
         request: Request<WorkspaceMessage>,
@@ -38,6 +40,7 @@ impl WorkspaceTrait for GrpcWorkspaceService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::workspace::delete")]
     async fn delete(
         &self,
         request: Request<DeleteWorkspaceRequest>,
@@ -55,6 +58,7 @@ impl WorkspaceTrait for GrpcWorkspaceService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::workspace::list")]
     async fn list(
         &self,
         _request: Request<ListWorkspacesRequest>,
@@ -68,8 +72,6 @@ impl WorkspaceTrait for GrpcWorkspaceService {
                 ))
             }
         };
-
-        println!("grpc service {:?}", workspaces);
 
         let workspace_messages = workspaces
             .iter()

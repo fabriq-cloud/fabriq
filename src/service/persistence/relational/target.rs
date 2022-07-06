@@ -4,10 +4,11 @@ use crate::persistence::Persistence;
 use crate::schema::targets::table;
 use crate::{models::Target, schema::targets, schema::targets::dsl::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TargetRelationalPersistence {}
 
 impl Persistence<Target> for TargetRelationalPersistence {
+    #[tracing::instrument(name = "relational::target::create")]
     fn create(&self, target: &Target) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -22,6 +23,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::target::create_many")]
     fn create_many(&self, models: &[Target]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -33,12 +35,14 @@ impl Persistence<Target> for TargetRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::target::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(targets.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::target::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -47,6 +51,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::target::list")]
     fn list(&self) -> anyhow::Result<Vec<Target>> {
         let connection = crate::db::get_connection()?;
 
@@ -55,6 +60,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::target::get_by_id")]
     fn get_by_id(&self, target_id: &str) -> anyhow::Result<Option<Target>> {
         let connection = crate::db::get_connection()?;
 

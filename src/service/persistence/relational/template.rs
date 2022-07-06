@@ -4,10 +4,11 @@ use crate::persistence::Persistence;
 use crate::schema::templates::table;
 use crate::{models::Template, schema::templates, schema::templates::dsl::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TemplateRelationalPersistence {}
 
 impl Persistence<Template> for TemplateRelationalPersistence {
+    #[tracing::instrument(name = "relational::template::create_many")]
     fn create(&self, template: &Template) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -22,6 +23,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::template::create_many")]
     fn create_many(&self, models: &[Template]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -33,12 +35,14 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::template::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(templates.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::template::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -47,6 +51,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::template::list")]
     fn list(&self) -> anyhow::Result<Vec<Template>> {
         let connection = crate::db::get_connection()?;
 
@@ -55,6 +60,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::template::get_by_id")]
     fn get_by_id(&self, template_id: &str) -> anyhow::Result<Option<Template>> {
         let connection = crate::db::get_connection()?;
 

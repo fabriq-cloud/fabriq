@@ -3,6 +3,7 @@ use std::{collections::VecDeque, sync::Mutex};
 
 use akira_core::{Event, EventStream};
 
+#[derive(Debug)]
 pub struct MemoryEventStream {
     events: Arc<Mutex<VecDeque<Event>>>,
 }

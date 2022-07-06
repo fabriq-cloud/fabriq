@@ -4,10 +4,11 @@ use crate::persistence::{AssignmentPersistence, Persistence};
 use crate::schema::assignments::table;
 use crate::{models::Assignment, schema::assignments, schema::assignments::dsl::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct AssignmentRelationalPersistence {}
 
 impl Persistence<Assignment> for AssignmentRelationalPersistence {
+    #[tracing::instrument(name = "relational::assignment::create")]
     fn create(&self, assignment: &Assignment) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -23,6 +24,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::assignment::create_many")]
     fn create_many(&self, models: &[Assignment]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -35,12 +37,14 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::assignment::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(assignments.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::assignment::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -49,6 +53,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::assignment::get_by_id")]
     fn get_by_id(&self, assignment_id: &str) -> anyhow::Result<Option<Assignment>> {
         let connection = crate::db::get_connection()?;
 
@@ -61,6 +66,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         Ok(cloned_result)
     }
 
+    #[tracing::instrument(name = "relational::assignment::list")]
     fn list(&self) -> anyhow::Result<Vec<Assignment>> {
         let connection = crate::db::get_connection()?;
 

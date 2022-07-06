@@ -1,11 +1,12 @@
 use akira_core::{Health, HealthRequest, HealthResponse};
 use tonic::{Request, Response, Status};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct GrpcHealthService {}
 
 #[tonic::async_trait]
 impl Health for GrpcHealthService {
+    #[tracing::instrument(name = "grpc::health::health")]
     async fn health(
         &self,
         _request: Request<HealthRequest>,

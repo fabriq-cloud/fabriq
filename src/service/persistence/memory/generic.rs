@@ -1,19 +1,21 @@
 use std::{
     collections::HashMap,
+    fmt::Debug,
     sync::{Arc, Mutex, MutexGuard},
 };
 
 use crate::persistence::{PersistableModel, Persistence};
 
+#[derive(Debug)]
 pub struct MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model> + Clone + Send + Sync,
+    Model: PersistableModel<Model>,
 {
     models: Arc<Mutex<HashMap<String, Model>>>,
 }
 impl<Model> Persistence<Model> for MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model> + Clone + Send + Sync,
+    Model: PersistableModel<Model>,
 {
     fn create(&self, model: &Model) -> anyhow::Result<String> {
         let mut locked_models = self.get_models_locked()?;
@@ -69,7 +71,7 @@ where
 
 impl<Model> Default for MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model> + Clone + Send + Sync,
+    Model: PersistableModel<Model>,
 {
     fn default() -> Self {
         Self {
@@ -80,7 +82,7 @@ where
 
 impl<Model> MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model> + Clone + Send + Sync,
+    Model: PersistableModel<Model>,
 {
     fn get_models_locked(&self) -> anyhow::Result<MutexGuard<HashMap<String, Model>>> {
         match self.models.lock() {

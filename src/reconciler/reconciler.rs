@@ -6,12 +6,6 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use akira_core::{
-    DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId, TargetMessage,
-    TemplateMessage, WorkloadMessage,
-};
-use prost::Message;
-
 use akira::{
     models::{Assignment, Deployment, Host, Target, Template, Workload},
     services::{
@@ -19,7 +13,13 @@ use akira::{
         WorkloadService, WorkspaceService,
     },
 };
+use akira_core::{
+    DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId, TargetMessage,
+    TemplateMessage, WorkloadMessage,
+};
+use prost::Message;
 
+#[derive(Debug)]
 pub struct Reconciler {
     pub assignment_service: Arc<AssignmentService>,
     pub deployment_service: Arc<DeploymentService>,
@@ -31,15 +31,13 @@ pub struct Reconciler {
 }
 
 impl Reconciler {
+    #[tracing::instrument]
     pub fn process(&self, event: &Event) -> anyhow::Result<()> {
-        tracing::info!("processing event: {:?}", event);
-
         let model_type = event.model_type;
 
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
-                // NOP
-                Ok(())
+                self.process_assignment_event(event)
             }
             model_type if model_type == ModelType::Deployment as i32 => {
                 self.process_deployment_event(event)
@@ -55,8 +53,7 @@ impl Reconciler {
                 self.process_workload_event(event)
             }
             model_type if model_type == ModelType::Workspace as i32 => {
-                // NOP
-                Ok(())
+                self.process_workspace_event(event)
             }
             _ => {
                 panic!("unsupported model type: {:?}", event);
@@ -64,6 +61,17 @@ impl Reconciler {
         }
     }
 
+    #[tracing::instrument]
+    fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    fn process_workspace_event(&self, event: &Event) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    #[tracing::instrument]
     fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
         let workload = Self::get_current_or_previous_model::<WorkloadMessage, Workload>(event)?;
         let deployments = self.deployment_service.get_by_workload_id(&workload.id)?;
@@ -78,6 +86,7 @@ impl Reconciler {
         Ok(())
     }
 
+    #[tracing::instrument]
     fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
         let deployment =
             Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
@@ -134,6 +143,7 @@ impl Reconciler {
         Ok(())
     }
 
+    #[tracing::instrument]
     fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
         let mut spanning_target_set: HashMap<String, Target> = HashMap::new();
 
@@ -200,6 +210,7 @@ impl Reconciler {
         Ok(message.into())
     }
 
+    #[tracing::instrument]
     fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
         let template = Self::get_current_or_previous_model::<TemplateMessage, Template>(event)?;
         let mut spanning_deployments_set: HashMap<String, Deployment> = HashMap::new();
@@ -239,6 +250,7 @@ impl Reconciler {
         // self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
     }
 
+    #[tracing::instrument]
     fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
         let mut spanning_targets: Vec<Target> = Vec::new();
 

@@ -3,12 +3,14 @@ use std::sync::Arc;
 
 use crate::{models::Deployment, persistence::DeploymentPersistence};
 
+#[derive(Debug)]
 pub struct DeploymentService {
     pub persistence: Box<dyn DeploymentPersistence>,
     pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl DeploymentService {
+    #[tracing::instrument(name = "service::deployment::create")]
     pub fn create(
         &self,
         deployment: &Deployment,
@@ -40,10 +42,12 @@ impl DeploymentService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::deployment::get_by_id")]
     pub fn get_by_id(&self, deployment_id: &str) -> anyhow::Result<Option<Deployment>> {
         self.persistence.get_by_id(deployment_id)
     }
 
+    #[tracing::instrument(name = "service::deployment::delete")]
     pub fn delete(
         &self,
         deployment_id: &str,
@@ -75,20 +79,24 @@ impl DeploymentService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::deployment::list")]
     pub fn list(&self) -> anyhow::Result<Vec<Deployment>> {
         let results = self.persistence.list()?;
 
         Ok(results)
     }
 
+    #[tracing::instrument(name = "service::deployment::get_by_target_id")]
     pub fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_target_id(target_id)
     }
 
+    #[tracing::instrument(name = "service::deployment::get_by_template_id")]
     pub fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_template_id(template_id)
     }
 
+    #[tracing::instrument(name = "service::deployment::get_by_workload_id")]
     pub fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_workload_id(workload_id)
     }

@@ -13,6 +13,7 @@ use akira_core::EventStream;
 use akira_mqtt_stream::MqttEventStream;
 use dotenv::dotenv;
 use std::{env, sync::Arc};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod reconciler;
 
@@ -23,10 +24,17 @@ const DEFAULT_RECONCILER_CLIENT_ID: &str = "reconciler";
 fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name(DEFAULT_RECONCILER_CLIENT_ID)
+        .install_simple()
+        .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
+
+    tracing_subscriber::registry() //(1)
+        .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
+        .with(tracing_opentelemetry::layer().with_tracer(tracer)) //(3)
+        .with(tracing_subscriber::fmt::layer())
+        .try_init()
+        .expect("Failed to register tracer with registry");
 
     let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
     let gitops_client_id = env::var("RECONCILER_CLIENT_ID")
@@ -99,6 +107,8 @@ fn main() -> anyhow::Result<()> {
     for event in event_stream.receive().into_iter().flatten() {
         reconciler.process(&event)?;
     }
+
+    opentelemetry::global::shutdown_tracer_provider();
 
     Ok(())
 }

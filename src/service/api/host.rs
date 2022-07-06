@@ -7,6 +7,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Host;
 use crate::services::HostService;
 
+#[derive(Debug)]
 pub struct GrpcHostService {
     service: Arc<HostService>,
 }
@@ -19,6 +20,7 @@ impl GrpcHostService {
 
 #[tonic::async_trait]
 impl HostTrait for GrpcHostService {
+    #[tracing::instrument(name = "grpc::host::create")]
     async fn create(&self, request: Request<HostMessage>) -> Result<Response<OperationId>, Status> {
         let new_host: Host = request.into_inner().into();
 
@@ -35,6 +37,7 @@ impl HostTrait for GrpcHostService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::host::delete")]
     async fn delete(
         &self,
         request: Request<DeleteHostRequest>,
@@ -55,6 +58,7 @@ impl HostTrait for GrpcHostService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::host::list")]
     async fn list(
         &self,
         _request: Request<ListHostsRequest>,

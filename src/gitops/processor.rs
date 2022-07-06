@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -25,7 +26,14 @@ pub struct GitOpsProcessor {
     pub workload_client: Arc<dyn WorkloadTrait>,
 }
 
+impl Debug for GitOpsProcessor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "GitOpsProcessor")
+    }
+}
+
 impl GitOpsProcessor {
+    #[tracing::instrument]
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
 
@@ -72,6 +80,7 @@ impl GitOpsProcessor {
         }
     }
 
+    #[tracing::instrument]
     async fn render_assignment(
         &self,
         host_id: &str,
@@ -107,6 +116,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
+    #[tracing::instrument]
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let assignment = get_current_or_previous_model::<AssignmentMessage>(event)?;
@@ -171,6 +181,7 @@ impl GitOpsProcessor {
         self.gitops_repo.push()
     }
 
+    #[tracing::instrument]
     async fn fetch_template_repo(
         &self,
         template: &TemplateMessage,
@@ -209,6 +220,7 @@ impl GitOpsProcessor {
         format!("templates/{}/{}", template_id, template_path)
     }
 
+    #[tracing::instrument]
     async fn render_deployment_template(
         &self,
         configs: &[ConfigMessage],
@@ -284,6 +296,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
+    #[tracing::instrument]
     async fn process_deployment_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let deployment = get_current_or_previous_model::<DeploymentMessage>(event)?;
@@ -346,6 +359,7 @@ impl GitOpsProcessor {
         self.gitops_repo.push()
     }
 
+    #[tracing::instrument]
     async fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         match event_type {
@@ -366,6 +380,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
+    #[tracing::instrument]
     async fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         match event_type {
@@ -386,6 +401,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
+    #[tracing::instrument]
     async fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         match event_type {
@@ -416,6 +432,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
+    #[tracing::instrument]
     async fn process_workspace_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         match event_type {

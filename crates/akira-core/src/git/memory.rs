@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
 use super::GitRepo;
 
+#[derive(Debug)]
 pub struct MemoryGitRepo {
     pub files: Mutex<HashMap<String, Vec<u8>>>, // path -> contents
 }

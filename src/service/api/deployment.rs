@@ -8,6 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Deployment;
 use crate::services::DeploymentService;
 
+#[derive(Debug)]
 pub struct GrpcDeploymentService {
     service: Arc<DeploymentService>,
 }
@@ -20,6 +21,7 @@ impl GrpcDeploymentService {
 
 #[tonic::async_trait]
 impl DeploymentTrait for GrpcDeploymentService {
+    #[tracing::instrument(name = "grpc::deployment::create")]
     async fn create(
         &self,
         request: Request<DeploymentMessage>,
@@ -39,6 +41,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::deployment::delete")]
     async fn delete(
         &self,
         request: Request<DeploymentIdRequest>,
@@ -62,6 +65,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::deployment::get_by_id")]
     async fn get_by_id(
         &self,
         request: Request<DeploymentIdRequest>,
@@ -93,6 +97,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(deployment_message))
     }
 
+    #[tracing::instrument(name = "grpc::deployment::list")]
     async fn list(
         &self,
         _request: Request<ListDeploymentsRequest>,

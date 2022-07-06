@@ -3,12 +3,14 @@ use std::sync::Arc;
 
 use crate::{models::Workload, persistence::WorkloadPersistence};
 
+#[derive(Debug)]
 pub struct WorkloadService {
     pub persistence: Box<dyn WorkloadPersistence>,
     pub event_stream: Arc<Box<dyn EventStream>>,
 }
 
 impl WorkloadService {
+    #[tracing::instrument(name = "service::workload::create")]
     pub fn create(
         &self,
         workload: &Workload,
@@ -40,10 +42,12 @@ impl WorkloadService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::workload::get_by_id")]
     pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workload>> {
         self.persistence.get_by_id(host_id)
     }
 
+    #[tracing::instrument(name = "service::workload::delete")]
     pub fn delete(
         &self,
         workload_id: &str,
@@ -74,12 +78,14 @@ impl WorkloadService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::workload::list")]
     pub fn list(&self) -> anyhow::Result<Vec<Workload>> {
         let results = self.persistence.list()?;
 
         Ok(results)
     }
 
+    #[tracing::instrument(name = "service::workload::get_by_template_id")]
     pub fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Workload>> {
         self.persistence.get_by_template_id(template_id)
     }

@@ -5,6 +5,7 @@ use crate::{models::Workspace, persistence::Persistence};
 
 use super::WorkloadService;
 
+#[derive(Debug)]
 pub struct WorkspaceService {
     pub persistence: Box<dyn Persistence<Workspace>>,
     pub event_stream: Arc<Box<dyn EventStream>>,
@@ -13,6 +14,7 @@ pub struct WorkspaceService {
 }
 
 impl WorkspaceService {
+    #[tracing::instrument(name = "service::workspace::create")]
     pub fn create(
         &self,
         workspace: &Workspace,
@@ -57,10 +59,12 @@ impl WorkspaceService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::workspace::get_by_id")]
     pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workspace>> {
         self.persistence.get_by_id(host_id)
     }
 
+    #[tracing::instrument(name = "service::workspace::delete")]
     pub fn delete(
         &self,
         workspace_id: &str,
@@ -101,6 +105,7 @@ impl WorkspaceService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::workspace::list")]
     pub fn list(&self) -> anyhow::Result<Vec<Workspace>> {
         let results = self.persistence.list()?;
 

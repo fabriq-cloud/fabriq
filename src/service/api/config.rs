@@ -8,6 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Config;
 use crate::services::ConfigService;
 
+#[derive(Debug)]
 pub struct GrpcConfigService {
     service: Arc<ConfigService>,
 }
@@ -20,6 +21,7 @@ impl GrpcConfigService {
 
 #[tonic::async_trait]
 impl ConfigTrait for GrpcConfigService {
+    #[tracing::instrument(name = "grpc::config::create")]
     async fn create(
         &self,
         request: Request<ConfigMessage>,
@@ -39,6 +41,7 @@ impl ConfigTrait for GrpcConfigService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::config::delete")]
     async fn delete(
         &self,
         request: Request<ConfigIdRequest>,
@@ -59,6 +62,7 @@ impl ConfigTrait for GrpcConfigService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::config::query")]
     async fn query(
         &self,
         request: Request<QueryConfigRequest>,

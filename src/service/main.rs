@@ -8,6 +8,7 @@ use dotenv::dotenv;
 use std::env;
 use std::sync::Arc;
 use tonic::transport::Server;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use akira::acl;
 use akira::api::{
@@ -34,10 +35,17 @@ const DEFAULT_SERVICE_CLIENT_ID: &str = "service";
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name(DEFAULT_SERVICE_CLIENT_ID)
+        .install_simple()
+        .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
+
+    tracing_subscriber::registry() //(1)
+        .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
+        .with(tracing_opentelemetry::layer().with_tracer(tracer)) //(3)
+        .with(tracing_subscriber::fmt::layer())
+        .try_init()
+        .expect("Failed to register tracer with registry");
 
     let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
     let reconciler_client_id =

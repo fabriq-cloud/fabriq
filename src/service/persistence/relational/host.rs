@@ -9,10 +9,11 @@ use crate::{
     schema::hosts::table,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct HostRelationalPersistence {}
 
 impl Persistence<Host> for HostRelationalPersistence {
+    #[tracing::instrument(name = "relational::host::create")]
     fn create(&self, host: &Host) -> anyhow::Result<String> {
         let conn = crate::db::get_connection()?;
 
@@ -27,6 +28,7 @@ impl Persistence<Host> for HostRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::host::create_many")]
     fn create_many(&self, models: &[Host]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -38,12 +40,14 @@ impl Persistence<Host> for HostRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::host::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(hosts.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::host::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -52,12 +56,14 @@ impl Persistence<Host> for HostRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::host::list")]
     fn list(&self) -> anyhow::Result<Vec<Host>> {
         let connection = crate::db::get_connection()?;
 
         Ok(hosts.load::<Host>(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::host::get_by_id")]
     fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
         let connection = crate::db::get_connection()?;
 
@@ -70,6 +76,7 @@ impl Persistence<Host> for HostRelationalPersistence {
 }
 
 impl HostPersistence for HostRelationalPersistence {
+    #[tracing::instrument]
     fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
         let connection = crate::db::get_connection()?;
 

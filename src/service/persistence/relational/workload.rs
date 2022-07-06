@@ -4,10 +4,11 @@ use crate::persistence::{Persistence, WorkloadPersistence};
 use crate::schema::workloads::table;
 use crate::{models::Workload, schema::workloads, schema::workloads::dsl::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct WorkloadRelationalPersistence {}
 
 impl Persistence<Workload> for WorkloadRelationalPersistence {
+    #[tracing::instrument(name = "relational::workload::create")]
     fn create(&self, workload: &Workload) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -22,6 +23,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::workload::create_many")]
     fn create_many(&self, models: &[Workload]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -33,12 +35,14 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::workload::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(workloads.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::workload::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -47,6 +51,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::workload::list")]
     fn list(&self) -> anyhow::Result<Vec<Workload>> {
         let connection = crate::db::get_connection()?;
 
@@ -55,6 +60,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::workload::get_by_id")]
     fn get_by_id(&self, workload_id: &str) -> anyhow::Result<Option<Workload>> {
         let connection = crate::db::get_connection()?;
 
@@ -69,6 +75,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
 }
 
 impl WorkloadPersistence for WorkloadRelationalPersistence {
+    #[tracing::instrument(name = "relational::workload::get_by_template_id")]
     fn get_by_template_id(&self, query_template_id: &str) -> anyhow::Result<Vec<Workload>> {
         let connection = crate::db::get_connection()?;
 

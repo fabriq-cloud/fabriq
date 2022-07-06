@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{fmt, time::Duration};
 
 use akira_core::{Event, EventStream};
 use mqtt::{Message as MqttMessage, Receiver};
@@ -8,6 +8,12 @@ use prost::Message;
 pub struct MqttEventStream {
     client: mqtt::Client,
     rx: Receiver<Option<MqttMessage>>,
+}
+
+impl fmt::Debug for MqttEventStream {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("MqttEventStream").finish()
+    }
 }
 
 const KEEP_ALIVE_INTERVAL: u64 = 20; // seconds

@@ -2,6 +2,7 @@ use git2::{
     Cred, Direction, Index, ObjectType, PushOptions, RemoteCallbacks, Repository, Signature,
 };
 use std::{
+    fmt::Debug,
     fs,
     path::{Path, PathBuf},
     sync::Mutex,
@@ -16,6 +17,12 @@ pub struct RemoteGitRepo {
     pub branch: String,
     pub private_ssh_key: String,
     pub local_path: String,
+}
+
+impl Debug for RemoteGitRepo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RemoteGitRepo")
+    }
 }
 
 impl RemoteGitRepo {
@@ -66,17 +73,20 @@ impl RemoteGitRepo {
 }
 
 impl GitRepo for RemoteGitRepo {
+    #[tracing::instrument]
     fn add_path(&self, repo_path: PathBuf) -> anyhow::Result<()> {
         let mut index = self.index.lock().unwrap();
         let repo_path = Path::new(&repo_path);
         Ok(index.add_path(repo_path)?)
     }
 
+    #[tracing::instrument]
     fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
         let mut index = self.index.lock().unwrap();
         Ok(index.remove_dir(Path::new(&path), 0)?)
     }
 
+    #[tracing::instrument]
     fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<()> {
         let mut index = self.index.lock().unwrap();
         let oid = index.write_tree()?;
@@ -107,6 +117,7 @@ impl GitRepo for RemoteGitRepo {
         Ok(())
     }
 
+    #[tracing::instrument]
     fn push(&self) -> anyhow::Result<()> {
         let mut remote = self.repository.find_remote("origin")?;
 
@@ -124,6 +135,7 @@ impl GitRepo for RemoteGitRepo {
         Ok(())
     }
 
+    #[tracing::instrument]
     fn write_file(&self, repo_path: &str, contents: &[u8]) -> anyhow::Result<()> {
         let file_path = Path::new(&self.local_path).join(repo_path);
 

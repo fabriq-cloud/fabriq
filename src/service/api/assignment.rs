@@ -9,6 +9,7 @@ use akira_core::{
     ListAssignmentsRequest, ListAssignmentsResponse, OperationId,
 };
 
+#[derive(Debug)]
 pub struct GrpcAssignmentService {
     service: Arc<AssignmentService>,
 }
@@ -21,6 +22,7 @@ impl GrpcAssignmentService {
 
 #[tonic::async_trait]
 impl AssignmentTrait for GrpcAssignmentService {
+    #[tracing::instrument(name = "grpc::assignment::create")]
     async fn create(
         &self,
         request: Request<AssignmentMessage>,
@@ -40,6 +42,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::assignment::delete")]
     async fn delete(
         &self,
         request: Request<AssignmentIdRequest>,
@@ -63,6 +66,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::assignment::get_by_deployment_id")]
     async fn get_by_deployment_id(
         &self,
         request: Request<DeploymentIdRequest>,
@@ -94,6 +98,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         Ok(Response::new(response))
     }
 
+    #[tracing::instrument(name = "grpc::assignment::list")]
     async fn list(
         &self,
         _request: Request<ListAssignmentsRequest>,

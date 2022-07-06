@@ -2,13 +2,16 @@ use std::sync::Arc;
 
 use crate::{models::Assignment, persistence::AssignmentPersistence};
 use akira_core::{create_event, AssignmentMessage, EventStream, EventType, ModelType, OperationId};
+use std::fmt::Debug;
 
+#[derive(Debug)]
 pub struct AssignmentService {
     pub persistence: Box<dyn AssignmentPersistence>,
     pub event_stream: Arc<Box<dyn EventStream + 'static>>,
 }
 
 impl AssignmentService {
+    #[tracing::instrument(name = "service::assignment::create")]
     pub fn create(
         &self,
         assignment: &Assignment,
@@ -31,6 +34,7 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::assignment::create_many")]
     pub fn create_many(
         &self,
         assignments: &[Assignment],
@@ -57,6 +61,7 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::assignment::delete")]
     pub fn delete(
         &self,
         assignment_id: &str,
@@ -88,6 +93,7 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::assignment::delete_many")]
     pub fn delete_many(
         &self,
         assignments: &[Assignment],
@@ -118,14 +124,17 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::assignment::get_by_id")]
     pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
         self.persistence.get_by_id(host_id)
     }
 
+    #[tracing::instrument(name = "service::assignment::get_by_deployment_id")]
     pub fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
         self.persistence.get_by_deployment_id(deployment_id)
     }
 
+    #[tracing::instrument(name = "service::assignment::list")]
     pub fn list(&self) -> anyhow::Result<Vec<Assignment>> {
         let results = self.persistence.list()?;
 

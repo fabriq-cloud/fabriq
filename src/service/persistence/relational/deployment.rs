@@ -4,10 +4,11 @@ use crate::persistence::{DeploymentPersistence, Persistence};
 use crate::schema::deployments::table;
 use crate::{models::Deployment, schema::deployments, schema::deployments::dsl::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DeploymentRelationalPersistence {}
 
 impl Persistence<Deployment> for DeploymentRelationalPersistence {
+    #[tracing::instrument(name = "relational::deployment::create")]
     fn create(&self, deployment: &Deployment) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -22,6 +23,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::deployment::create_many")]
     fn create_many(&self, models: &[Deployment]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -33,12 +35,14 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::deployment::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(deployments.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::deployment::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -47,6 +51,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::deployment::list")]
     fn list(&self) -> anyhow::Result<Vec<Deployment>> {
         let connection = crate::db::get_connection()?;
 
@@ -55,6 +60,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::deployment::get_by_id")]
     fn get_by_id(&self, deployment_id: &str) -> anyhow::Result<Option<Deployment>> {
         let connection = crate::db::get_connection()?;
 
@@ -69,6 +75,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
 }
 
 impl DeploymentPersistence for DeploymentRelationalPersistence {
+    #[tracing::instrument(name = "relational::deployment::get_by_target_id")]
     fn get_by_target_id(&self, query_target_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let connection = crate::db::get_connection()?;
 
@@ -79,6 +86,7 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::deployment::get_by_template_id")]
     fn get_by_template_id(&self, query_template_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let connection = crate::db::get_connection()?;
 
@@ -89,6 +97,7 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::deployment::get_by_workload_id")]
     fn get_by_workload_id(&self, query_workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let connection = crate::db::get_connection()?;
 

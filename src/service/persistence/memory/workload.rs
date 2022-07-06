@@ -8,6 +8,7 @@ use crate::{
     persistence::{PersistableModel, Persistence, WorkloadPersistence},
 };
 
+#[derive(Debug)]
 pub struct WorkloadMemoryPersistence {
     models: Arc<Mutex<HashMap<String, Workload>>>,
 }

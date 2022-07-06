@@ -8,6 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Target;
 use crate::services::TargetService;
 
+#[derive(Debug)]
 pub struct GrpcTargetService {
     service: Arc<TargetService>,
 }
@@ -19,6 +20,7 @@ impl GrpcTargetService {
 
 #[tonic::async_trait]
 impl TargetTrait for GrpcTargetService {
+    #[tracing::instrument(name = "grpc::target::create")]
     async fn create(
         &self,
         request: Request<TargetMessage>,
@@ -38,6 +40,7 @@ impl TargetTrait for GrpcTargetService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::target::delete")]
     async fn delete(
         &self,
         request: Request<TargetIdRequest>,
@@ -58,6 +61,7 @@ impl TargetTrait for GrpcTargetService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::target::get_by_id")]
     async fn get_by_id(
         &self,
         request: Request<TargetIdRequest>,
@@ -89,6 +93,7 @@ impl TargetTrait for GrpcTargetService {
         Ok(Response::new(target_message))
     }
 
+    #[tracing::instrument(name = "grpc::target::list")]
     async fn list(
         &self,
         _request: Request<ListTargetsRequest>,
@@ -102,8 +107,6 @@ impl TargetTrait for GrpcTargetService {
                 ))
             }
         };
-
-        println!("grpc service {:?}", targets);
 
         let target_messages = targets
             .iter()

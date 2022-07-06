@@ -8,6 +8,7 @@ use crate::{
     persistence::{HostPersistence, PersistableModel, Persistence},
 };
 
+#[derive(Debug)]
 pub struct HostMemoryPersistence {
     models: Arc<Mutex<HashMap<String, Host>>>,
 }

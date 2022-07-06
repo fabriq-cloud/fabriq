@@ -8,6 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Workload;
 use crate::services::WorkloadService;
 
+#[derive(Debug)]
 pub struct GrpcWorkloadService {
     service: Arc<WorkloadService>,
 }
@@ -19,6 +20,7 @@ impl GrpcWorkloadService {
 
 #[tonic::async_trait]
 impl WorkloadTrait for GrpcWorkloadService {
+    #[tracing::instrument(name = "grpc::workload::create")]
     async fn create(
         &self,
         request: Request<WorkloadMessage>,
@@ -38,6 +40,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::workload::delete")]
     async fn delete(
         &self,
         request: Request<WorkloadIdRequest>,
@@ -58,6 +61,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(operation_id))
     }
 
+    #[tracing::instrument(name = "grpc::workload::get_by_id")]
     async fn get_by_id(
         &self,
         request: Request<WorkloadIdRequest>,
@@ -89,6 +93,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(workload_message))
     }
 
+    #[tracing::instrument(name = "grpc::workload::list")]
     async fn list(
         &self,
         _request: Request<ListWorkloadsRequest>,

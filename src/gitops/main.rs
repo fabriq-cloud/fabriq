@@ -8,6 +8,7 @@ use tonic::{
     metadata::{Ascii, MetadataValue},
     transport::Channel,
 };
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod context;
 mod processor;
@@ -18,10 +19,17 @@ const DEFAULT_GITOPS_CLIENT_ID: &str = "gitops";
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name(DEFAULT_GITOPS_CLIENT_ID)
+        .install_simple()
+        .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
+
+    tracing_subscriber::registry() //(1)
+        .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
+        .with(tracing_opentelemetry::layer().with_tracer(tracer)) //(3)
+        .with(tracing_subscriber::fmt::layer())
+        .try_init()
+        .expect("Failed to register tracer with registry");
 
     let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
     let gitops_client_id =
@@ -85,6 +93,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("gitops processor: ready for events");
 
     for event in event_stream.receive().into_iter().flatten() {
+        tracing::info!("gitops processor: event received: {:?}", event);
         gitops_processor.process(&event).await?;
     }
 

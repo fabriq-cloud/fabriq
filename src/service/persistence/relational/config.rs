@@ -4,10 +4,11 @@ use crate::persistence::{ConfigPersistence, Persistence};
 use crate::schema::configs::table;
 use crate::{models::Config, schema::configs, schema::configs::dsl::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ConfigRelationalPersistence {}
 
 impl Persistence<Config> for ConfigRelationalPersistence {
+    #[tracing::instrument(name = "relational::config::create")]
     fn create(&self, config: &Config) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -22,6 +23,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::config::create_many")]
     fn create_many(&self, models: &[Config]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -33,12 +35,14 @@ impl Persistence<Config> for ConfigRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::config::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(configs.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::config::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -47,6 +51,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::config::list")]
     fn list(&self) -> anyhow::Result<Vec<Config>> {
         let connection = crate::db::get_connection()?;
 
@@ -55,6 +60,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::config::get_by_id")]
     fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
         let connection = crate::db::get_connection()?;
 
@@ -69,6 +75,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
 }
 
 impl ConfigPersistence for ConfigRelationalPersistence {
+    #[tracing::instrument(name = "relational::config::get_by_deployment_id")]
     fn get_by_deployment_id(&self, query_deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         let connection = crate::db::get_connection()?;
 
@@ -81,6 +88,7 @@ impl ConfigPersistence for ConfigRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::config::get_by_workload_id")]
     fn get_by_workload_id(&self, query_workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let connection = crate::db::get_connection()?;
 

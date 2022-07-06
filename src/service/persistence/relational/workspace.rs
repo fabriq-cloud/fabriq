@@ -4,10 +4,11 @@ use crate::persistence::Persistence;
 use crate::schema::workspaces::table;
 use crate::{models::Workspace, schema::workspaces, schema::workspaces::dsl::*};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct WorkspaceRelationalPersistence {}
 
 impl Persistence<Workspace> for WorkspaceRelationalPersistence {
+    #[tracing::instrument(name = "relational::workspace::create")]
     fn create(&self, workspace: &Workspace) -> anyhow::Result<String> {
         let connection = crate::db::get_connection()?;
 
@@ -22,6 +23,7 @@ impl Persistence<Workspace> for WorkspaceRelationalPersistence {
         }
     }
 
+    #[tracing::instrument(name = "relational::workspace::create_many")]
     fn create_many(&self, models: &[Workspace]) -> anyhow::Result<Vec<String>> {
         let connection = crate::db::get_connection()?;
 
@@ -33,12 +35,14 @@ impl Persistence<Workspace> for WorkspaceRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::workspace::delete")]
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         Ok(diesel::delete(workspaces.filter(id.eq(model_id))).execute(&connection)?)
     }
 
+    #[tracing::instrument(name = "relational::workspace::delete_many")]
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
         for (_, model_id) in model_ids.iter().enumerate() {
             self.delete(model_id)?;
@@ -47,6 +51,7 @@ impl Persistence<Workspace> for WorkspaceRelationalPersistence {
         Ok(model_ids.len())
     }
 
+    #[tracing::instrument(name = "relational::workspace::list")]
     fn list(&self) -> anyhow::Result<Vec<Workspace>> {
         let connection = crate::db::get_connection()?;
 
@@ -55,6 +60,7 @@ impl Persistence<Workspace> for WorkspaceRelationalPersistence {
         Ok(results)
     }
 
+    #[tracing::instrument(name = "relational::workspace::get_by_id")]
     fn get_by_id(&self, workspace_id: &str) -> anyhow::Result<Option<Workspace>> {
         let connection = crate::db::get_connection()?;
 
