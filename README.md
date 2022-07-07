@@ -110,7 +110,7 @@ Akira automatically provisions observability tools for our service, including Pr
 the command line by executing in our repo:
 
 ```
-$ akira observe metrics
+$ akira metrics
 ```
 
 This opens a browser window and directs you to Grafana where you can access your metrics.  In this case, we have a 
@@ -125,9 +125,13 @@ TODO: Can we configure the app to label metrics with the branch our deployment i
 TODO: What to use for logs?
 
 ```
-$ akira observe logs
+$ akira logs
 ```
 
-## Inter Service Communication
+## Tracing
 
-TODO: Can we use service mesh to do dynamic routing between the service deployments?
+TODO: Now do we route to the jaeger instance for the application?
+
+```
+$ akira tracing
+```
