@@ -43,13 +43,15 @@ impl TemplateService {
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let create_event = create_event::<TemplateMessage>(
             &None,
-            &Some(template.into()),
+            &Some(template.clone().into()),
             EventType::Created,
-            ModelType::Target,
+            ModelType::Template,
             &operation_id,
         );
 
         self.event_stream.send(&create_event)?;
+
+        tracing::info!("template created: {:?}", template);
 
         Ok(operation_id)
     }
@@ -79,13 +81,15 @@ impl TemplateService {
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<TemplateMessage>(
             &None,
-            &Some(template.into()),
+            &Some(template.clone().into()),
             EventType::Deleted,
             ModelType::Template,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("template deleted: {:?}", template);
 
         Ok(operation_id)
     }

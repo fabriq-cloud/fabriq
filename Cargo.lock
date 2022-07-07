@@ -32,6 +32,7 @@ dependencies = [
  "dotenv",
  "futures",
  "handlebars",
+ "hyper",
  "lazy_static",
  "octocrab",
  "opentelemetry",
@@ -41,6 +42,8 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-web",
+ "tower",
+ "tower-http",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -2080,6 +2083,7 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]

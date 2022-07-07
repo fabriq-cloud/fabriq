@@ -31,13 +31,15 @@ impl DeploymentService {
         let operation_id = OperationId::unwrap_or_create(operation_id);
         let create_event = create_event::<DeploymentMessage>(
             &None,
-            &Some(deployment.into()),
+            &Some(deployment.clone().into()),
             EventType::Created,
             ModelType::Deployment,
             &operation_id,
         );
 
         self.event_stream.send(&create_event)?;
+
+        tracing::info!("deployment created: {:?}", deployment);
 
         Ok(operation_id)
     }
@@ -68,13 +70,15 @@ impl DeploymentService {
 
         let delete_event = create_event::<DeploymentMessage>(
             &None,
-            &Some(deployment.into()),
+            &Some(deployment.clone().into()),
             EventType::Deleted,
             ModelType::Deployment,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("deployment deleted: {:?}", deployment);
 
         Ok(operation_id)
     }

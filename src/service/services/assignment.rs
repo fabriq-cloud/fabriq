@@ -31,6 +31,8 @@ impl AssignmentService {
 
         self.event_stream.send(&create_event)?;
 
+        tracing::info!("assignment created: {:?}", assignment);
+
         Ok(operation_id)
     }
 
@@ -46,6 +48,7 @@ impl AssignmentService {
         let create_assignment_events = assignments
             .iter()
             .map(|assignment| {
+                tracing::info!("assignment created: {:?}", assignment);
                 create_event::<AssignmentMessage>(
                     &None,
                     &Some(assignment.clone().into()),
@@ -82,13 +85,15 @@ impl AssignmentService {
 
         let delete_event = create_event::<AssignmentMessage>(
             &None,
-            &Some(assignment.into()),
+            &Some(assignment.clone().into()),
             EventType::Deleted,
             ModelType::Assignment,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("assignment deleted: {:?}", assignment);
 
         Ok(operation_id)
     }

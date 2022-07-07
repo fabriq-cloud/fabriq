@@ -27,13 +27,15 @@ impl ConfigService {
         let operation_id = OperationId::unwrap_or_create(operation_id);
         let create_event = create_event::<ConfigMessage>(
             &None,
-            &Some(config.into()),
+            &Some(config.clone().into()),
             EventType::Created,
             ModelType::Config,
             &operation_id,
         );
 
         self.event_stream.send(&create_event)?;
+
+        tracing::info!("config created: {:?}", config);
 
         Ok(operation_id)
     }
@@ -64,13 +66,15 @@ impl ConfigService {
 
         let delete_event = create_event::<ConfigMessage>(
             &None,
-            &Some(config.into()),
+            &Some(config.clone().into()),
             EventType::Deleted,
             ModelType::Config,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("config deleted: {:?}", config);
 
         Ok(operation_id)
     }

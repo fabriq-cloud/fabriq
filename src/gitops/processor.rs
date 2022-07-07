@@ -9,8 +9,8 @@ use akira_core::git::{GitRepo, RemoteGitRepo};
 use akira_core::{
     get_current_or_previous_model, AssignmentMessage, ConfigMessage, ConfigTrait,
     DeploymentIdRequest, DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage,
-    ModelType, QueryConfigRequest, TemplateMessage, TemplateTrait, WorkloadIdRequest,
-    WorkloadMessage, WorkloadTrait, WorkspaceMessage,
+    ModelType, QueryConfigRequest, TargetMessage, TemplateMessage, TemplateTrait,
+    WorkloadIdRequest, WorkloadMessage, WorkloadTrait, WorkspaceMessage,
 };
 use handlebars::Handlebars;
 use std::fs;
@@ -33,40 +33,30 @@ impl Debug for GitOpsProcessor {
 }
 
 impl GitOpsProcessor {
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, event), fields(event_type = event.event_type))]
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
 
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
-                // create / update: link workload to host in host directory
-                // delete: unlink workload from host in host directory
                 self.process_assignment_event(event).await
             }
             model_type if model_type == ModelType::Deployment as i32 => {
-                // render and commit deployment if created or updated
-                // delete deployment directory if deleted
                 self.process_deployment_event(event).await
             }
             model_type if model_type == ModelType::Host as i32 => {
-                // delete: remove host directory
                 self.process_host_event(event).await
             }
             model_type if model_type == ModelType::Target as i32 => {
                 self.process_target_event(event).await
             }
             model_type if model_type == ModelType::Template as i32 => {
-                // create/update: rerender all deployments or workloads using template
-                // delete: NOP, shouldn't be any deployments using
                 self.process_template_event(event).await
             }
             model_type if model_type == ModelType::Workload as i32 => {
-                // create/update: rerender all deployments using workload
-                // delete: remove whole workload directory from git repo
                 self.process_workload_event(event).await
             }
             model_type if model_type == ModelType::Workspace as i32 => {
-                // NOP
                 self.process_workspace_event(event).await
             }
             _ => {
@@ -389,17 +379,17 @@ impl GitOpsProcessor {
     #[tracing::instrument]
     async fn process_target_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
-        let template = get_current_or_previous_model::<TemplateMessage>(event)?;
+        let target = get_current_or_previous_model::<TargetMessage>(event)?;
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                tracing::info!("target id {} created (NOP)", template.id);
+                tracing::info!("target id {} created (NOP)", target.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
-                tracing::info!("target id {} updated (NOP)", template.id);
+                tracing::info!("target id {} updated (NOP)", target.id);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                tracing::info!("target id {} deleted (NOP)", template.id);
+                tracing::info!("target id {} deleted (NOP)", target.id);
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);

@@ -1,13 +1,12 @@
-use akira_core::{
-    AssignmentServer, DeploymentServer, HealthServer, HostServer, TargetServer, TemplateServer,
-    WorkloadServer, WorkspaceServer,
-};
-use akira_core::{ConfigServer, EventStream};
-use akira_mqtt_stream::MqttEventStream;
 use dotenv::dotenv;
+use http::Request;
+use hyper::Body;
 use std::env;
 use std::sync::Arc;
+use tonic::codegen::http;
 use tonic::transport::Server;
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use akira::acl;
@@ -23,11 +22,16 @@ use akira::persistence::relational::{
 use akira::persistence::relational::{
     TemplateRelationalPersistence, WorkloadRelationalPersistence,
 };
-
 use akira::services::{
     AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
     TemplateService, WorkloadService, WorkspaceService,
 };
+use akira_core::{
+    AssignmentServer, DeploymentServer, HealthServer, HostServer, TargetServer, TemplateServer,
+    WorkloadServer, WorkspaceServer,
+};
+use akira_core::{ConfigServer, EventStream};
+use akira_mqtt_stream::MqttEventStream;
 
 const DEFAULT_SERVICE_CLIENT_ID: &str = "service";
 
@@ -153,7 +157,22 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("grpc services listening on {}", addr);
 
+    let tracing_layer = ServiceBuilder::new().layer(TraceLayer::new_for_grpc().make_span_with(
+        |request: &Request<Body>| {
+            tracing::info_span!(
+                "gRPC",
+                http.method = %request.method(),
+                http.url = %request.uri(),
+                http.status_code = tracing::field::Empty,
+                otel.name = %format!("gRPC {}", request.method()),
+                otel.kind = "client",
+                otel.status_code = tracing::field::Empty,
+            )
+        },
+    ));
+
     Server::builder()
+        .layer(tracing_layer)
         .add_service(tonic_web::enable(assignment_grpc_service))
         .add_service(tonic_web::enable(config_grpc_service))
         .add_service(tonic_web::enable(deployment_grpc_service))

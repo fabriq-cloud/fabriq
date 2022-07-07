@@ -17,7 +17,6 @@ pub fn args() -> Command<'static> {
                 .about("Create deployment")
                 .arg(
                     Arg::new("workload")
-                        .short('w')
                         .long("workload")
                         .help("Workload ID for deployment")
                         .takes_value(true)
@@ -25,7 +24,6 @@ pub fn args() -> Command<'static> {
                 )
                 .arg(
                     Arg::new("target")
-                        .short('t')
                         .long("target")
                         .help("Target ID for deployment")
                         .takes_value(true)
@@ -33,7 +31,6 @@ pub fn args() -> Command<'static> {
                 )
                 .arg(
                     Arg::new("template")
-                        .short('t')
                         .long("template")
                         .help("Template override for deployment")
                         .takes_value(true)
@@ -41,7 +38,6 @@ pub fn args() -> Command<'static> {
                 )
                 .arg(
                     Arg::new("hosts")
-                        .short('h')
                         .long("hosts")
                         .help("host count for deployment")
                         .takes_value(true)

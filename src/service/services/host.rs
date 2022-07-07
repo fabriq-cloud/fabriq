@@ -31,13 +31,15 @@ impl HostService {
 
         let create_event = create_event::<HostMessage>(
             &None,
-            &Some(host.into()),
+            &Some(host.clone().into()),
             EventType::Created,
             ModelType::Host,
             &operation_id,
         );
 
         self.event_stream.send(&create_event)?;
+
+        tracing::info!("host created: {:?}", host);
 
         Ok(operation_id)
     }
@@ -73,13 +75,15 @@ impl HostService {
 
         let delete_event = create_event::<HostMessage>(
             &None,
-            &Some(host.into()),
+            &Some(host.clone().into()),
             EventType::Deleted,
             ModelType::Host,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("host deleted: {:?}", host);
 
         Ok(operation_id)
     }

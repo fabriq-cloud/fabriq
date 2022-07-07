@@ -30,13 +30,15 @@ impl TargetService {
         let operation_id = OperationId::unwrap_or_create(operation_id);
         let create_event = create_event::<TargetMessage>(
             &None,
-            &Some(target.into()),
+            &Some(target.clone().into()),
             EventType::Created,
             ModelType::Target,
             &operation_id,
         );
 
         self.event_stream.send(&create_event)?;
+
+        tracing::info!("target created: {:?}", target);
 
         Ok(operation_id)
     }
@@ -66,13 +68,15 @@ impl TargetService {
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<TargetMessage>(
             &None,
-            &Some(target.into()),
+            &Some(target.clone().into()),
             EventType::Deleted,
             ModelType::Target,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("target deleted: {:?}", target);
 
         Ok(operation_id)
     }

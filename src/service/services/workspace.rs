@@ -48,13 +48,15 @@ impl WorkspaceService {
         let operation_id = OperationId::unwrap_or_create(operation_id);
         let create_event = create_event::<WorkspaceMessage>(
             &None,
-            &Some(workspace.into()),
+            &Some(workspace.clone().into()),
             EventType::Created,
             ModelType::Workspace,
             &operation_id,
         );
 
         self.event_stream.send(&create_event)?;
+
+        tracing::info!("workspace created: {:?}", workspace);
 
         Ok(operation_id)
     }
@@ -94,13 +96,15 @@ impl WorkspaceService {
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<WorkspaceMessage>(
             &None,
-            &Some(workspace.into()),
+            &Some(workspace.clone().into()),
             EventType::Deleted,
             ModelType::Workspace,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("workspace deleted: {:?}", workspace);
 
         Ok(operation_id)
     }

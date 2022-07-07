@@ -81,13 +81,9 @@ impl GitRepo for RemoteGitRepo {
     }
 
     #[tracing::instrument]
-    fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
-        let mut index = self.index.lock().unwrap();
-        Ok(index.remove_dir(Path::new(&path), 0)?)
-    }
-
-    #[tracing::instrument]
     fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<()> {
+        tracing::info!("commit started");
+
         let mut index = self.index.lock().unwrap();
         let oid = index.write_tree()?;
 
@@ -106,19 +102,23 @@ impl GitRepo for RemoteGitRepo {
         let tree = self.repository.find_tree(oid)?;
 
         self.repository.commit(
-            Some("HEAD"), //  point HEAD to our new commit
-            &signature,   // author
-            &signature,   // committer
-            message,      // commit message
-            &tree,        // tree
+            Some("HEAD"),
+            &signature,
+            &signature,
+            message,
+            &tree,
             &[&parent_commit],
         )?;
+
+        tracing::info!("commit completed");
 
         Ok(())
     }
 
     #[tracing::instrument]
     fn push(&self) -> anyhow::Result<()> {
+        tracing::info!("commit started");
+
         let mut remote = self.repository.find_remote("origin")?;
 
         let connect_auth_callback = RemoteGitRepo::get_auth_callback(&self.private_ssh_key);
@@ -132,7 +132,15 @@ impl GitRepo for RemoteGitRepo {
 
         remote.push(&[ref_spec], Some(&mut push_options))?;
 
+        tracing::info!("commit completed");
+
         Ok(())
+    }
+
+    #[tracing::instrument]
+    fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
+        let mut index = self.index.lock().unwrap();
+        Ok(index.remove_dir(Path::new(&path), 0)?)
     }
 
     #[tracing::instrument]

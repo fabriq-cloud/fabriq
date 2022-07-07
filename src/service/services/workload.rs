@@ -31,13 +31,15 @@ impl WorkloadService {
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let create_event = create_event::<WorkloadMessage>(
             &None,
-            &Some(workload.into()),
+            &Some(workload.clone().into()),
             EventType::Created,
             ModelType::Workload,
             &operation_id,
         );
 
         self.event_stream.send(&create_event)?;
+
+        tracing::info!("workload created: {:?}", workload);
 
         Ok(operation_id)
     }
@@ -67,13 +69,15 @@ impl WorkloadService {
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<WorkloadMessage>(
             &None,
-            &Some(workload.into()),
+            &Some(workload.clone().into()),
             EventType::Deleted,
             ModelType::Workload,
             &operation_id,
         );
 
         self.event_stream.send(&delete_event)?;
+
+        tracing::info!("workload deleted: {:?}", workload);
 
         Ok(operation_id)
     }
