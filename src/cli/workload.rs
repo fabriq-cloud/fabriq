@@ -13,7 +13,7 @@ use crate::context::Context;
 pub fn args() -> Command<'static> {
     Command::new("workload")
         .long_flag("workload")
-        .about("Manage workloads")
+        .about("manage workloads")
         .subcommand(
             Command::new("create")
                 .about("Create workload")
@@ -21,7 +21,7 @@ pub fn args() -> Command<'static> {
                     Arg::new("workspace")
                         .short('w')
                         .long("workspace")
-                        .help("Workspace this workload belongs to")
+                        .help("workspace this workload belongs to")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -29,17 +29,17 @@ pub fn args() -> Command<'static> {
                     Arg::new("template")
                         .short('t')
                         .long("template")
-                        .help("Template this workload should use")
+                        .help("template this workload should use")
                         .takes_value(true)
                         .multiple_values(false),
                 )
-                .arg(arg!(<ID> "Workload ID"))
+                .arg(arg!(<ID> "workload id"))
                 .arg_required_else_help(true),
         )
         .subcommand(
             Command::new("delete")
-                .about("Delete workload")
-                .arg(arg!(<ID> "ID of workload"))
+                .about("delete workload")
+                .arg(arg!(<ID> "id of workload"))
                 .arg_required_else_help(true),
         )
         .subcommand(
@@ -56,7 +56,7 @@ pub fn args() -> Command<'static> {
                 .arg(arg!(<ID> "Workload ID"))
                 .arg_required_else_help(true),
         )
-        .subcommand(Command::new("list").about("List workloads"))
+        .subcommand(Command::new("list").about("list workloads"))
 }
 
 pub async fn handlers(
@@ -169,7 +169,7 @@ pub async fn handlers(
                 .collect();
 
             if table_data.is_empty() {
-                tracing::info!("No workloads found");
+                tracing::info!("no workloads found");
 
                 return Ok(());
             }

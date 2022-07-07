@@ -97,7 +97,7 @@ impl GitOpsProcessor {
 
         self.gitops_repo
             .write_file(&assignment_path, rendered_assignment.as_bytes())?;
-
+        self.gitops_repo.add_path(assignment_path.into())?;
         Ok(())
     }
 
@@ -257,6 +257,7 @@ impl GitOpsProcessor {
 
             self.gitops_repo
                 .write_file(&string_path, rendered_template.as_bytes())?;
+            self.gitops_repo.add_path(file_path)?;
         }
 
         Ok(())

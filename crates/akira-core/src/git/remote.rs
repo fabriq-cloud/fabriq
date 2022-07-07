@@ -43,7 +43,9 @@ impl RemoteGitRepo {
         let mut repo_builder = git2::build::RepoBuilder::new();
         repo_builder.fetch_options(fetch_options);
 
-        let repository = repo_builder.clone(repo_url, Path::new(local_path))?;
+        let repository = repo_builder
+            .branch(branch)
+            .clone(repo_url, Path::new(local_path))?;
 
         let index = Mutex::new(repository.index()?);
 
@@ -82,9 +84,8 @@ impl GitRepo for RemoteGitRepo {
 
     #[tracing::instrument]
     fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<()> {
-        tracing::info!("commit started");
-
         let mut index = self.index.lock().unwrap();
+
         let oid = index.write_tree()?;
 
         let signature = Signature::now(name, email)?;
@@ -110,15 +111,13 @@ impl GitRepo for RemoteGitRepo {
             &[&parent_commit],
         )?;
 
-        tracing::info!("commit completed");
+        tracing::info!("commit completed on branch {}", self.branch);
 
         Ok(())
     }
 
     #[tracing::instrument]
     fn push(&self) -> anyhow::Result<()> {
-        tracing::info!("commit started");
-
         let mut remote = self.repository.find_remote("origin")?;
 
         let connect_auth_callback = RemoteGitRepo::get_auth_callback(&self.private_ssh_key);
@@ -132,7 +131,7 @@ impl GitRepo for RemoteGitRepo {
 
         remote.push(&[ref_spec], Some(&mut push_options))?;
 
-        tracing::info!("commit completed");
+        tracing::info!("push completed on branch {}", self.branch);
 
         Ok(())
     }
@@ -146,7 +145,15 @@ impl GitRepo for RemoteGitRepo {
     #[tracing::instrument]
     fn write_file(&self, repo_path: &str, contents: &[u8]) -> anyhow::Result<()> {
         let file_path = Path::new(&self.local_path).join(repo_path);
+        let directory_path = file_path.parent().unwrap();
 
+        fs::create_dir_all(directory_path)?;
+
+        tracing::info!(
+            "writing file on branch {} path {}",
+            self.branch,
+            file_path.to_string_lossy()
+        );
         fs::write(file_path, contents).expect("Unable to write host file");
 
         Ok(())
