@@ -94,6 +94,8 @@ deployment created:
 
 In this case we are specifying the name `prod` explicitly, but `akira` will default to all of the previous settings.
 
+This won't trigger a deployment because there is no `image` config specified and the `external-service` template requires it.
+
 And then we can promote our `main` development build to production with:
 
 ```
