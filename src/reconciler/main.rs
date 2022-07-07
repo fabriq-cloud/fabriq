@@ -36,6 +36,8 @@ fn main() -> anyhow::Result<()> {
         .try_init()
         .expect("Failed to register tracer with registry");
 
+    tracing::info!("reconciler: starting");
+
     let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
     let gitops_client_id = env::var("RECONCILER_CLIENT_ID")
         .unwrap_or_else(|_| DEFAULT_RECONCILER_CLIENT_ID.to_string());
@@ -90,8 +92,6 @@ fn main() -> anyhow::Result<()> {
         workload_service: Arc::clone(&workload_service),
     });
 
-    tracing::info!("reconciler: starting");
-
     let reconciler = Reconciler {
         assignment_service,
         deployment_service,
@@ -102,7 +102,7 @@ fn main() -> anyhow::Result<()> {
         workspace_service,
     };
 
-    tracing::info!("reconciler: started");
+    tracing::info!("reconciler: starting event loop");
 
     for event in event_stream.receive().into_iter().flatten() {
         reconciler.process(&event)?;

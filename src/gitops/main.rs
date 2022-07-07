@@ -90,10 +90,9 @@ async fn main() -> anyhow::Result<()> {
         workload_client,
     };
 
-    tracing::info!("gitops processor: ready for events");
+    tracing::info!("gitops processor: starting event loop");
 
     for event in event_stream.receive().into_iter().flatten() {
-        tracing::info!("gitops processor: event received: {:?}", event);
         gitops_processor.process(&event).await?;
     }
 

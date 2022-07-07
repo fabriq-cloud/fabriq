@@ -8,9 +8,9 @@ use akira_core::git::{GitRepo, RemoteGitRepo};
 
 use akira_core::{
     get_current_or_previous_model, AssignmentMessage, ConfigMessage, ConfigTrait,
-    DeploymentIdRequest, DeploymentMessage, DeploymentTrait, Event, EventType, ModelType,
-    QueryConfigRequest, TemplateMessage, TemplateTrait, WorkloadIdRequest, WorkloadMessage,
-    WorkloadTrait,
+    DeploymentIdRequest, DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage,
+    ModelType, QueryConfigRequest, TemplateMessage, TemplateTrait, WorkloadIdRequest,
+    WorkloadMessage, WorkloadTrait, WorkspaceMessage,
 };
 use handlebars::Handlebars;
 use std::fs;
@@ -53,12 +53,7 @@ impl GitOpsProcessor {
                 self.process_host_event(event).await
             }
             model_type if model_type == ModelType::Target as i32 => {
-                // Handled in reconciler:
-                // => Will materialize as Assignment creation / deletion events
-                //    here in terms of GitOps concerns.
-                tracing::info!("Target event => NOP");
-
-                Ok(())
+                self.process_target_event(event).await
             }
             model_type if model_type == ModelType::Template as i32 => {
                 // create/update: rerender all deployments or workloads using template
@@ -143,7 +138,6 @@ impl GitOpsProcessor {
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                tracing::info!("assignment created {:?}", assignment);
                 self.render_assignment(
                     &assignment.host_id,
                     &workload.workspace_id,
@@ -151,9 +145,9 @@ impl GitOpsProcessor {
                     &deployment.id,
                 )
                 .await?;
+                tracing::info!("assignment id {} created", assignment.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
-                tracing::info!("assignment updated {:?}", assignment);
                 self.render_assignment(
                     &assignment.host_id,
                     &workload.workspace_id,
@@ -161,9 +155,18 @@ impl GitOpsProcessor {
                     &deployment.id,
                 )
                 .await?;
+                tracing::info!("assignment id {} updated", assignment.id);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                tracing::info!("assignment deleted (NOP): {:?}", event);
+                let assignment_path = GitOpsProcessor::make_assignment_path(
+                    &assignment.host_id,
+                    &workload.workspace_id,
+                    &deployment.workload_id,
+                    &deployment.id,
+                );
+
+                self.gitops_repo.remove_dir(&assignment_path)?;
+                tracing::info!("assignment id {} deleted", assignment.id);
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);
@@ -330,18 +333,19 @@ impl GitOpsProcessor {
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                tracing::info!("deployment created {:?}", deployment);
                 self.render_deployment(&configs, &workload, &deployment)
                     .await?;
+                tracing::info!("deployment id {} created", deployment.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
-                tracing::info!("deployment updated: {:?}", event);
                 self.render_deployment(&configs, &workload, &deployment)
                     .await?;
+                tracing::info!("deployment id {} updated", deployment.id);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                tracing::info!("deployment deleted: {:?}", event);
-                // just commit deleted deployment
+                tracing::info!("deployment id {} deleted", deployment.id);
+                // previous deployment directory removed above
+                // so just commit deleted deployment below.
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);
@@ -362,15 +366,40 @@ impl GitOpsProcessor {
     #[tracing::instrument]
     async fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
+        let host = get_current_or_previous_model::<HostMessage>(event)?;
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                tracing::info!("host created (NOP): {:?}", event);
+                tracing::info!("host id {} created (NOP)", host.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
-                tracing::info!("host updated (NOP): {:?}", event);
+                tracing::info!("host id {} updated (NOP)", host.id);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                tracing::info!("host deleted (NOP): {:?}", event);
+                tracing::info!("host id {} deleted (NOP)", host.id);
+            }
+            _ => {
+                panic!("unsupported event type: {:?}", event);
+            }
+        }
+
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    async fn process_target_event(&mut self, event: &Event) -> anyhow::Result<()> {
+        let event_type = event.event_type;
+        let template = get_current_or_previous_model::<TemplateMessage>(event)?;
+
+        match event_type {
+            event_type if event_type == EventType::Created as i32 => {
+                tracing::info!("target id {} created (NOP)", template.id);
+            }
+            event_type if event_type == EventType::Updated as i32 => {
+                tracing::info!("target id {} updated (NOP)", template.id);
+            }
+            event_type if event_type == EventType::Deleted as i32 => {
+                tracing::info!("target id {} deleted (NOP)", template.id);
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);
@@ -383,15 +412,17 @@ impl GitOpsProcessor {
     #[tracing::instrument]
     async fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
+        let template = get_current_or_previous_model::<TemplateMessage>(event)?;
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
-                tracing::info!("template created (NOP): {:?}", event);
+                tracing::info!("template id {} created", template.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
-                tracing::info!("template updated (NOP): {:?}", event);
+                tracing::info!("template id {} updated", template.id);
             }
             event_type if event_type == EventType::Deleted as i32 => {
-                tracing::info!("template deleted (NOP): {:?}", event);
+                tracing::info!("template id {} deleted", template.id);
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);
@@ -404,17 +435,19 @@ impl GitOpsProcessor {
     #[tracing::instrument]
     async fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
+        let workload = get_current_or_previous_model::<WorkloadMessage>(event)?;
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 // NOP:
 
                 // 1. Logically would just create a workload directory in GitOps repo.
                 // 2. But this will happen with first deployment creation.
-                tracing::info!("workload created (NOP): {:?}", event);
+                tracing::info!("workload id {} created", workload.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
                 // TODO: Retrigger generation for all deployments in this workspace as the gitops path changed?
-                tracing::info!("workload updated (NOP): {:?}", event);
+                tracing::info!("workload id {} updated", workload.id);
             }
             event_type if event_type == EventType::Deleted as i32 => {
                 // NOP:
@@ -422,7 +455,7 @@ impl GitOpsProcessor {
                 // 1. Logically would just delete a workload directory in GitOps repo.
                 // 2. But this will happen with last deployment creation.
 
-                tracing::info!("workload deleted (NOP): {:?}", event);
+                tracing::info!("workload id {} deleted", workload.id);
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);
@@ -435,17 +468,19 @@ impl GitOpsProcessor {
     #[tracing::instrument]
     async fn process_workspace_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
+        let workspace = get_current_or_previous_model::<WorkspaceMessage>(event)?;
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 // NOP:
 
                 // 1. Logically would just create a workspace directory in GitOps repo.
                 // 2. But this will happen with first deployment creation.
-                tracing::info!("workspace created (NOP): {:?}", event);
+                tracing::info!("workspace id {} created", workspace.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
                 // TODO: Retrigger generation for all deployments in this workspace as the gitops path changed?
-                tracing::info!("workspace updated (NOP): {:?}", event);
+                tracing::info!("workspace id {} updated", workspace.id);
             }
             event_type if event_type == EventType::Deleted as i32 => {
                 // NOP:
@@ -453,7 +488,7 @@ impl GitOpsProcessor {
                 // 1. Logically would just delete a workspace directory in GitOps repo.
                 // 2. But this will happen with last deployment creation.
 
-                tracing::info!("workspace deleted (NOP): {:?}", event);
+                tracing::info!("workspace id {} deleted", workspace.id);
             }
             _ => {
                 panic!("unsupported event type: {:?}", event);

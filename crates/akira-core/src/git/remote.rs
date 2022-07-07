@@ -148,7 +148,6 @@ impl GitRepo for RemoteGitRepo {
 #[cfg(test)]
 mod tests {
     use std::{env, fs};
-
     use uuid::Uuid;
 
     use super::*;
