@@ -8,9 +8,10 @@ use tonic::{
 };
 
 use crate::{
-    common::DeploymentIdRequest, deployment::deployment_client::DeploymentClient,
+    common::{DeploymentIdRequest, TemplateIdRequest},
+    deployment::deployment_client::DeploymentClient,
     DeploymentMessage, DeploymentTrait, ListDeploymentsRequest, ListDeploymentsResponse,
-    OperationId,
+    OperationId, WorkloadIdRequest,
 };
 
 use super::interceptor::ClientInterceptor;
@@ -52,6 +53,22 @@ impl DeploymentTrait for WrappedDeploymentClient {
     ) -> Result<Response<DeploymentMessage>, Status> {
         let mut inner = self.inner.lock().await;
         inner.get_by_id(request).await
+    }
+
+    async fn get_by_template_id(
+        &self,
+        request: Request<TemplateIdRequest>,
+    ) -> Result<Response<ListDeploymentsResponse>, Status> {
+        let mut inner = self.inner.lock().await;
+        inner.get_by_template_id(request).await
+    }
+
+    async fn get_by_workload_id(
+        &self,
+        request: Request<WorkloadIdRequest>,
+    ) -> Result<Response<ListDeploymentsResponse>, Status> {
+        let mut inner = self.inner.lock().await;
+        inner.get_by_workload_id(request).await
     }
 
     async fn list(

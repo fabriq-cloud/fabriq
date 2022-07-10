@@ -1,6 +1,7 @@
+use akira_core::common::TemplateIdRequest;
 use akira_core::{
     DeploymentIdRequest, DeploymentMessage, DeploymentTrait, ListDeploymentsRequest,
-    ListDeploymentsResponse, OperationId,
+    ListDeploymentsResponse, OperationId, WorkloadIdRequest,
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
@@ -97,6 +98,66 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(deployment_message))
     }
 
+    #[tracing::instrument(name = "grpc::deployment::get_by_template_id")]
+    async fn get_by_template_id(
+        &self,
+        request: Request<TemplateIdRequest>,
+    ) -> Result<Response<ListDeploymentsResponse>, Status> {
+        let deployments = match self
+            .service
+            .get_by_template_id(&request.into_inner().template_id)
+        {
+            Ok(deployments) => deployments,
+            Err(err) => {
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    format!("listing deployments failed with {}", err),
+                ))
+            }
+        };
+
+        let deployment_messages = deployments
+            .iter()
+            .map(|deployment| deployment.clone().into())
+            .collect();
+
+        let response = ListDeploymentsResponse {
+            deployments: deployment_messages,
+        };
+
+        Ok(Response::new(response))
+    }
+
+    #[tracing::instrument(name = "grpc::deployment::get_by_template_id")]
+    async fn get_by_workload_id(
+        &self,
+        request: Request<WorkloadIdRequest>,
+    ) -> Result<Response<ListDeploymentsResponse>, Status> {
+        let deployments = match self
+            .service
+            .get_by_workload_id(&request.into_inner().workload_id)
+        {
+            Ok(deployments) => deployments,
+            Err(err) => {
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    format!("listing deployments failed with {}", err),
+                ))
+            }
+        };
+
+        let deployment_messages = deployments
+            .iter()
+            .map(|deployment| deployment.clone().into())
+            .collect();
+
+        let response = ListDeploymentsResponse {
+            deployments: deployment_messages,
+        };
+
+        Ok(Response::new(response))
+    }
+
     #[tracing::instrument(name = "grpc::deployment::list")]
     async fn list(
         &self,
@@ -127,9 +188,10 @@ impl DeploymentTrait for GrpcDeploymentService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::common::TemplateIdRequest;
     use akira_core::{
         DeploymentIdRequest, DeploymentMessage, DeploymentTrait, EventStream,
-        ListDeploymentsRequest,
+        ListDeploymentsRequest, WorkloadIdRequest,
     };
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
@@ -180,6 +242,30 @@ mod tests {
             .into_inner();
 
         assert_eq!(response.id, "deployment-grpc-test");
+
+        let request = Request::new(TemplateIdRequest {
+            template_id: "external-service".to_string(),
+        });
+
+        let response = deployment_grpc_service
+            .get_by_template_id(request)
+            .await
+            .unwrap()
+            .into_inner();
+
+        assert_eq!(response.deployments.len(), 1);
+
+        let request = Request::new(WorkloadIdRequest {
+            workload_id: "workload-fixture".to_string(),
+        });
+
+        let response = deployment_grpc_service
+            .get_by_workload_id(request)
+            .await
+            .unwrap()
+            .into_inner();
+
+        assert_eq!(response.deployments.len(), 1);
 
         let request = Request::new(ListDeploymentsRequest {});
         let response = deployment_grpc_service

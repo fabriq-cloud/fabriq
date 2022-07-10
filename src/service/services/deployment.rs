@@ -44,11 +44,6 @@ impl DeploymentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::deployment::get_by_id")]
-    pub fn get_by_id(&self, deployment_id: &str) -> anyhow::Result<Option<Deployment>> {
-        self.persistence.get_by_id(deployment_id)
-    }
-
     #[tracing::instrument(name = "service::deployment::delete")]
     pub fn delete(
         &self,
@@ -69,8 +64,8 @@ impl DeploymentService {
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
         let delete_event = create_event::<DeploymentMessage>(
-            &None,
             &Some(deployment.clone().into()),
+            &None,
             EventType::Deleted,
             ModelType::Deployment,
             &operation_id,
@@ -83,11 +78,9 @@ impl DeploymentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::deployment::list")]
-    pub fn list(&self) -> anyhow::Result<Vec<Deployment>> {
-        let results = self.persistence.list()?;
-
-        Ok(results)
+    #[tracing::instrument(name = "service::deployment::get_by_id")]
+    pub fn get_by_id(&self, deployment_id: &str) -> anyhow::Result<Option<Deployment>> {
+        self.persistence.get_by_id(deployment_id)
     }
 
     #[tracing::instrument(name = "service::deployment::get_by_target_id")]
@@ -103,6 +96,13 @@ impl DeploymentService {
     #[tracing::instrument(name = "service::deployment::get_by_workload_id")]
     pub fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_workload_id(workload_id)
+    }
+
+    #[tracing::instrument(name = "service::deployment::list")]
+    pub fn list(&self) -> anyhow::Result<Vec<Deployment>> {
+        let results = self.persistence.list()?;
+
+        Ok(results)
     }
 }
 

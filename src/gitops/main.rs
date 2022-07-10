@@ -1,4 +1,7 @@
-use akira_core::{git::RemoteGitRepo, EventStream};
+use akira_core::{
+    git::{remote::RemoteGitRepoFactory, RemoteGitRepo},
+    EventStream,
+};
 use akira_mqtt_stream::MqttEventStream;
 use context::Context;
 use dotenv::dotenv;
@@ -41,7 +44,6 @@ async fn main() -> anyhow::Result<()> {
         true,
     )?));
 
-    let local_path = env::var("GITOPS_LOCAL_PATH").expect("GITOPS_LOCAL_PATH must be set");
     let repo_url = env::var("GITOPS_REPO_URL").expect("GITOPS_REPO_URL must be set");
     let repo_branch = env::var("GITOPS_REPO_BRANCH").unwrap_or_else(|_| "main".to_owned());
     let private_ssh_key_path =
@@ -49,7 +51,6 @@ async fn main() -> anyhow::Result<()> {
     let private_ssh_key = fs::read_to_string(&private_ssh_key_path)?;
 
     let gitops_repo = Arc::new(RemoteGitRepo::new(
-        &local_path,
         &repo_url,
         &repo_branch,
         &private_ssh_key,
@@ -80,9 +81,13 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("gitops processor: starting");
 
+    let template_repo_factory = Arc::new(RemoteGitRepoFactory {});
+
     let mut gitops_processor = GitOpsProcessor {
         gitops_repo,
         private_ssh_key,
+
+        template_repo_factory,
 
         config_client,
         deployment_client,

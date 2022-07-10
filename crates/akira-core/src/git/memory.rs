@@ -21,8 +21,35 @@ impl Default for MemoryGitRepo {
     }
 }
 
-impl MemoryGitRepo {
-    pub fn read_file(&self, repo_path: PathBuf) -> anyhow::Result<Vec<u8>> {
+impl MemoryGitRepo {}
+
+impl GitRepo for MemoryGitRepo {
+    fn add_path(&self, _repo_path: PathBuf) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn commit(&self, _name: &str, _email: &str, _message: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn push(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn list(&self, repo_path: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
+        let files = self.files.lock().unwrap();
+        let mut path_files = vec![];
+
+        for (path, _) in files.iter() {
+            if path.starts_with(&repo_path.to_str().unwrap()) {
+                path_files.push(PathBuf::from(path));
+            }
+        }
+
+        Ok(path_files)
+    }
+
+    fn read_file(&self, repo_path: PathBuf) -> anyhow::Result<Vec<u8>> {
         let files = self.files.lock().unwrap();
         let file_contents = files.get(&repo_path.to_string_lossy().to_string());
         match file_contents {
@@ -32,12 +59,6 @@ impl MemoryGitRepo {
                 repo_path.to_string_lossy()
             )),
         }
-    }
-}
-
-impl GitRepo for MemoryGitRepo {
-    fn add_path(&self, _repo_path: PathBuf) -> anyhow::Result<()> {
-        Ok(())
     }
 
     fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
@@ -52,11 +73,11 @@ impl GitRepo for MemoryGitRepo {
         Ok(())
     }
 
-    fn commit(&self, _name: &str, _email: &str, _message: &str) -> anyhow::Result<()> {
-        Ok(())
-    }
+    fn remove_file(&self, path: &str) -> anyhow::Result<()> {
+        let mut files = self.files.lock().unwrap();
 
-    fn push(&self) -> anyhow::Result<()> {
+        files.remove(path);
+
         Ok(())
     }
 
@@ -66,6 +87,13 @@ impl GitRepo for MemoryGitRepo {
         files.insert(repo_path.to_string(), contents.to_vec());
 
         Ok(())
+    }
+}
+
+impl MemoryGitRepo {
+    pub fn print(&self) {
+        let files = self.files.lock().unwrap();
+        println!("{:?}", *files);
     }
 }
 
@@ -84,6 +112,9 @@ mod tests {
         repo.write_file(path, contents)?;
         let read_contents = repo.read_file(path.into())?;
         assert_eq!(read_contents, contents);
+
+        let list = repo.list(path.into()).unwrap();
+        assert_eq!(list.len(), 1);
 
         Ok(())
     }

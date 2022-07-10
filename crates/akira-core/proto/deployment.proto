@@ -7,6 +7,8 @@ service Deployment {
     rpc Create(DeploymentMessage) returns (akira.common.OperationId);
     rpc Delete(akira.common.DeploymentIdRequest) returns (akira.common.OperationId);
     rpc GetById(akira.common.DeploymentIdRequest) returns (DeploymentMessage);
+    rpc GetByTemplateId(akira.common.TemplateIdRequest) returns (ListDeploymentsResponse);
+    rpc GetByWorkloadId(akira.common.WorkloadIdRequest) returns (ListDeploymentsResponse);
     rpc List(ListDeploymentsRequest) returns (ListDeploymentsResponse);
 }
 
@@ -17,9 +19,9 @@ message ListDeploymentsResponse {
 }
 
 message DeploymentMessage {
-    string id = 1;
-    string target_id = 2;
-    string workload_id = 3;
-    int32  host_count = 4;
+    string          id = 1;
+    string          target_id = 2;
+    string          workload_id = 3;
+    int32           host_count = 4;
     optional string template_id = 5;
 }

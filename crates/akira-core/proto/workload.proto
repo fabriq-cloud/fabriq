@@ -7,6 +7,7 @@ service Workload {
     rpc Create(WorkloadMessage) returns (akira.common.OperationId);
     rpc Delete(akira.common.WorkloadIdRequest) returns (akira.common.OperationId);
     rpc GetById(akira.common.WorkloadIdRequest) returns (WorkloadMessage);
+    rpc GetByTemplateId(akira.common.TemplateIdRequest) returns (ListWorkloadsResponse);
     rpc List(ListWorkloadsRequest) returns (ListWorkloadsResponse);
 }
 

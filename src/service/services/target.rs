@@ -67,8 +67,8 @@ impl TargetService {
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<TargetMessage>(
-            &None,
             &Some(target.clone().into()),
+            &None,
             EventType::Deleted,
             ModelType::Target,
             &operation_id,

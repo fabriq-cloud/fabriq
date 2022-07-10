@@ -41,7 +41,7 @@ impl TemplateTrait for MockTemplateClient {
     ) -> Result<Response<ListTemplatesResponse>, Status> {
         let template = TemplateMessage {
             id: "external-service".to_owned(),
-            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
+            repository: "git@github.com:timfpark/deployment-templates".to_owned(),
             branch: "main".to_owned(),
             path: "external-service".to_owned(),
         };

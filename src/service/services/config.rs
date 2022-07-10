@@ -65,8 +65,8 @@ impl ConfigService {
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
         let delete_event = create_event::<ConfigMessage>(
-            &None,
             &Some(config.clone().into()),
+            &None,
             EventType::Deleted,
             ModelType::Config,
             &operation_id,

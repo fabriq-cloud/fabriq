@@ -1,8 +1,9 @@
 use tonic::{Request, Response, Status};
 
 use crate::{
-    common::DeploymentIdRequest, DeploymentMessage, DeploymentTrait, ListDeploymentsRequest,
-    ListDeploymentsResponse, OperationId,
+    common::{DeploymentIdRequest, TemplateIdRequest},
+    DeploymentMessage, DeploymentTrait, ListDeploymentsRequest, ListDeploymentsResponse,
+    OperationId, WorkloadIdRequest,
 };
 
 pub struct MockDeploymentClient {}
@@ -33,6 +34,40 @@ impl DeploymentTrait for MockDeploymentClient {
             target_id: "target-fixture".to_owned(),
             workload_id: "workload-fixture".to_owned(),
             host_count: 2,
+        }))
+    }
+
+    async fn get_by_template_id(
+        &self,
+        _request: Request<TemplateIdRequest>,
+    ) -> Result<Response<ListDeploymentsResponse>, Status> {
+        let deployment = DeploymentMessage {
+            id: "deployment-fixture".to_owned(),
+            template_id: Some("template-fixture".to_owned()),
+            target_id: "target-fixture".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            host_count: 2,
+        };
+
+        Ok(Response::new(ListDeploymentsResponse {
+            deployments: vec![deployment],
+        }))
+    }
+
+    async fn get_by_workload_id(
+        &self,
+        _request: Request<WorkloadIdRequest>,
+    ) -> Result<Response<ListDeploymentsResponse>, Status> {
+        let deployment = DeploymentMessage {
+            id: "deployment-fixture".to_owned(),
+            template_id: Some("template-fixture".to_owned()),
+            target_id: "target-fixture".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            host_count: 2,
+        };
+
+        Ok(Response::new(ListDeploymentsResponse {
+            deployments: vec![deployment],
         }))
     }
 

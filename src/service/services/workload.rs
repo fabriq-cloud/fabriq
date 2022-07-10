@@ -68,8 +68,8 @@ impl WorkloadService {
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<WorkloadMessage>(
-            &None,
             &Some(workload.clone().into()),
+            &None,
             EventType::Deleted,
             ModelType::Workload,
             &operation_id,

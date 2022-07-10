@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{workload}}-deployment
+  namespace: {{workspace}}-{{workload}}-{{deployment}}
+  labels:
+    {{key}}: {{value}}
+spec:
+  replicas: {{replicas}}
+  selector:
+    matchLabels:
+      workload: {{workload}}
+  template:
+    metadata:
+      labels:
+        {{key}}: {{value}}
+      annotations:
+        linkerd.io/inject: enabled
+        prometheus.io/scrape: "true"
+        prometheus.io/path: {{metricsEndpoint}}
+        prometheus.io/port: "{{port}}"
+    spec:
+      containers:
+      - name: {{workload}}
+        image: {{image}}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: {{port}}
+        resources:
+          limits:
+            cpu: {{cpu}}
+            memory: {{memory}}
+        readinessProbe:
+          httpGet:
+            path: {{healthEndpoint}}
+            port: {{port}}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        envFrom:
+        - configMapRef:
+              name: {{workload}}-configmap

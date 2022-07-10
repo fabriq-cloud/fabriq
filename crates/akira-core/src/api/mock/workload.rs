@@ -1,8 +1,8 @@
 use tonic::{Request, Response, Status};
 
 use crate::{
-    common::WorkloadIdRequest, ListWorkloadsRequest, ListWorkloadsResponse, OperationId,
-    WorkloadMessage, WorkloadTrait,
+    common::{TemplateIdRequest, WorkloadIdRequest},
+    ListWorkloadsRequest, ListWorkloadsResponse, OperationId, WorkloadMessage, WorkloadTrait,
 };
 
 pub struct MockWorkloadClient {}
@@ -31,6 +31,21 @@ impl WorkloadTrait for MockWorkloadClient {
             id: "workload-fixture".to_owned(),
             template_id: "template-fixture".to_owned(),
             workspace_id: "workspace-fixture".to_owned(),
+        }))
+    }
+
+    async fn get_by_template_id(
+        &self,
+        _request: Request<TemplateIdRequest>,
+    ) -> Result<Response<ListWorkloadsResponse>, Status> {
+        let workload = WorkloadMessage {
+            id: "workload-fixture".to_owned(),
+            template_id: "template-fixture".to_owned(),
+            workspace_id: "workspace-fixture".to_owned(),
+        };
+
+        Ok(Response::new(ListWorkloadsResponse {
+            workloads: vec![workload],
         }))
     }
 

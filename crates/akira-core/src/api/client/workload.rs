@@ -8,8 +8,9 @@ use tonic::{
 };
 
 use crate::{
-    common::WorkloadIdRequest, workload::workload_client::WorkloadClient, ListWorkloadsRequest,
-    ListWorkloadsResponse, OperationId, WorkloadMessage, WorkloadTrait,
+    common::{TemplateIdRequest, WorkloadIdRequest},
+    workload::workload_client::WorkloadClient,
+    ListWorkloadsRequest, ListWorkloadsResponse, OperationId, WorkloadMessage, WorkloadTrait,
 };
 
 use super::interceptor::ClientInterceptor;
@@ -51,6 +52,14 @@ impl WorkloadTrait for WrappedWorkloadClient {
     ) -> Result<Response<WorkloadMessage>, Status> {
         let mut inner = self.inner.lock().await;
         inner.get_by_id(request).await
+    }
+
+    async fn get_by_template_id(
+        &self,
+        request: Request<TemplateIdRequest>,
+    ) -> Result<Response<ListWorkloadsResponse>, Status> {
+        let mut inner = self.inner.lock().await;
+        inner.get_by_template_id(request).await
     }
 
     async fn list(

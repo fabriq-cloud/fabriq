@@ -74,8 +74,8 @@ impl HostService {
         let operation_id = OperationId::unwrap_or_create(&operation_id);
 
         let delete_event = create_event::<HostMessage>(
-            &None,
             &Some(host.clone().into()),
+            &None,
             EventType::Deleted,
             ModelType::Host,
             &operation_id,

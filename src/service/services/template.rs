@@ -80,8 +80,8 @@ impl TemplateService {
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<TemplateMessage>(
-            &None,
             &Some(template.clone().into()),
+            &None,
             EventType::Deleted,
             ModelType::Template,
             &operation_id,

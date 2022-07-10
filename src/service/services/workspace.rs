@@ -95,8 +95,8 @@ impl WorkspaceService {
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let delete_event = create_event::<WorkspaceMessage>(
-            &None,
             &Some(workspace.clone().into()),
+            &None,
             EventType::Deleted,
             ModelType::Workspace,
             &operation_id,

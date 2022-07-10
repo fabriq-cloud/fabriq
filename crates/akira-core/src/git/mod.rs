@@ -4,4 +4,4 @@ mod repo;
 
 pub use memory::MemoryGitRepo;
 pub use remote::RemoteGitRepo;
-pub use repo::GitRepo;
+pub use repo::{GitRepo, GitRepoFactory};

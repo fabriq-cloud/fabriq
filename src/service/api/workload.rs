@@ -1,3 +1,4 @@
+use akira_core::common::TemplateIdRequest;
 use akira_core::{
     ListWorkloadsRequest, ListWorkloadsResponse, OperationId, WorkloadIdRequest, WorkloadMessage,
     WorkloadTrait,
@@ -93,6 +94,40 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(workload_message))
     }
 
+    #[tracing::instrument(name = "grpc::deployment::get_by_template_id")]
+    async fn get_by_template_id(
+        &self,
+        request: Request<TemplateIdRequest>,
+    ) -> Result<Response<ListWorkloadsResponse>, Status> {
+        let workloads = match self
+            .service
+            .get_by_template_id(&request.into_inner().template_id)
+        {
+            Ok(workloads) => workloads,
+            Err(err) => {
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    format!("listing workloads failed with {}", err),
+                ))
+            }
+        };
+
+        let workload_messages = workloads
+            .iter()
+            .map(|workload| WorkloadMessage {
+                id: workload.id.clone(),
+                template_id: workload.template_id.clone(),
+                workspace_id: workload.workspace_id.clone(),
+            })
+            .collect();
+
+        let response = ListWorkloadsResponse {
+            workloads: workload_messages,
+        };
+
+        Ok(Response::new(response))
+    }
+
     #[tracing::instrument(name = "grpc::workload::list")]
     async fn list(
         &self,
@@ -127,6 +162,7 @@ impl WorkloadTrait for GrpcWorkloadService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::common::TemplateIdRequest;
     use akira_core::{EventStream, ListWorkloadsRequest, WorkloadIdRequest, WorkloadTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
@@ -163,6 +199,18 @@ mod tests {
             .into_inner();
 
         assert_eq!(create_response.id.len(), 36);
+
+        let request = Request::new(TemplateIdRequest {
+            template_id: "external-service".to_string(),
+        });
+
+        let response = workload_grpc_service
+            .get_by_template_id(request)
+            .await
+            .unwrap()
+            .into_inner();
+
+        assert_eq!(response.workloads.len(), 1);
 
         let request = Request::new(ListWorkloadsRequest {});
 
