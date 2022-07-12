@@ -39,6 +39,9 @@ impl Reconciler {
             model_type if model_type == ModelType::Assignment as i32 => {
                 self.process_assignment_event(event)
             }
+            model_type if model_type == ModelType::Config as i32 => {
+                self.process_config_event(event)
+            }
             model_type if model_type == ModelType::Deployment as i32 => {
                 self.process_deployment_event(event)
             }
@@ -66,6 +69,11 @@ impl Reconciler {
 
     #[tracing::instrument]
     fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    fn process_config_event(&self, event: &Event) -> anyhow::Result<()> {
         Ok(())
     }
 

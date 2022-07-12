@@ -346,11 +346,11 @@ impl GitOpsProcessor {
 
         // TODO: Add generic capability to handle commit
         // TODO: Need to figure out how to plumb user effecting these changes here.
-        self.gitops_repo.commit(
-            "Tim Park",
-            "timfpark@gmail.com",
-            "Processed deployment event",
-        )?;
+
+        let message = format!("Updated assignment {}", assignment.id);
+
+        self.gitops_repo
+            .commit("Tim Park", "timfpark@gmail.com", &message)?;
 
         self.gitops_repo.push()?;
 
@@ -395,11 +395,11 @@ impl GitOpsProcessor {
 
         // TODO: Add generic capability to handle commit
         // TODO: Need to figure out how to plumb user effecting these changes here.
-        self.gitops_repo.commit(
-            "Tim Park",
-            "timfpark@gmail.com",
-            "Processed deployment event",
-        )?;
+
+        let message = format!("Updated deployment {}", deployment.id);
+
+        self.gitops_repo
+            .commit("Tim Park", "timfpark@gmail.com", &message)?;
 
         self.gitops_repo.push()?;
 
