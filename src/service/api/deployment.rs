@@ -205,8 +205,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_list_deployment() -> anyhow::Result<()> {
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let deployment_service = Arc::new(DeploymentService {
             persistence: deployment_persistence,

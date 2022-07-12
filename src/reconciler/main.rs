@@ -42,11 +42,11 @@ fn main() -> anyhow::Result<()> {
     let gitops_client_id = env::var("RECONCILER_CLIENT_ID")
         .unwrap_or_else(|_| DEFAULT_RECONCILER_CLIENT_ID.to_string());
 
-    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MqttEventStream::new(
+    let event_stream: Arc<dyn EventStream> = Arc::new(MqttEventStream::new(
         &mqtt_broker_uri,
         &gitops_client_id,
         true,
-    )?));
+    )?);
 
     let assignment_persistence = Box::new(AssignmentRelationalPersistence::default());
     let assignment_service = Arc::new(AssignmentService {

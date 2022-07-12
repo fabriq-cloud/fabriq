@@ -68,6 +68,7 @@ impl ConfigTrait for GrpcConfigService {
         request: Request<QueryConfigRequest>,
     ) -> Result<Response<QueryConfigResponse>, Status> {
         let query = request.into_inner();
+
         let configs = match self.service.query(&query.deployment_id, &query.workload_id) {
             Ok(configs) => configs,
             Err(err) => {
@@ -99,18 +100,53 @@ mod tests {
 
     use super::GrpcConfigService;
 
-    use crate::persistence::memory::ConfigMemoryPersistence;
-    use crate::services::ConfigService;
+    use crate::models::{Deployment, Workload};
+    use crate::persistence::memory::{
+        ConfigMemoryPersistence, DeploymentMemoryPersistence, WorkloadMemoryPersistence,
+    };
+    use crate::services::{ConfigService, DeploymentService, WorkloadService};
 
     #[tokio::test]
     async fn test_create_list_config() -> anyhow::Result<()> {
         let config_persistence = Box::new(ConfigMemoryPersistence::default());
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
+
+        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
+        let workload_service = Arc::new(WorkloadService {
+            event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
+            persistence: workload_persistence,
+        });
+
+        let workload = Workload {
+            id: "workload-fixture".to_owned(),
+            template_id: "template-fixture".to_owned(),
+            workspace_id: "workspace-fixture".to_owned(),
+        };
+
+        workload_service.create(&workload, None).unwrap();
+
+        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
+        let deployment_service = Arc::new(DeploymentService {
+            event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
+            persistence: deployment_persistence,
+        });
+
+        let deployment = Deployment {
+            id: "deployment-fixture".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            template_id: Some("template-fixture".to_owned()),
+            host_count: 1,
+            target_id: "target-fixture".to_owned(),
+        };
+
+        deployment_service.create(&deployment, &None).unwrap();
 
         let config_service = Arc::new(ConfigService {
             persistence: config_persistence,
             event_stream,
+
+            deployment_service,
+            workload_service,
         });
 
         let config_grpc_service = GrpcConfigService::new(Arc::clone(&config_service));

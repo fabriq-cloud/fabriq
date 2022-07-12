@@ -16,18 +16,26 @@ pub fn args() -> Command<'static> {
             Command::new("create")
                 .about("create config")
                 .arg(
-                    Arg::new("workload")
-                        .short('w')
-                        .long("workload")
-                        .help("Workload config applies to")
+                    Arg::new("deployment")
+                        .short('d')
+                        .long("deployment")
+                        .help("owning deployment id")
                         .takes_value(true)
                         .multiple_values(false),
                 )
                 .arg(
-                    Arg::new("deployment")
-                        .short('d')
-                        .long("deployment")
-                        .help("Deployment config applies to")
+                    Arg::new("template")
+                        .short('t')
+                        .long("template")
+                        .help("owning template id")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(
+                    Arg::new("workload")
+                        .short('w')
+                        .long("workload")
+                        .help("owning workload id")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -87,6 +95,7 @@ pub async fn handlers(
                 .expect("Config value expected")
                 .to_string();
 
+            let template_id = create_match.value_of("template");
             let workload_id = create_match.value_of("workload");
             let deployment_id = create_match.value_of("deployment");
 
@@ -98,9 +107,14 @@ pub async fn handlers(
                     Some(deployment_id) => {
                         format!("deployment:{}", deployment_id)
                     }
-                    None => {
-                        panic!("Either workload or deployment must be specified")
-                    }
+                    None => match template_id {
+                        Some(template_id) => {
+                            format!("template:{}", template_id)
+                        }
+                        None => {
+                            panic!("owning workload, template, or deployment id must be specified")
+                        }
+                    },
                 },
             };
 

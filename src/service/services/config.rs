@@ -1,12 +1,17 @@
 use akira_core::{create_event, ConfigMessage, EventStream, EventType, ModelType, OperationId};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{models::Config, persistence::ConfigPersistence};
+
+use super::{DeploymentService, WorkloadService};
 
 #[derive(Debug)]
 pub struct ConfigService {
     pub persistence: Box<dyn ConfigPersistence>,
-    pub event_stream: Arc<Box<dyn EventStream>>,
+    pub event_stream: Arc<dyn EventStream>,
+
+    pub deployment_service: Arc<DeploymentService>,
+    pub workload_service: Arc<WorkloadService>,
 }
 
 impl ConfigService {
@@ -81,12 +86,49 @@ impl ConfigService {
 
     #[tracing::instrument(name = "service::config::query")]
     pub fn query(&self, deployment_id: &str, workload_id: &str) -> anyhow::Result<Vec<Config>> {
-        let mut configs = self.persistence.get_by_workload_id(workload_id)?;
-        let mut deployment_config = self.persistence.get_by_deployment_id(deployment_id)?;
+        let workload = match self.workload_service.get_by_id(workload_id)? {
+            Some(workload) => workload,
+            None => {
+                return Err(anyhow::anyhow!("Workload id {workload_id} not found"));
+            }
+        };
 
-        configs.append(&mut deployment_config);
+        let deployment = match self.deployment_service.get_by_id(deployment_id)? {
+            Some(deployment) => deployment,
+            None => {
+                return Err(anyhow::anyhow!("Deployment id {deployment_id} not found"));
+            }
+        };
 
-        Ok(configs)
+        let template_id = match deployment.template_id {
+            Some(template_id) => template_id,
+            None => workload.template_id,
+        };
+
+        let template_config = self.persistence.get_by_template_id(&template_id)?;
+        let workload_config = self.persistence.get_by_workload_id(workload_id)?;
+        let deployment_config = self.persistence.get_by_deployment_id(deployment_id)?;
+
+        let mut config_set = HashMap::new();
+
+        // shred config in tiered order into a HashMap such that deployment config overrides
+        // workload config overrides template config.
+
+        for config in template_config {
+            config_set.insert(config.id.clone(), config);
+        }
+
+        for config in workload_config {
+            config_set.insert(config.id.clone(), config);
+        }
+
+        for config in deployment_config {
+            config_set.insert(config.id.clone(), config);
+        }
+
+        let final_configs = config_set.values().cloned().collect();
+
+        Ok(final_configs)
     }
 
     #[tracing::instrument(name = "service::config::get_by_deployment_id")]
@@ -103,7 +145,12 @@ impl ConfigService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::persistence::memory::ConfigMemoryPersistence;
+    use crate::{
+        models::{Deployment, Workload},
+        persistence::memory::{
+            ConfigMemoryPersistence, DeploymentMemoryPersistence, WorkloadMemoryPersistence,
+        },
+    };
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
@@ -120,12 +167,44 @@ mod tests {
         };
 
         let config_persistence = ConfigMemoryPersistence::default();
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap());
+
+        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
+        let workload_service = Arc::new(WorkloadService {
+            event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
+            persistence: workload_persistence,
+        });
+
+        let workload = Workload {
+            id: "workload-fixture".to_owned(),
+            template_id: "template-fixture".to_owned(),
+            workspace_id: "workspace-fixture".to_owned(),
+        };
+
+        workload_service.create(&workload, None).unwrap();
+
+        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
+        let deployment_service = Arc::new(DeploymentService {
+            event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
+            persistence: deployment_persistence,
+        });
+
+        let deployment = Deployment {
+            id: "deployment-fixture".to_owned(),
+            workload_id: "workload-fixture".to_owned(),
+            template_id: Some("template-fixture".to_owned()),
+            host_count: 1,
+            target_id: "target-fixture".to_owned(),
+        };
+
+        deployment_service.create(&deployment, &None).unwrap();
 
         let config_service = ConfigService {
             persistence: Box::new(config_persistence),
             event_stream,
+
+            deployment_service,
+            workload_service,
         };
 
         let config_created_operation_id = config_service

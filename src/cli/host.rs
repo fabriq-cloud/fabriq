@@ -19,7 +19,7 @@ pub fn args() -> Command<'static> {
                     Arg::new("label")
                         .short('l')
                         .long("label")
-                        .help("label to apply to host")
+                        .help("label(s) (space delimited) to apply to host")
                         .takes_value(true)
                         .multiple_values(true),
                 )

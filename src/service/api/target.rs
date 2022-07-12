@@ -142,8 +142,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_list_target() -> anyhow::Result<()> {
         let target_persistence = Box::new(MemoryPersistence::<Target>::default());
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let target_service = Arc::new(TargetService {
             persistence: target_persistence,

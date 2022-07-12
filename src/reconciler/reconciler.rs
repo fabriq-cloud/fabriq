@@ -7,7 +7,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use akira::{
-    models::{Assignment, Deployment, Host, Target, Workload},
+    models::{Assignment, Deployment, Host, Target, Template, Workload},
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
         WorkloadService, WorkspaceService,
@@ -15,7 +15,7 @@ use akira::{
 };
 use akira_core::{
     DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId, TargetMessage,
-    WorkloadMessage,
+    TemplateMessage, WorkloadMessage,
 };
 use prost::Message;
 
@@ -39,9 +39,6 @@ impl Reconciler {
             model_type if model_type == ModelType::Assignment as i32 => {
                 self.process_assignment_event(event)
             }
-            model_type if model_type == ModelType::Config as i32 => {
-                self.process_config_event(event)
-            }
             model_type if model_type == ModelType::Deployment as i32 => {
                 self.process_deployment_event(event)
             }
@@ -59,114 +56,26 @@ impl Reconciler {
                 self.process_workspace_event(event)
             }
             _ => {
-                panic!("unsupported model type: {:?}", event);
+                let msg = format!("unhandled model type: {}", model_type);
+                tracing::error!(msg);
+
+                Err(anyhow::anyhow!(msg))
             }
         }
     }
 
     #[tracing::instrument]
     fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created:
-        // Updated:
-        // Deleted: (handled in downstream deployment processor)
-
-        // Deleted (ALT, future): Check to see if deployment exists, if so reassign to matching hosts
         Ok(())
     }
 
     #[tracing::instrument]
-    fn process_config_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created,
-        // Updated,
-        // Deleted: (handled in downstream deployment processor)
-        Ok(())
-    }
-
-    #[tracing::instrument]
-    fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created,
-        // Updated,
-        // Deleted: Reconcile host assignments of deployment
-
-        let deployment =
-            Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
-
-        let desired_host_count: usize = if event.event_type == EventType::Deleted as i32 {
-            0
-        } else {
-            deployment.host_count as usize
-        };
-
-        self.process_deployment_event_impl(&deployment, desired_host_count, &event.operation_id)
-    }
-
-    #[tracing::instrument]
-    fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created,
-        // Updated,
-        // Deleted: Get targets matching host, update deployments matching targets
-
-        let mut spanning_target_set: HashMap<String, Target> = HashMap::new();
-
-        if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
-            let previous_host = HostMessage::decode(&*serialized_previous_model)?.into();
-            let previous_targets = self.target_service.get_matching_host(&previous_host)?;
-
-            for target in previous_targets {
-                spanning_target_set.insert(target.id.clone(), target);
-            }
-        }
-
-        if let Some(serialized_current_model) = event.serialized_current_model.clone() {
-            let current_host = HostMessage::decode(&*serialized_current_model)?.into();
-            let current_targets = self.target_service.get_matching_host(&current_host)?;
-
-            for target in current_targets {
-                spanning_target_set.insert(target.id.clone(), target);
-            }
-        }
-
-        let spanning_targets = spanning_target_set.values().cloned().collect::<Vec<_>>();
-
-        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
-    }
-
-    #[tracing::instrument]
-    fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created: Will not match anything in update_deployments_for_targets, so NOP.
-        // Updated: Reconcile deployments matching either the old or new target spec.
-        // Deleted: Will not match anything in update_deployments_for_targets, so NOP.
-
-        let mut spanning_targets: Vec<Target> = Vec::new();
-
-        if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
-            let previous_target = TargetMessage::decode(&*serialized_previous_model)?.into();
-            spanning_targets.push(previous_target);
-        }
-
-        if let Some(serialized_current_model) = event.serialized_current_model.clone() {
-            let current_target = TargetMessage::decode(&*serialized_current_model)?.into();
-            spanning_targets.push(current_target);
-        }
-
-        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
-    }
-
-    #[tracing::instrument]
-    fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created: Nothing currently uses it (can't create a workload/deployment without it existing), so NOP.
-        // Updated: We need to rerender all of the deployments that use it (handled in downstream deployment processor), so NOP.
-        // Deleted: Nothing currently uses it (can't delete it if a workload/deployment using it exists), so NOP.
-
+    fn process_workspace_event(&self, event: &Event) -> anyhow::Result<()> {
         Ok(())
     }
 
     #[tracing::instrument]
     fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created,
-        // Updated,
-        // Deleted: Update all child deployments
-
         let workload = Self::get_current_or_previous_model::<WorkloadMessage, Workload>(event)?;
         let deployments = self.deployment_service.get_by_workload_id(&workload.id)?;
         for deployment in deployments {
@@ -181,12 +90,17 @@ impl Reconciler {
     }
 
     #[tracing::instrument]
-    fn process_workspace_event(&self, event: &Event) -> anyhow::Result<()> {
-        // Created: Should be nothing in the workspace, so NOP.
-        // Updated: Workspaces are immutable, so NOP.
-        // Deleted: Should be nothing in the workspace, so NOP.
+    fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
+        let deployment =
+            Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
 
-        Ok(())
+        let desired_host_count: usize = if event.event_type == EventType::Deleted as i32 {
+            0
+        } else {
+            deployment.host_count as usize
+        };
+
+        self.process_deployment_event_impl(&deployment, desired_host_count, &event.operation_id)
     }
 
     pub fn process_deployment_event_impl(
@@ -232,6 +146,35 @@ impl Reconciler {
         Ok(())
     }
 
+    #[tracing::instrument]
+    fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
+        let mut spanning_target_set: HashMap<String, Target> = HashMap::new();
+
+        if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
+            let previous_host = HostMessage::decode(&*serialized_previous_model)?.into();
+            let previous_targets = self.target_service.get_matching_host(&previous_host)?;
+
+            for target in previous_targets {
+                spanning_target_set.insert(target.id.clone(), target);
+            }
+        }
+
+        if let Some(serialized_current_model) = event.serialized_current_model.clone() {
+            let current_host = HostMessage::decode(&*serialized_current_model)?.into();
+            let current_targets = self.target_service.get_matching_host(&current_host)?;
+
+            for target in current_targets {
+                spanning_target_set.insert(target.id.clone(), target);
+            }
+        }
+
+        let spanning_targets = spanning_target_set.values().cloned().collect::<Vec<_>>();
+
+        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)?;
+
+        Ok(())
+    }
+
     fn update_deployments_for_targets(
         &self,
         targets: &[Target],
@@ -268,6 +211,63 @@ impl Reconciler {
             };
 
         Ok(message.into())
+    }
+
+    #[tracing::instrument]
+    fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
+        let template = Self::get_current_or_previous_model::<TemplateMessage, Template>(event)?;
+        let mut spanning_deployments_set: HashMap<String, Deployment> = HashMap::new();
+
+        let workloads = self.workload_service.get_by_template_id(&template.id)?;
+        for workload in workloads {
+            let deployments = self.deployment_service.get_by_workload_id(&workload.id)?;
+            for deployment in deployments {
+                // we will pull in deployments with this template_id as an override below
+                if deployment.template_id.is_none() {
+                    spanning_deployments_set.insert(deployment.id.clone(), deployment);
+                }
+            }
+        }
+
+        let deployments = self.deployment_service.get_by_template_id(&template.id)?;
+
+        for deployment in deployments {
+            spanning_deployments_set.insert(deployment.id.clone(), deployment);
+        }
+
+        let spanning_deployments = spanning_deployments_set
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for deployment in spanning_deployments {
+            self.process_deployment_event_impl(
+                &deployment,
+                deployment.host_count as usize,
+                &event.operation_id,
+            )?;
+        }
+
+        Ok(())
+
+        // self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
+    }
+
+    #[tracing::instrument]
+    fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
+        let mut spanning_targets: Vec<Target> = Vec::new();
+
+        if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
+            let previous_target = TargetMessage::decode(&*serialized_previous_model)?.into();
+            spanning_targets.push(previous_target);
+        }
+
+        if let Some(serialized_current_model) = event.serialized_current_model.clone() {
+            let current_target = TargetMessage::decode(&*serialized_current_model)?.into();
+            spanning_targets.push(current_target);
+        }
+
+        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
     }
 
     pub fn compute_assignment_changes(
@@ -365,7 +365,7 @@ mod tests {
     use super::*;
 
     fn create_reconciler_fixture() -> anyhow::Result<Reconciler> {
-        let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MemoryEventStream::new()?));
+        let event_stream: Arc<dyn EventStream> = Arc::new(MemoryEventStream::new()?);
 
         let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
         let assignment_service = Arc::new(AssignmentService {
@@ -519,6 +519,34 @@ mod tests {
             &Some(workload.into()),
             EventType::Created,
             ModelType::Workload,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
+    fn test_process_template_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let operation_id = OperationId::create();
+
+        let template = Template {
+            id: "template-fixture".to_owned(),
+            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
+            branch: "main".to_owned(),
+            path: "external-service".to_owned(),
+        };
+
+        let event = create_event::<TemplateMessage>(
+            &None,
+            &Some(template.into()),
+            EventType::Created,
+            ModelType::Template,
             &operation_id,
         );
 

@@ -176,8 +176,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_list_workload() -> anyhow::Result<()> {
         let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let workload_service = Arc::new(WorkloadService {
             persistence: workload_persistence,

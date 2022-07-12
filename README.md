@@ -1,6 +1,6 @@
 # akira
 
-A PaaS for Multicloud 
+A PaaS for Multicloud
 
 Let's do a walkthrough to best understand how it works
 
@@ -20,7 +20,7 @@ Automatically creates a group for the user and makes it the default?
 
 ## Seed sample node.js application
 
-Let's use a sample node.js application to see how easy it is to deploy. 
+Let's use a sample node.js application to see how easy it is to deploy.
 
 Let's template out a simple service from a Github template:
 
@@ -28,7 +28,7 @@ Let's template out a simple service from a Github template:
 $ akira service template hello-service --from microsoft/nodejs-service-api
 ```
 
-This is just a convience function and we could have templated it from GitHub itself. 
+This is just a convience function and we could have templated it from GitHub itself.
 
 ## Seed walkthrough
 
@@ -39,17 +39,17 @@ This is just a convience function and we could have templated it from GitHub its
 
 ## Deploy node.js application
 
-Let's deploy it. First, we want to register our service:
+Let's deploy it. First, we want to register our workload:
 
 ```
-$ akira service create hello-service --template external-service --target eastus
+$ akira workload create hello-service --template external-service --target eastus
 ```
 
 This registers this service, specifying that we would like deployments of this service to, by default, use the `external-service` deployment template and place these deployments on hosts matching `eastus`.
 
 By default, it uses your user group for this service, but alternatively you can use `--group {group}` to specify the group to use for the service. It also creates an .akira/workload.yaml and adds details about this service (name, group, deployment template). (too much detail for now?)
 
-`akira` enables you to make multiple deployments of your service so you can progressively roll out changes.  Let's make our first one now:
+`akira` enables you to make multiple deployments of your service so you can progressively roll out changes. Let's make our first one now:
 
 ```
 $ akira deployment create
@@ -67,12 +67,12 @@ We could have named this deployment by adding a `name` parameter, but by default
 
 Likewise, since we didn't override them, the deployment will inherit the same deployment template and target from the service. This is usually what you want, but you can override them, if, for example you have a very large production deployment or very small dev deployment that you want to do. (too much detail?)
 
-Behind the scenes this will create a deployment for the service, matching it to a host that matches our `eastus` target, and because 
-we used an `external-service` deployment template, and will surface it on `main.hello-world.timfpark.akira.network` as a specific example 
+Behind the scenes this will create a deployment for the service, matching it to a host that matches our `eastus` target, and because
+we used an `external-service` deployment template, and will surface it on `main.hello-world.timfpark.akira.network` as a specific example
 of the general form `{deployment}.{service}.{group}.akira.network`.
 
 TODO: Can we use a service operator within the `external-service` template to automatically point DNS to the host it is configured on?
-TODO: Use a host probe to identify the ingress IP address such that Akira knows it?  Or can we just establish a CNAME for the host and then point the deployment to that CNAME?
+TODO: Use a host probe to identify the ingress IP address such that Akira knows it? Or can we just establish a CNAME for the host and then point the deployment to that CNAME?
 
 Additionally, each time that we push a commit to our `main` branch, our GitHub CI will build our service's container, and assuming its test pass, update our `main` deployment so that we can test it.
 
@@ -104,18 +104,27 @@ $ akira deployment promote main prod
 
 This copies the image tag from `main` deployment and applies it as config to the `prod` deployment, triggering the first deployment of `prod` and surfacing it on `prod.hello-world.timfpark.akira.network`.
 
-## Metrics
-
-Deployment is only the first step in managing a production service.  We also want to be able to watch metrics from our service.
-
-Akira automatically provisions observability tools for our service, including Prometheus and Grafana for metrics.  We can access them via
-the command line by executing in our repo:
+## Dialtone
 
 ```
-$ akira metrics
+$ akira workload create contour --template contour (ingress for group)
+$ akira deployment create contour-prod --target prod --template-branch main
 ```
 
-This opens a browser window and directs you to Grafana where you can access your metrics.  In this case, we have a 
+## Observability
+
+Deployment is only the first step in managing a production service. We also want to be able to watch metrics from our service.
+
+The platform deploys a common set of observability tools for our workloads.
+
+Metrics are backhauled per group to central storage
+Just start with this being the single cluster the group's apps are deployed on
+
+```
+$ akira deployment proxy grafana
+```
+
+This opens a browser window and directs you to Grafana where you can access your metrics. In this case, we have a
 set of metrics dashboards for our service...
 
 TODO: How do we provision metrics dashboards for our application?
@@ -127,13 +136,15 @@ TODO: Can we configure the app to label metrics with the branch our deployment i
 TODO: What to use for logs?
 
 ```
-$ akira logs
+$ akira  logs
 ```
 
 ## Tracing
 
 TODO: Now do we route to the jaeger instance for the application?
 
+Want to access the Jaeger statistics
+
 ```
-$ akira tracing
+$ akira deployment proxy hello-service tracing
 ```

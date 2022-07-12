@@ -145,8 +145,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_list_template() -> anyhow::Result<()> {
         let template_persistence = Box::new(MemoryPersistence::<Template>::default());
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let template_service = Arc::new(TemplateService {
             persistence: template_persistence,

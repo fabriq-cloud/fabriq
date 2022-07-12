@@ -91,7 +91,7 @@ impl GitOpsProcessor {
                 tracing::info!("assignment id {} deleted", assignment.id);
             }
             _ => {
-                panic!("unsupported event type: {:?}", event);
+                tracing::error!("unsupported event type: {:?}", event);
             }
         }
 

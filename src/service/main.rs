@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mqtt_event_stream = MqttEventStream::new(&mqtt_broker_uri, &reconciler_client_id, true)?;
 
-    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(mqtt_event_stream));
+    let event_stream: Arc<dyn EventStream> = Arc::new(mqtt_event_stream);
 
     let assignment_persistence = Box::new(AssignmentRelationalPersistence::default());
     let assignment_service = Arc::new(AssignmentService {
@@ -65,16 +65,25 @@ async fn main() -> anyhow::Result<()> {
         event_stream: Arc::clone(&event_stream),
     });
 
-    let config_persistence = Box::new(ConfigRelationalPersistence::default());
-    let config_service = Arc::new(ConfigService {
-        persistence: config_persistence,
-        event_stream: Arc::clone(&event_stream),
-    });
-
     let deployment_persistence = Box::new(DeploymentRelationalPersistence::default());
     let deployment_service = Arc::new(DeploymentService {
         persistence: deployment_persistence,
         event_stream: Arc::clone(&event_stream),
+    });
+
+    let workload_persistence = Box::new(WorkloadRelationalPersistence::default());
+    let workload_service = Arc::new(WorkloadService {
+        persistence: workload_persistence,
+        event_stream: Arc::clone(&event_stream),
+    });
+
+    let config_persistence = Box::new(ConfigRelationalPersistence::default());
+    let config_service = Arc::new(ConfigService {
+        persistence: config_persistence,
+        event_stream: Arc::clone(&event_stream),
+
+        deployment_service: Arc::clone(&deployment_service),
+        workload_service: Arc::clone(&workload_service),
     });
 
     let host_persistence = Box::new(HostRelationalPersistence::default());
@@ -92,12 +101,6 @@ async fn main() -> anyhow::Result<()> {
     let template_persistence = Box::new(TemplateRelationalPersistence::default());
     let template_service = Arc::new(TemplateService {
         persistence: template_persistence,
-        event_stream: Arc::clone(&event_stream),
-    });
-
-    let workload_persistence = Box::new(WorkloadRelationalPersistence::default());
-    let workload_service = Arc::new(WorkloadService {
-        persistence: workload_persistence,
         event_stream: Arc::clone(&event_stream),
     });
 

@@ -6,7 +6,7 @@ use crate::{models::Template, persistence::Persistence};
 #[derive(Debug)]
 pub struct TemplateService {
     pub persistence: Box<dyn Persistence<Template>>,
-    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub event_stream: Arc<dyn EventStream>,
 }
 
 impl TemplateService {
@@ -121,8 +121,7 @@ mod tests {
         };
 
         let template_persistence = MemoryPersistence::<Template>::default();
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let template_service = TemplateService {
             persistence: Box::new(template_persistence),

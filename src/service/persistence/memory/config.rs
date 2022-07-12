@@ -67,20 +67,6 @@ impl Persistence<Config> for ConfigMemoryPersistence {
 }
 
 impl ConfigPersistence for ConfigMemoryPersistence {
-    fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
-        let locked_configs = self.get_models_locked()?;
-
-        let mut configs_for_target = Vec::new();
-        for config in (*locked_configs).values() {
-            let (model_type, model_id) = config.split_owning_model();
-            if model_type == "workload" && model_id == workload_id {
-                configs_for_target.push(config.clone());
-            }
-        }
-
-        Ok(configs_for_target)
-    }
-
     fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         let locked_configs = self.get_models_locked()?;
 
@@ -93,6 +79,34 @@ impl ConfigPersistence for ConfigMemoryPersistence {
         }
 
         Ok(configs_for_deployment)
+    }
+
+    fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Config>> {
+        let locked_configs = self.get_models_locked()?;
+
+        let mut configs_for_template = Vec::new();
+        for config in (*locked_configs).values() {
+            let (model_type, model_id) = config.split_owning_model();
+            if model_type == "deployment" && model_id == template_id {
+                configs_for_template.push(config.clone());
+            }
+        }
+
+        Ok(configs_for_template)
+    }
+
+    fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
+        let locked_configs = self.get_models_locked()?;
+
+        let mut configs_for_target = Vec::new();
+        for config in (*locked_configs).values() {
+            let (model_type, model_id) = config.split_owning_model();
+            if model_type == "workload" && model_id == workload_id {
+                configs_for_target.push(config.clone());
+            }
+        }
+
+        Ok(configs_for_target)
     }
 }
 

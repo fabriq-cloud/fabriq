@@ -8,7 +8,7 @@ use super::WorkloadService;
 #[derive(Debug)]
 pub struct WorkspaceService {
     pub persistence: Box<dyn Persistence<Workspace>>,
-    pub event_stream: Arc<Box<dyn EventStream>>,
+    pub event_stream: Arc<dyn EventStream>,
 
     pub workload_service: Arc<WorkloadService>,
 }
@@ -131,8 +131,7 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let workload_persistence = WorkloadMemoryPersistence::default();
         let workload_service = Arc::new(WorkloadService {

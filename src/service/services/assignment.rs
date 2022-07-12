@@ -7,7 +7,7 @@ use std::fmt::Debug;
 #[derive(Debug)]
 pub struct AssignmentService {
     pub persistence: Box<dyn AssignmentPersistence>,
-    pub event_stream: Arc<Box<dyn EventStream + 'static>>,
+    pub event_stream: Arc<dyn EventStream>,
 }
 
 impl AssignmentService {
@@ -164,8 +164,7 @@ mod tests {
         };
 
         let assignment_persistence = AssignmentMemoryPersistence::default();
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let assignment_service = AssignmentService {
             persistence: Box::new(assignment_persistence),
@@ -201,8 +200,7 @@ mod tests {
         };
 
         let assignment_persistence = AssignmentMemoryPersistence::default();
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let assignment_service = AssignmentService {
             persistence: Box::new(assignment_persistence),

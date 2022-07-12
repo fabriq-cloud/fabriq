@@ -24,6 +24,7 @@ pub trait AssignmentPersistence: Debug + Send + Sync + Persistence<Assignment> {
 
 pub trait ConfigPersistence: Debug + Send + Sync + Persistence<Config> {
     fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>>;
+    fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Config>>;
     fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>>;
 }
 

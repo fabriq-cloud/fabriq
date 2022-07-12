@@ -104,8 +104,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_list_host() -> anyhow::Result<()> {
         let host_persistence = Box::new(HostMemoryPersistence::default());
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let host_service = Arc::new(HostService {
             persistence: host_persistence,

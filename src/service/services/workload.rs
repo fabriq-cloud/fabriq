@@ -6,7 +6,7 @@ use crate::{models::Workload, persistence::WorkloadPersistence};
 #[derive(Debug)]
 pub struct WorkloadService {
     pub persistence: Box<dyn WorkloadPersistence>,
-    pub event_stream: Arc<Box<dyn EventStream>>,
+    pub event_stream: Arc<dyn EventStream>,
 }
 
 impl WorkloadService {
@@ -113,8 +113,7 @@ mod tests {
         };
 
         let workload_persistence = WorkloadMemoryPersistence::default();
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let workload_service = WorkloadService {
             persistence: Box::new(workload_persistence),

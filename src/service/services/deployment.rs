@@ -6,7 +6,7 @@ use crate::{models::Deployment, persistence::DeploymentPersistence};
 #[derive(Debug)]
 pub struct DeploymentService {
     pub persistence: Box<dyn DeploymentPersistence>,
-    pub event_stream: Arc<Box<dyn EventStream>>,
+    pub event_stream: Arc<dyn EventStream>,
 }
 
 impl DeploymentService {
@@ -125,8 +125,7 @@ mod tests {
         };
 
         let deployment_persistence = DeploymentMemoryPersistence::default();
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let deployment_service = DeploymentService {
             persistence: Box::new(deployment_persistence),

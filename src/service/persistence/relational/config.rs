@@ -88,6 +88,18 @@ impl ConfigPersistence for ConfigRelationalPersistence {
         Ok(results)
     }
 
+    fn get_by_template_id(&self, query_template_id: &str) -> anyhow::Result<Vec<Config>> {
+        let connection = crate::db::get_connection()?;
+
+        let query_owning_model = Config::make_owning_model("template", query_template_id);
+
+        let results = configs
+            .filter(owning_model.eq(query_owning_model))
+            .load::<Config>(&connection)?;
+
+        Ok(results)
+    }
+
     #[tracing::instrument(name = "relational::config::get_by_workload_id")]
     fn get_by_workload_id(&self, query_workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let connection = crate::db::get_connection()?;

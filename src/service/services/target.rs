@@ -9,7 +9,7 @@ use crate::{
 #[derive(Debug)]
 pub struct TargetService {
     pub persistence: Box<dyn Persistence<Target>>,
-    pub event_stream: Arc<Box<dyn EventStream>>,
+    pub event_stream: Arc<dyn EventStream>,
 }
 
 impl TargetService {
@@ -128,7 +128,7 @@ mod tests {
         let target_persistence = MemoryPersistence::<Target>::default();
 
         let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+            Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream + 'static>;
 
         let target_service = TargetService {
             persistence: Box::new(target_persistence),
@@ -168,8 +168,7 @@ mod tests {
 
         let target_persistence = MemoryPersistence::<Target>::default();
 
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let target_service = TargetService {
             persistence: Box::new(target_persistence),

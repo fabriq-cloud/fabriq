@@ -9,7 +9,7 @@ use crate::{
 #[derive(Debug)]
 pub struct HostService {
     pub persistence: Box<dyn HostPersistence>,
-    pub event_stream: Arc<Box<dyn EventStream>>,
+    pub event_stream: Arc<dyn EventStream>,
 }
 
 impl HostService {
@@ -113,8 +113,7 @@ mod tests {
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
         };
 
-        let event_stream =
-            Arc::new(Box::new(MemoryEventStream::new().unwrap()) as Box<dyn EventStream + 'static>);
+        let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let host_persistence = Box::new(HostMemoryPersistence::default());
 
