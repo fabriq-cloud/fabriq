@@ -1,5 +1,5 @@
 use akira_core::config::config_client::ConfigClient;
-use akira_core::{ConfigIdRequest, ConfigMessage, QueryConfigRequest};
+use akira_core::{ConfigIdRequest, ConfigMessage, ConfigValueType, QueryConfigRequest};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
 use tonic::metadata::MetadataValue;
@@ -36,6 +36,13 @@ pub fn args() -> Command<'static> {
                         .short('w')
                         .long("workload")
                         .help("owning workload id")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(
+                    Arg::new("type")
+                        .long("type")
+                        .help("value of type (default 'string')")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -98,6 +105,14 @@ pub async fn handlers(
             let template_id = create_match.value_of("template");
             let workload_id = create_match.value_of("workload");
             let deployment_id = create_match.value_of("deployment");
+            let value_type_option = create_match.value_of("type");
+
+            let value_type = match value_type_option {
+                Some("keyvalue") => ConfigValueType::KeyValueType as i32,
+                Some("string") => ConfigValueType::StringType as i32,
+                None => ConfigValueType::StringType as i32,
+                _ => return Err(anyhow::anyhow!("Invalid value type")),
+            };
 
             let owning_model = match workload_id {
                 Some(workload_id) => {
@@ -123,8 +138,11 @@ pub async fn handlers(
             let request = tonic::Request::new(ConfigMessage {
                 id: id.clone(),
                 owning_model,
+
                 key,
                 value,
+
+                value_type,
             });
 
             client.create(request).await?;

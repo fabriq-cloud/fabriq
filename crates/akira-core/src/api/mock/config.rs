@@ -1,7 +1,7 @@
 use tonic::{Request, Response, Status};
 
 use crate::{
-    ConfigIdRequest, ConfigMessage, ConfigTrait, OperationId, QueryConfigRequest,
+    ConfigIdRequest, ConfigMessage, ConfigTrait, ConfigValueType, OperationId, QueryConfigRequest,
     QueryConfigResponse,
 };
 
@@ -33,12 +33,24 @@ impl ConfigTrait for MockConfigClient {
                 owning_model: "deployment:deployment-fixture".to_owned(),
                 key: "replicas".to_owned(),
                 value: "5".to_owned(),
+
+                value_type: ConfigValueType::StringType as i32,
+            },
+            ConfigMessage {
+                id: "deployment-fixture:labels".to_owned(),
+                owning_model: "deployment:deployment-fixture".to_owned(),
+                key: "labels".to_owned(),
+                value: "cloud=azure;region=eastus2".to_owned(),
+
+                value_type: ConfigValueType::KeyValueType as i32,
             },
             ConfigMessage {
                 id: "workload-fixture:port".to_owned(),
                 owning_model: "workload:workload-fixture".to_owned(),
                 key: "port".to_owned(),
                 value: "80".to_owned(),
+
+                value_type: ConfigValueType::StringType as i32,
             },
             ConfigMessage {
                 id: "deployment-fixture:image".to_owned(),
@@ -46,18 +58,24 @@ impl ConfigTrait for MockConfigClient {
                 key: "image".to_owned(),
                 value: "ghcr.io/timfpark/akira-gitops:aa14d4371cfc107bb5cc35d2cade57896841e0f9"
                     .to_owned(),
+
+                value_type: ConfigValueType::StringType as i32,
             },
             ConfigMessage {
                 id: "workload-fixture:metricsEndpoint".to_owned(),
                 owning_model: "workload:workload-fixture".to_owned(),
                 key: "metricsEndpoint".to_owned(),
                 value: "/metrics".to_owned(),
+
+                value_type: ConfigValueType::StringType as i32,
             },
             ConfigMessage {
                 id: "workload-fixture:healthEndpoint".to_owned(),
                 owning_model: "workload:workload-fixture".to_owned(),
                 key: "healthEndpoint".to_owned(),
                 value: "/healthz".to_owned(),
+
+                value_type: ConfigValueType::StringType as i32,
             },
         ];
 

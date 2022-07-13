@@ -22,6 +22,8 @@ pub struct Config {
 
     pub key: String,
     pub value: String,
+
+    pub value_type: i32,
 }
 
 impl PersistableModel<Config> for Config {
@@ -38,6 +40,8 @@ impl From<Config> for ConfigMessage {
 
             key: config.key,
             value: config.value,
+
+            value_type: config.value_type,
         }
     }
 }
@@ -50,6 +54,8 @@ impl From<ConfigMessage> for Config {
 
             key: config.key,
             value: config.value,
+
+            value_type: config.value_type,
         }
     }
 }

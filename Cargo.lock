@@ -39,6 +39,7 @@ dependencies = [
  "opentelemetry-jaeger",
  "prost",
  "prost-types",
+ "serde_json",
  "tokio",
  "tonic",
  "tonic-web",

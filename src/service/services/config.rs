@@ -151,6 +151,7 @@ mod tests {
             ConfigMemoryPersistence, DeploymentMemoryPersistence, WorkloadMemoryPersistence,
         },
     };
+    use akira_core::ConfigValueType;
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
@@ -164,6 +165,8 @@ mod tests {
 
             key: "sample-key".to_owned(),
             value: "sample-value".to_owned(),
+
+            value_type: ConfigValueType::StringType as i32,
         };
 
         let config_persistence = ConfigMemoryPersistence::default();

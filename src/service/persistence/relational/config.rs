@@ -116,6 +116,8 @@ impl ConfigPersistence for ConfigRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::ConfigValueType;
+
     use super::*;
     use crate::models::Config;
 
@@ -130,7 +132,9 @@ mod tests {
             owning_model: "workload:workload-fixture".to_owned(),
 
             key: "sample-key".to_owned(),
-            value: "sample-value".to_owned(),
+            value: "key1:value1;key2:value2".to_owned(),
+
+            value_type: ConfigValueType::KeyValueType as i32,
         };
 
         let config_persistence = ConfigRelationalPersistence::default();
@@ -166,6 +170,8 @@ mod tests {
 
             key: "sample-key".to_owned(),
             value: "sample-value".to_owned(),
+
+            value_type: ConfigValueType::StringType as i32,
         };
 
         let config_persistence = ConfigRelationalPersistence::default();

@@ -129,6 +129,8 @@ impl Default for ConfigMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::ConfigValueType;
+
     use super::*;
 
     #[test]
@@ -142,6 +144,8 @@ mod tests {
 
             key: "sample-key".to_owned(),
             value: "sample-value".to_owned(),
+
+            value_type: ConfigValueType::StringType as i32,
         };
 
         let config_persistence = ConfigMemoryPersistence::default();
@@ -177,6 +181,8 @@ mod tests {
 
             key: "sample-key".to_owned(),
             value: "sample-value".to_owned(),
+
+            value_type: ConfigValueType::StringType as i32,
         };
 
         let config_persistence = ConfigMemoryPersistence::default();

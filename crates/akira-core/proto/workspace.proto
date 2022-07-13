@@ -4,9 +4,11 @@ package akira.workspace;
 import "common.proto";
 
 service Workspace {
+    rpc List(ListWorkspacesRequest) returns (ListWorkspacesResponse);
+
+    // Temporary methods for prototyping.  Should utilize GitHub to create and delete these.
     rpc Create(WorkspaceMessage) returns (akira.common.OperationId);
     rpc Delete(DeleteWorkspaceRequest) returns (akira.common.OperationId);
-    rpc List(ListWorkspacesRequest) returns (ListWorkspacesResponse);
 }
 
 message DeleteWorkspaceRequest {

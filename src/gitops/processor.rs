@@ -1,4 +1,5 @@
-use handlebars::Handlebars;
+use handlebars::{to_json, Handlebars};
+use serde_json::value::{Map, Value as Json};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs;
@@ -9,7 +10,7 @@ use tonic::Request;
 use akira_core::common::TemplateIdRequest;
 use akira_core::git::{GitRepo, GitRepoFactory, RemoteGitRepo};
 use akira_core::{
-    get_current_or_previous_model, AssignmentMessage, ConfigMessage, ConfigTrait,
+    get_current_or_previous_model, AssignmentMessage, ConfigMessage, ConfigTrait, ConfigValueType,
     DeploymentIdRequest, DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage,
     ModelType, QueryConfigRequest, TargetMessage, TemplateMessage, TemplateTrait,
     WorkloadIdRequest, WorkloadMessage, WorkloadTrait, WorkspaceMessage,
@@ -561,15 +562,31 @@ impl GitOpsProcessor {
             let file_path = Path::new(&deployment_repo_path).join(file_name);
             let string_path = file_path.to_string_lossy();
 
-            let mut values: HashMap<String, String> = HashMap::new();
+            let mut values: Map<String, Json> = Map::new();
 
             for config in configs {
-                values.insert(config.key.clone(), config.value.clone());
+                match config.value_type {
+                    value_type if value_type == ConfigValueType::StringType as i32 => {
+                        values.insert(config.key.clone(), to_json(config.value.clone()));
+                    }
+
+                    value_type if value_type == ConfigValueType::KeyValueType as i32 => {
+                        let keyvalue_config = config.deserialize_keyvalue_pairs()?;
+                        values.insert(config.key.clone(), to_json(keyvalue_config));
+                    }
+
+                    _ => {
+                        tracing::error!("unsupported config type: {:?}", config);
+                    }
+                }
             }
 
-            values.insert("workspace".to_owned(), workload.workspace_id.clone());
-            values.insert("workload".to_owned(), workload.id.clone());
-            values.insert("deployment".to_owned(), deployment.id.clone());
+            values.insert(
+                "workspace".to_owned(),
+                to_json(workload.workspace_id.clone()),
+            );
+            values.insert("workload".to_owned(), to_json(workload.id.clone()));
+            values.insert("deployment".to_owned(), to_json(deployment.id.clone()));
 
             let rendered_template = handlebars.render(&template.id, &values)?;
 
@@ -614,8 +631,8 @@ mod tests {
     use akira_core::{
         create_event,
         git::{GitRepo, GitRepoFactory, MemoryGitRepo},
-        AssignmentMessage, ConfigMessage, DeploymentMessage, EventType, ModelType, OperationId,
-        TemplateMessage, WorkloadMessage,
+        AssignmentMessage, ConfigMessage, ConfigValueType, DeploymentMessage, EventType, ModelType,
+        OperationId, TemplateMessage, WorkloadMessage,
     };
 
     use std::{
@@ -704,6 +721,7 @@ mod tests {
 
         let deployment_pathbuf: PathBuf = format!("{}/deployment.yaml", deployment_path).into();
         let deployment_contents = gitops_repo.read_file(deployment_pathbuf.clone()).unwrap();
+
         assert!(!deployment_contents.is_empty());
 
         gitops_repo
@@ -752,7 +770,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 1303532859368106023);
+        assert_eq!(deployment_hash, 10329066041225746084);
 
         gitops_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -770,7 +788,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 1303532859368106023);
+        assert_eq!(deployment_hash, 10329066041225746084);
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -810,7 +828,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 1303532859368106023);
+        assert_eq!(deployment_hash, 10329066041225746084);
 
         gitops_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -828,7 +846,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 1303532859368106023);
+        assert_eq!(deployment_hash, 10329066041225746084);
 
         create_and_process_workload_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -901,6 +919,8 @@ mod tests {
             owning_model: "deployment:deployment-fixture".to_owned(),
             key: "cpu".to_owned(),
             value: "100m".to_owned(),
+
+            value_type: ConfigValueType::StringType as i32,
         };
 
         let operation_id = OperationId::create();

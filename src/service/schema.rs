@@ -12,6 +12,7 @@ table! {
         owning_model -> Text,
         key -> Text,
         value -> Text,
+        value_type -> Int4,
     }
 }
 

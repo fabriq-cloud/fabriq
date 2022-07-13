@@ -4,7 +4,9 @@ metadata:
   name: {{workload}}-deployment
   namespace: {{workspace}}-{{workload}}-{{deployment}}
   labels:
-    {{key}}: {{value}}
+  {{#each labels as |kv|}}
+    {{kv.key}}: {{kv.value}}
+  {{/each}}
 spec:
   replicas: {{replicas}}
   selector:
@@ -13,7 +15,9 @@ spec:
   template:
     metadata:
       labels:
-        {{key}}: {{value}}
+      {{#each labels as |kv|}}
+        {{kv.key}}: {{kv.value}}
+      {{/each}}
       annotations:
         linkerd.io/inject: enabled
         prometheus.io/scrape: "true"

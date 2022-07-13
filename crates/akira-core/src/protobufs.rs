@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 
 use prost_types::Timestamp;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub mod common {
@@ -41,6 +42,44 @@ pub mod config {
 
 pub use config::config_server::{Config as ConfigTrait, ConfigServer};
 pub use config::{ConfigIdRequest, ConfigMessage, QueryConfigRequest, QueryConfigResponse};
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConfigValueType {
+    StringType = 1,
+    KeyValueType = 2,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConfigKeyValue {
+    pub key: String,
+    pub value: String,
+}
+
+impl ConfigMessage {
+    pub fn deserialize_keyvalue_pairs(&self) -> anyhow::Result<Vec<ConfigKeyValue>> {
+        if self.value_type != ConfigValueType::KeyValueType as i32 {
+            return Err(anyhow::anyhow!(
+                "ConfigMessage::deserialize_subconfig: not KeyValue type"
+            ));
+        }
+
+        let key_value_pairs = self.value.split(';').collect::<Vec<&str>>();
+
+        let messages = key_value_pairs
+            .iter()
+            .map(|key_value_pair| {
+                let key_value_pair = key_value_pair.split('=').collect::<Vec<&str>>();
+
+                ConfigKeyValue {
+                    key: key_value_pair[0].to_string(),
+                    value: key_value_pair[1].to_string(),
+                }
+            })
+            .collect::<Vec<ConfigKeyValue>>();
+
+        Ok(messages)
+    }
+}
 
 // deployment protobufs
 

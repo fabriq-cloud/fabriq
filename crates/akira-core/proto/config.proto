@@ -31,4 +31,5 @@ message ConfigMessage {
     string value = 3;
 
     string owning_model = 4; // deployment:342 || workload:123
+    int32  value_type = 5;
 }

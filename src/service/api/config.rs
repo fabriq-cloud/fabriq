@@ -92,7 +92,8 @@ impl ConfigTrait for GrpcConfigService {
 #[cfg(test)]
 mod tests {
     use akira_core::{
-        ConfigIdRequest, ConfigMessage, ConfigTrait, EventStream, QueryConfigRequest,
+        ConfigIdRequest, ConfigMessage, ConfigTrait, ConfigValueType, EventStream,
+        QueryConfigRequest,
     };
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
@@ -158,6 +159,8 @@ mod tests {
 
             key: "sample-key".to_owned(),
             value: "sample-value".to_owned(),
+
+            value_type: ConfigValueType::StringType as i32,
         });
 
         let response = config_grpc_service
