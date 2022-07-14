@@ -114,16 +114,12 @@ impl TargetService {
 mod tests {
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
+    use akira_core::test::{get_host_fixture, get_target_fixture};
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
-
-        let new_target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["location:eastus2".to_string()],
-        };
 
         let target_persistence = MemoryPersistence::<Target>::default();
 
@@ -135,15 +131,17 @@ mod tests {
             event_stream,
         };
 
+        let target: Target = get_target_fixture(None).into();
+
         let created_target_operation_id = target_service
-            .create(&new_target, &Some(OperationId::create()))
+            .create(&target, &Some(OperationId::create()))
             .unwrap();
         assert_eq!(created_target_operation_id.id.len(), 36);
 
-        let fetched_target = target_service.get_by_id(&new_target.id).unwrap().unwrap();
-        assert_eq!(fetched_target.id, new_target.id);
+        let fetched_target = target_service.get_by_id(&target.id).unwrap().unwrap();
+        assert_eq!(fetched_target.id, target.id);
 
-        let deleted_target_operation_id = target_service.delete(&new_target.id, None).unwrap();
+        let deleted_target_operation_id = target_service.delete(&target.id, None).unwrap();
         assert_eq!(deleted_target_operation_id.id.len(), 36);
     }
 
@@ -151,28 +149,20 @@ mod tests {
     fn test_get_matching_host() {
         dotenv::from_filename(".env.test").ok();
 
-        let host = Host {
-            id: "azure-eastus2-1".to_owned(),
-            labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
-        };
-
-        let matching_target: Target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["location:eastus2".to_string()],
-        };
-
-        let non_matching_target: Target = Target {
-            id: "westus2".to_owned(),
-            labels: vec!["location:westus2".to_string()],
-        };
-
         let target_persistence = MemoryPersistence::<Target>::default();
-
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let target_service = TargetService {
             persistence: Box::new(target_persistence),
             event_stream,
+        };
+
+        let host: Host = get_host_fixture(None).into();
+        let matching_target = get_target_fixture(None).into();
+
+        let non_matching_target: Target = Target {
+            id: "westus2".to_owned(),
+            labels: vec!["location:westus2".to_string()],
         };
 
         target_service.create(&matching_target, &None).unwrap();

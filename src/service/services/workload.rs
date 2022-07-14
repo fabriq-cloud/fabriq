@@ -16,17 +16,17 @@ impl WorkloadService {
         workload: &Workload,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let workload_id = self.persistence.create(workload)?;
+        let expected_workload_id = WorkloadMessage::make_id(&workload.workspace_id, &workload.name);
 
-        let workload = self.get_by_id(&workload_id)?;
-        let workload = match workload {
-            Some(workload) => workload,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "Couldn't find created workload id returned"
-                ))
-            }
-        };
+        if workload.id != expected_workload_id {
+            return Err(anyhow::anyhow!(
+                "Workload id {} doesn't match expected id {}",
+                workload.id,
+                expected_workload_id
+            ));
+        }
+
+        self.persistence.create(workload)?;
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
         let create_event = create_event::<WorkloadMessage>(
@@ -99,18 +99,12 @@ impl WorkloadService {
 mod tests {
     use super::*;
     use crate::persistence::memory::WorkloadMemoryPersistence;
+    use akira_core::test::get_workload_fixture;
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
-
-        let new_workload = Workload {
-            id: "cribbage-api".to_owned(),
-
-            template_id: "external-service".to_owned(),
-            workspace_id: "cribbage-team".to_owned(),
-        };
 
         let workload_persistence = WorkloadMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
@@ -120,18 +114,17 @@ mod tests {
             event_stream,
         };
 
+        let workload: Workload = get_workload_fixture(None).into();
+
         let create_operation_id = workload_service
-            .create(&new_workload, Some(OperationId::create()))
+            .create(&workload, Some(OperationId::create()))
             .unwrap();
         assert_eq!(create_operation_id.id.len(), 36);
 
-        let fetched_workload = workload_service
-            .get_by_id(&new_workload.id)
-            .unwrap()
-            .unwrap();
-        assert_eq!(fetched_workload.id, new_workload.id);
+        let fetched_workload = workload_service.get_by_id(&workload.id).unwrap().unwrap();
+        assert_eq!(fetched_workload.id, workload.id);
 
-        let delete_operation_id = workload_service.delete(&new_workload.id, None).unwrap();
+        let delete_operation_id = workload_service.delete(&workload.id, None).unwrap();
         assert_eq!(delete_operation_id.id.len(), 36);
     }
 }

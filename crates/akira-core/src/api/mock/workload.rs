@@ -2,6 +2,7 @@ use tonic::{Request, Response, Status};
 
 use crate::{
     common::{TemplateIdRequest, WorkloadIdRequest},
+    test::get_workload_fixture,
     ListWorkloadsRequest, ListWorkloadsResponse, OperationId, WorkloadMessage, WorkloadTrait,
 };
 
@@ -27,25 +28,15 @@ impl WorkloadTrait for MockWorkloadClient {
         &self,
         _request: Request<WorkloadIdRequest>,
     ) -> Result<Response<WorkloadMessage>, Status> {
-        Ok(Response::new(WorkloadMessage {
-            id: "workload-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-        }))
+        Ok(Response::new(get_workload_fixture(None)))
     }
 
     async fn get_by_template_id(
         &self,
         _request: Request<TemplateIdRequest>,
     ) -> Result<Response<ListWorkloadsResponse>, Status> {
-        let workload = WorkloadMessage {
-            id: "workload-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-        };
-
         Ok(Response::new(ListWorkloadsResponse {
-            workloads: vec![workload],
+            workloads: vec![get_workload_fixture(None)],
         }))
     }
 
@@ -53,14 +44,8 @@ impl WorkloadTrait for MockWorkloadClient {
         &self,
         _request: Request<ListWorkloadsRequest>,
     ) -> Result<Response<ListWorkloadsResponse>, Status> {
-        let workload = WorkloadMessage {
-            id: "workload-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-        };
-
         Ok(Response::new(ListWorkloadsResponse {
-            workloads: vec![workload],
+            workloads: vec![get_workload_fixture(None)],
         }))
     }
 }

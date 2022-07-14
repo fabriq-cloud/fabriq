@@ -27,6 +27,7 @@ pub struct Deployment {
 
     #[sql_type = "Integer"]
     pub host_count: i32,
+    pub name: String,
 }
 
 impl PersistableModel<Deployment> for Deployment {
@@ -39,6 +40,7 @@ impl From<Deployment> for DeploymentMessage {
     fn from(deployment: Deployment) -> Self {
         Self {
             id: deployment.id,
+            name: deployment.name,
             workload_id: deployment.workload_id,
             target_id: deployment.target_id,
             template_id: deployment.template_id,
@@ -51,6 +53,7 @@ impl From<DeploymentMessage> for Deployment {
     fn from(deployment: DeploymentMessage) -> Self {
         Self {
             id: deployment.id,
+            name: deployment.name,
             workload_id: deployment.workload_id,
             target_id: deployment.target_id,
             template_id: deployment.template_id,

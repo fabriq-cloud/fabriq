@@ -90,12 +90,13 @@ impl WorkspaceTrait for GrpcWorkspaceService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_workspace_fixture;
     use akira_core::{DeleteWorkspaceRequest, EventStream, ListWorkspacesRequest, WorkspaceTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 
-    use super::{GrpcWorkspaceService, WorkspaceMessage};
+    use super::GrpcWorkspaceService;
 
     use crate::models::Workspace;
     use crate::persistence::memory::{MemoryPersistence, WorkloadMemoryPersistence};
@@ -121,9 +122,9 @@ mod tests {
 
         let workspace_grpc_service = GrpcWorkspaceService::new(Arc::clone(&workspace_service));
 
-        let request = Request::new(WorkspaceMessage {
-            id: "climate-api-team".to_string(),
-        });
+        let workspace = get_workspace_fixture(None);
+
+        let request = Request::new(workspace.clone());
 
         let response = workspace_grpc_service
             .create(request)
@@ -140,9 +141,7 @@ mod tests {
             .unwrap()
             .into_inner();
 
-        let request = Request::new(DeleteWorkspaceRequest {
-            id: "climate-api-team".to_string(),
-        });
+        let request = Request::new(DeleteWorkspaceRequest { id: workspace.id });
         let response = workspace_grpc_service
             .delete(request)
             .await

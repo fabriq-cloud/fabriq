@@ -76,6 +76,8 @@ impl Persistence<Template> for TemplateRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_template_fixture;
+
     use super::*;
     use crate::models::Template;
 
@@ -84,26 +86,20 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_template = Template {
-            id: "template-under-test".to_owned(),
-            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
-            path: "external-service".to_owned(),
-        };
-
         let template_persistence = TemplateRelationalPersistence::default();
+        let template: Template = get_template_fixture(Some("relational-template-create")).into();
 
         // delete template if it exists
-        let _ = template_persistence.delete(&new_template.id).unwrap();
+        let _ = template_persistence.delete(&template.id).unwrap();
 
-        let inserted_template_id = template_persistence.create(&new_template).unwrap();
+        let inserted_template_id = template_persistence.create(&template).unwrap();
 
         let fetched_template = template_persistence
             .get_by_id(&inserted_template_id)
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_template.id, new_template.id);
-        assert_eq!(fetched_template.repository, new_template.repository);
+        assert_eq!(fetched_template.id, template.id);
+        assert_eq!(fetched_template.repository, template.repository);
 
         let deleted_templates = template_persistence.delete(&inserted_template_id).unwrap();
         assert_eq!(deleted_templates, 1);
@@ -114,24 +110,17 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_template = Template {
-            id: "template-under-many-test".to_owned(),
-            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
-            path: "external-service".to_owned(),
-        };
-
         let template_persistence = TemplateRelationalPersistence::default();
+        let template: Template =
+            get_template_fixture(Some("relational-template-create-many")).into();
 
         let inserted_template_ids = template_persistence
-            .create_many(&[new_template.clone()])
+            .create_many(&[template.clone()])
             .unwrap();
         assert_eq!(inserted_template_ids.len(), 1);
-        assert_eq!(inserted_template_ids[0], new_template.id);
+        assert_eq!(inserted_template_ids[0], template.id);
 
-        let deleted_templates = template_persistence
-            .delete_many(&[&new_template.id])
-            .unwrap();
+        let deleted_templates = template_persistence.delete_many(&[&template.id]).unwrap();
         assert_eq!(deleted_templates, 1);
     }
 }

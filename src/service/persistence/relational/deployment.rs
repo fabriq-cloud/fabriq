@@ -111,55 +111,52 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::{get_deployment_fixture, get_target_fixture, get_template_fixture};
+
     use super::*;
     use crate::models::Deployment;
 
     #[test]
-    fn test_create_get_delete() {
+    fn test_deployment_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_deployment = Deployment {
-            id: "deployment-under-test".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            target_id: "target-fixture".to_owned(),
-            template_id: Some("template-fixture".to_string()),
-            host_count: 3,
-        };
-
         let deployment_persistence = DeploymentRelationalPersistence::default();
+        let new_deployment: Deployment =
+            get_deployment_fixture(Some("create-deployment-fixture")).into();
+
+        println!("{:?}", new_deployment);
 
         // delete deployment if it exists
-        let _ = deployment_persistence.delete(&new_deployment.id).unwrap();
+        deployment_persistence.delete(&new_deployment.id).unwrap();
 
-        let inserted_deployment_id = deployment_persistence.create(&new_deployment).unwrap();
+        println!("1");
+
+        deployment_persistence.create(&new_deployment).unwrap();
+
+        println!("2");
 
         let fetched_deployment = deployment_persistence
-            .get_by_id(&inserted_deployment_id)
+            .get_by_id(&new_deployment.id)
             .unwrap()
             .unwrap();
         assert_eq!(fetched_deployment.id, new_deployment.id);
 
-        let deleted_deployments = deployment_persistence
-            .delete(&inserted_deployment_id)
-            .unwrap();
+        let deleted_deployments = deployment_persistence.delete(&new_deployment.id).unwrap();
         assert_eq!(deleted_deployments, 1);
     }
 
     #[test]
-    fn test_create_delete_many() {
+    fn test_deployment_create_delete_many() {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_deployment = Deployment {
-            id: "deployment-under-many-test".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            target_id: "target-fixture".to_owned(),
-            template_id: None,
-            host_count: 3,
-        };
-
         let deployment_persistence = DeploymentRelationalPersistence::default();
+        let new_deployment: Deployment =
+            get_deployment_fixture(Some("create-many-deployment-fixture")).into();
+
+        // delete deployment if it exists
+        deployment_persistence.delete(&new_deployment.id).unwrap();
 
         let inserted_deployment_ids = deployment_persistence
             .create_many(&[new_deployment.clone()])
@@ -179,9 +176,10 @@ mod tests {
         crate::persistence::relational::ensure_fixtures();
 
         let deployment_persistence = DeploymentRelationalPersistence::default();
+        let target_fixture = get_target_fixture(None);
 
         let deployments_for_target = deployment_persistence
-            .get_by_target_id("target-fixture")
+            .get_by_target_id(&target_fixture.id)
             .unwrap();
 
         assert!(!deployments_for_target.is_empty());
@@ -193,9 +191,10 @@ mod tests {
         crate::persistence::relational::ensure_fixtures();
 
         let deployment_persistence = DeploymentRelationalPersistence::default();
+        let template_fixture = get_template_fixture(None);
 
         let deployments_for_template = deployment_persistence
-            .get_by_template_id("template-fixture")
+            .get_by_template_id(&template_fixture.id)
             .unwrap();
 
         assert!(!deployments_for_template.is_empty());

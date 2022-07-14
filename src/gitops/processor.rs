@@ -106,7 +106,10 @@ impl GitOpsProcessor {
         // Deleted: Rerender all deployments that could be effected by this config change.
 
         let config = get_current_or_previous_model::<ConfigMessage>(event)?;
-        let owning_model_parts: Vec<&str> = config.owning_model.split(':').collect();
+        let owning_model_parts: Vec<&str> = config
+            .owning_model
+            .split(ConfigMessage::OWNING_MODEL_SEPARATOR)
+            .collect();
         if owning_model_parts.len() == 2 {
             let model_type = owning_model_parts[0];
             let model_id = owning_model_parts[1];
@@ -330,16 +333,16 @@ impl GitOpsProcessor {
             self.render_assignment(
                 &assignment.host_id,
                 &workload.workspace_id,
-                &deployment.workload_id,
-                &deployment.id,
+                &workload.name,
+                &deployment.name,
             )
             .await?;
         } else {
             let assignment_path = GitOpsProcessor::make_assignment_path(
                 &assignment.host_id,
                 &workload.workspace_id,
-                &deployment.workload_id,
-                &deployment.id,
+                &workload.name,
+                &deployment.name,
             );
 
             self.gitops_repo.remove_dir(&assignment_path)?;
@@ -465,18 +468,18 @@ impl GitOpsProcessor {
         &self,
         host_id: &str,
         workspace_id: &str,
-        workload_id: &str,
-        deployment_id: &str,
+        workload_name: &str,
+        deployment_name: &str,
     ) -> anyhow::Result<()> {
         let assignment_path = GitOpsProcessor::make_assignment_path(
             host_id,
             workspace_id,
-            workload_id,
-            deployment_id,
+            workload_name,
+            deployment_name,
         );
 
         let deployment_path =
-            GitOpsProcessor::make_deployment_path(workspace_id, workload_id, deployment_id);
+            GitOpsProcessor::make_deployment_path(workspace_id, workload_name, deployment_name);
 
         let host_relative_deployment_path = format!("../../../../../{}", deployment_path);
         let template_string = fs::read_to_string("templates/assignment.yaml")?;
@@ -513,19 +516,23 @@ impl GitOpsProcessor {
     fn make_assignment_path(
         host_id: &str,
         workspace_id: &str,
-        workload_id: &str,
-        deployment_id: &str,
+        workload_name: &str,
+        deployment_name: &str,
     ) -> String {
         format!(
             "hosts/{}/{}/{}/{}/kustomization.yaml",
-            host_id, workspace_id, workload_id, deployment_id
+            host_id, workspace_id, workload_name, deployment_name
         )
     }
 
-    fn make_deployment_path(workspace_id: &str, workload_id: &str, deployment_id: &str) -> String {
+    fn make_deployment_path(
+        workspace_id: &str,
+        workload_name: &str,
+        deployment_name: &str,
+    ) -> String {
         format!(
             "deployments/{}/{}/{}",
-            workspace_id, workload_id, deployment_id
+            workspace_id, workload_name, deployment_name
         )
     }
 
@@ -545,11 +552,8 @@ impl GitOpsProcessor {
 
         let template_paths = template_repo.list(template.path.clone().into())?;
 
-        let deployment_repo_path = Self::make_deployment_path(
-            &workload.workspace_id,
-            &deployment.workload_id,
-            &deployment.id,
-        );
+        let deployment_repo_path =
+            Self::make_deployment_path(&workload.workspace_id, &workload.name, &deployment.name);
 
         for template_path in template_paths {
             let template_bytes = template_repo.read_file(template_path.clone())?;
@@ -585,8 +589,8 @@ impl GitOpsProcessor {
                 "workspace".to_owned(),
                 to_json(workload.workspace_id.clone()),
             );
-            values.insert("workload".to_owned(), to_json(workload.id.clone()));
-            values.insert("deployment".to_owned(), to_json(deployment.id.clone()));
+            values.insert("workload".to_owned(), to_json(workload.name.clone()));
+            values.insert("deployment".to_owned(), to_json(deployment.name.clone()));
 
             let rendered_template = handlebars.render(&template.id, &values)?;
 
@@ -631,8 +635,12 @@ mod tests {
     use akira_core::{
         create_event,
         git::{GitRepo, GitRepoFactory, MemoryGitRepo},
-        AssignmentMessage, ConfigMessage, ConfigValueType, DeploymentMessage, EventType, ModelType,
-        OperationId, TemplateMessage, WorkloadMessage,
+        test::{
+            get_assignment_fixture, get_deployment_fixture, get_host_fixture,
+            get_string_config_fixture, get_template_fixture, get_workload_fixture,
+            get_workspace_fixture,
+        },
+        EventType, ModelType, OperationId,
     };
 
     use std::{
@@ -669,11 +677,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_assignment_events() {
+        let deployment = get_deployment_fixture(None);
+        let host = get_host_fixture(None);
+        let workspace = get_workspace_fixture(None);
+        let workload = get_workload_fixture(None);
+
         let assignment_path = GitOpsProcessor::make_assignment_path(
-            "host-fixture",
-            "workspace-fixture",
-            "workload-fixture",
-            "deployment-fixture",
+            &host.id,
+            &workspace.id,
+            &workload.name,
+            &deployment.name,
         );
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
@@ -885,11 +898,7 @@ mod tests {
             .await
             .unwrap();
 
-        let assignment = AssignmentMessage {
-            id: "deployment-fixture".to_owned(),
-            host_id: "host-fixture".to_owned(),
-            deployment_id: "deployment-fixture".to_owned(),
-        };
+        let assignment = get_assignment_fixture(None);
 
         let operation_id = OperationId::create();
 
@@ -913,15 +922,7 @@ mod tests {
             .await
             .unwrap();
 
-        let config = ConfigMessage {
-            id: "config-fixture".to_owned(),
-
-            owning_model: "deployment:deployment-fixture".to_owned(),
-            key: "cpu".to_owned(),
-            value: "100m".to_owned(),
-
-            value_type: ConfigValueType::StringType as i32,
-        };
+        let config = get_string_config_fixture();
 
         let operation_id = OperationId::create();
 
@@ -945,14 +946,7 @@ mod tests {
             .await
             .unwrap();
 
-        let deployment = DeploymentMessage {
-            id: "deployment-fixture".to_owned(),
-            target_id: "eastus2".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: Some("template-fixture".to_owned()),
-            host_count: 2,
-        };
-
+        let deployment = get_deployment_fixture(None);
         let operation_id = OperationId::create();
 
         let event = create_event(
@@ -975,12 +969,7 @@ mod tests {
             .await
             .unwrap();
 
-        let template = TemplateMessage {
-            id: "template-fixture".to_owned(),
-            repository: "git@github.com:timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
-            path: "external-service".to_owned(),
-        };
+        let template = get_template_fixture(None);
 
         let operation_id = OperationId::create();
 
@@ -1004,11 +993,7 @@ mod tests {
             .await
             .unwrap();
 
-        let workload = WorkloadMessage {
-            id: "workload-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-        };
+        let workload = get_workload_fixture(None);
 
         let operation_id = OperationId::create();
 

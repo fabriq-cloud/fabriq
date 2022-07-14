@@ -23,6 +23,7 @@ table! {
         target_id -> Text,
         template_id -> Nullable<Text>,
         host_count -> Int4,
+        name -> Text,
     }
 }
 
@@ -54,6 +55,7 @@ table! {
         id -> Text,
         workspace_id -> Text,
         template_id -> Text,
+        name -> Text,
     }
 }
 

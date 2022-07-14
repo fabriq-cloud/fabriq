@@ -98,9 +98,12 @@ impl ConfigPersistence for ConfigMemoryPersistence {
     fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let locked_configs = self.get_models_locked()?;
 
+        println!("{:?}", locked_configs);
+
         let mut configs_for_target = Vec::new();
         for config in (*locked_configs).values() {
             let (model_type, model_id) = config.split_owning_model();
+            println!("{} {}", model_type, model_id);
             if model_type == "workload" && model_id == workload_id {
                 configs_for_target.push(config.clone());
             }
@@ -129,7 +132,10 @@ impl Default for ConfigMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::ConfigValueType;
+    use akira_core::test::{
+        get_deployment_fixture, get_keyvalue_config_fixture, get_string_config_fixture,
+        get_workload_fixture,
+    };
 
     use super::*;
 
@@ -137,32 +143,22 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_config = Config {
-            id: "config-persist-single-under-test".to_owned(),
-
-            owning_model: "workload:workload-fixture".to_owned(),
-
-            key: "sample-key".to_owned(),
-            value: "sample-value".to_owned(),
-
-            value_type: ConfigValueType::StringType as i32,
-        };
+        let config: Config = get_string_config_fixture().into();
+        let workload = get_workload_fixture(None);
 
         let config_persistence = ConfigMemoryPersistence::default();
 
-        let inserted_config_id = config_persistence.create(&new_config).unwrap();
-        assert_eq!(inserted_config_id, new_config.id);
+        let inserted_config_id = config_persistence.create(&config).unwrap();
+        assert_eq!(inserted_config_id, config.id);
 
         let fetched_config = config_persistence
             .get_by_id(&inserted_config_id)
             .unwrap()
             .unwrap();
 
-        assert_eq!(fetched_config.id, new_config.id);
+        assert_eq!(fetched_config.id, config.id);
 
-        let configs_for_workload = config_persistence
-            .get_by_workload_id("workload-fixture")
-            .unwrap();
+        let configs_for_workload = config_persistence.get_by_workload_id(&workload.id).unwrap();
 
         assert_eq!(configs_for_workload.len(), 1);
 
@@ -174,32 +170,22 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_config = Config {
-            id: "config-persist-many-under-test".to_owned(),
-
-            owning_model: "deployment:deployment-fixture".to_owned(),
-
-            key: "sample-key".to_owned(),
-            value: "sample-value".to_owned(),
-
-            value_type: ConfigValueType::StringType as i32,
-        };
+        let config: Config = get_keyvalue_config_fixture().into();
+        let deployment = get_deployment_fixture(None);
 
         let config_persistence = ConfigMemoryPersistence::default();
 
-        let inserted_host_ids = config_persistence
-            .create_many(&[new_config.clone()])
-            .unwrap();
+        let inserted_host_ids = config_persistence.create_many(&[config.clone()]).unwrap();
         assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], new_config.id);
+        assert_eq!(inserted_host_ids[0], config.id);
 
         let configs_for_deployment = config_persistence
-            .get_by_deployment_id("deployment-fixture")
+            .get_by_deployment_id(&deployment.id)
             .unwrap();
 
         assert_eq!(configs_for_deployment.len(), 1);
 
-        let deleted_hosts = config_persistence.delete_many(&[&new_config.id]).unwrap();
+        let deleted_hosts = config_persistence.delete_many(&[&config.id]).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }

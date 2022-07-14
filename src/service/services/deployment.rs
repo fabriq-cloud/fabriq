@@ -16,17 +16,18 @@ impl DeploymentService {
         deployment: &Deployment,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let deployment_id = self.persistence.create(deployment)?;
+        let expected_deployment_id =
+            DeploymentMessage::make_id(&deployment.workload_id, &deployment.name);
 
-        let deployment = self.get_by_id(&deployment_id)?;
-        let deployment = match deployment {
-            Some(deployment) => deployment,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "Couldn't find created deployment id returned"
-                ))
-            }
-        };
+        if deployment.id != expected_deployment_id {
+            return Err(anyhow::anyhow!(
+                "Deployment id {} doesn't match expected id {}",
+                deployment.id,
+                expected_deployment_id
+            ));
+        }
+
+        self.persistence.create(deployment)?;
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
         let create_event = create_event::<DeploymentMessage>(
@@ -110,19 +111,14 @@ impl DeploymentService {
 mod tests {
     use super::*;
     use crate::persistence::memory::DeploymentMemoryPersistence;
+    use akira_core::test::get_deployment_fixture;
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_deployment = Deployment {
-            id: "deployment-service-under-test".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            target_id: "target-fixture".to_owned(),
-            template_id: Some("external-service".to_string()),
-            host_count: 3,
-        };
+        let deployment: Deployment = get_deployment_fixture(None).into();
 
         let deployment_persistence = DeploymentMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
@@ -133,25 +129,23 @@ mod tests {
         };
 
         let deployment_created_operation_id = deployment_service
-            .create(&new_deployment, &Some(OperationId::create()))
+            .create(&deployment, &Some(OperationId::create()))
             .unwrap();
         assert_eq!(deployment_created_operation_id.id.len(), 36);
 
         let fetched_deployment = deployment_service
-            .get_by_id(&new_deployment.id)
+            .get_by_id(&deployment.id)
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_deployment.id, new_deployment.id);
+        assert_eq!(fetched_deployment.id, deployment.id);
 
         let deployments_by_target = deployment_service
-            .get_by_target_id("target-fixture")
+            .get_by_target_id(&deployment.target_id)
             .unwrap();
 
         assert!(!deployments_by_target.is_empty());
 
-        let deleted_operation_id = deployment_service
-            .delete(&new_deployment.id, &None)
-            .unwrap();
+        let deleted_operation_id = deployment_service.delete(&deployment.id, &None).unwrap();
         assert_eq!(deleted_operation_id.id.len(), 36);
     }
 }

@@ -104,6 +104,7 @@ impl TemplateService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_template_fixture;
     use akira_memory_stream::MemoryEventStream;
 
     use super::*;
@@ -113,13 +114,6 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_template = Template {
-            id: "external-service".to_owned(),
-            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
-            path: "external-service".to_owned(),
-        };
-
         let template_persistence = MemoryPersistence::<Template>::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
@@ -128,19 +122,18 @@ mod tests {
             event_stream,
         };
 
-        let create_operation_id = template_service.create(&new_template, None).unwrap();
+        let template: Template = get_template_fixture(None).into();
+
+        let create_operation_id = template_service.create(&template, None).unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 
-        let fetched_template = template_service
-            .get_by_id(&new_template.id)
-            .unwrap()
-            .unwrap();
+        let fetched_template = template_service.get_by_id(&template.id).unwrap().unwrap();
 
-        assert_eq!(fetched_template.id, new_template.id);
+        assert_eq!(fetched_template.id, template.id);
 
         let delete_operation_id = template_service
-            .delete(&new_template.id, Some(create_operation_id))
+            .delete(&template.id, Some(create_operation_id))
             .unwrap();
 
         assert_eq!(delete_operation_id.id.len(), 36);

@@ -126,6 +126,8 @@ impl Default for DeploymentMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_deployment_fixture;
+
     use super::*;
 
     #[test]
@@ -133,7 +135,8 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
 
         let new_deployment = Deployment {
-            id: "deployment-service-under-test".to_owned(),
+            id: "workspace-fixture:workload-fixture:test-deployment".to_owned(),
+            name: "test-deployment".to_owned(),
             workload_id: "workload-fixture".to_owned(),
             target_id: "target-fixture".to_owned(),
             template_id: None,
@@ -168,24 +171,18 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_deployment = Deployment {
-            id: "deployment-service-many-under-test".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            target_id: "target-fixture".to_owned(),
-            template_id: Some("external-service".to_string()),
-            host_count: 3,
-        };
+        let deployment: Deployment = get_deployment_fixture(None).into();
 
         let deployment_persistence = DeploymentMemoryPersistence::default();
 
         let inserted_host_ids = deployment_persistence
-            .create_many(&[new_deployment.clone()])
+            .create_many(&[deployment.clone()])
             .unwrap();
         assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], new_deployment.id);
+        assert_eq!(inserted_host_ids[0], deployment.id);
 
         let deleted_hosts = deployment_persistence
-            .delete_many(&[&new_deployment.id])
+            .delete_many(&[&deployment.id])
             .unwrap();
         assert_eq!(deleted_hosts, 1);
     }

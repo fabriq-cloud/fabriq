@@ -21,9 +21,9 @@ use crate::schema::workloads;
 #[belongs_to(Workspace)]
 pub struct Workload {
     pub id: String,
-
     pub workspace_id: String,
     pub template_id: String,
+    pub name: String,
 }
 
 impl PersistableModel<Workload> for Workload {
@@ -36,6 +36,7 @@ impl From<Workload> for WorkloadMessage {
     fn from(workload: Workload) -> Self {
         Self {
             id: workload.id,
+            name: workload.name,
             workspace_id: workload.workspace_id,
             template_id: workload.template_id,
         }
@@ -46,6 +47,7 @@ impl From<WorkloadMessage> for Workload {
     fn from(workload: WorkloadMessage) -> Self {
         Self {
             id: workload.id,
+            name: workload.name,
             workspace_id: workload.workspace_id,
             template_id: workload.template_id,
         }

@@ -98,6 +98,7 @@ impl HostService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_host_fixture;
     use akira_memory_stream::MemoryEventStream;
 
     use crate::persistence::memory::HostMemoryPersistence;
@@ -108,14 +109,10 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_host = Host {
-            id: "azure-eastus2-1".to_owned(),
-            labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
-        };
-
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let host_persistence = Box::new(HostMemoryPersistence::default());
+        let host: Host = get_host_fixture(None).into();
 
         let host_service = HostService {
             persistence: host_persistence,
@@ -123,14 +120,14 @@ mod tests {
         };
 
         let created_host_operation_id = host_service
-            .create(&new_host, &Some(OperationId::create()))
+            .create(&host, &Some(OperationId::create()))
             .unwrap();
         assert_eq!(created_host_operation_id.id.len(), 36);
 
-        let fetched_host = host_service.get_by_id(&new_host.id).unwrap().unwrap();
-        assert_eq!(fetched_host.id, new_host.id);
+        let fetched_host = host_service.get_by_id(&host.id).unwrap().unwrap();
+        assert_eq!(fetched_host.id, host.id);
 
-        let deleted_host_operation_id = host_service.delete(&new_host.id, None).unwrap();
+        let deleted_host_operation_id = host_service.delete(&host.id, None).unwrap();
         assert_eq!(deleted_host_operation_id.id.len(), 36);
     }
 }

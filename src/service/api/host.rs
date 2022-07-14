@@ -91,7 +91,8 @@ impl HostTrait for GrpcHostService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::{DeleteHostRequest, EventStream, HostMessage, HostTrait, ListHostsRequest};
+    use akira_core::test::get_host_fixture;
+    use akira_core::{DeleteHostRequest, EventStream, HostTrait, ListHostsRequest};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
@@ -113,10 +114,9 @@ mod tests {
 
         let host_grpc_service = GrpcHostService::new(Arc::clone(&host_service));
 
-        let request = Request::new(HostMessage {
-            id: "host-grpc-test".to_string(),
-            labels: vec!["region:eastus2".to_string(), "cloud:azure".to_string()],
-        });
+        let host = get_host_fixture(None);
+
+        let request = Request::new(host.clone());
 
         let response = host_grpc_service
             .create(request)
@@ -127,10 +127,12 @@ mod tests {
         assert_eq!(response.id.len(), 36);
 
         let request = Request::new(ListHostsRequest {});
-        let _ = host_grpc_service.list(request).await.unwrap().into_inner();
+        let response = host_grpc_service.list(request).await.unwrap().into_inner();
+
+        assert_eq!(response.hosts.len(), 1);
 
         let request = Request::new(DeleteHostRequest {
-            id: "host-grpc-test".to_string(),
+            id: host.id.to_string(),
         });
         let response = host_grpc_service
             .delete(request)

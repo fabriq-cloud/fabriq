@@ -14,8 +14,8 @@ use akira::{
     },
 };
 use akira_core::{
-    DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId, TargetMessage,
-    TemplateMessage, WorkloadMessage,
+    AssignmentMessage, DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId,
+    TargetMessage, TemplateMessage, WorkloadMessage,
 };
 use prost::Message;
 
@@ -349,7 +349,7 @@ impl Reconciler {
             assignments_to_create = hosts_available
                 .drain(0..create_count)
                 .map(|host| Assignment {
-                    id: Assignment::make_id(&deployment.id, &host.id),
+                    id: AssignmentMessage::make_id(&deployment.id, &host.id),
                     deployment_id: deployment.id.clone(),
                     host_id: host.id.clone(),
                 })
@@ -366,6 +366,10 @@ mod tests {
     use akira::persistence::memory::{
         AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
         MemoryPersistence, WorkloadMemoryPersistence,
+    };
+    use akira_core::test::{
+        get_deployment_fixture, get_host_fixture, get_target_fixture, get_template_fixture,
+        get_workload_fixture,
     };
     use akira_core::{create_event, EventStream};
     use akira_memory_stream::MemoryEventStream;
@@ -429,140 +433,31 @@ mod tests {
             workspace_service,
         };
 
-        let host1 = Host {
-            id: "host1-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
+        let host1 = get_host_fixture(Some("host1-id")).into();
         reconciler.host_service.create(&host1, &None).unwrap();
 
         let host2 = Host {
-            id: "host3-id".to_owned(),
+            id: "host2-id".to_owned(),
             labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
         };
-
         reconciler.host_service.create(&host2, &None).unwrap();
 
-        let host3 = Host {
-            id: "host3-id".to_owned(),
-            labels: vec!["region:eastus2".to_owned(), "cloud:azure".to_owned()],
-        };
-
+        let host3 = get_host_fixture(Some("host3-id")).into();
         reconciler.host_service.create(&host3, &None).unwrap();
 
-        let deployment = Deployment {
-            id: "deployment-fixture".to_owned(),
-            target_id: "eastus2".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: Some("template-fixture".to_owned()),
-            host_count: 2,
-        };
-
+        let deployment = get_deployment_fixture(None).into();
         reconciler
             .deployment_service
             .create(&deployment, &None)
             .unwrap();
 
-        let target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["region:eastus2".to_owned()],
-        };
-
+        let target = get_target_fixture(None).into();
         reconciler.target_service.create(&target, &None).unwrap();
 
-        let template = Template {
-            id: "template-fixture".to_owned(),
-            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
-            path: "external-service".to_owned(),
-        };
-
+        let template = get_template_fixture(None).into();
         reconciler.template_service.create(&template, None).unwrap();
 
         Ok(reconciler)
-    }
-
-    #[test]
-    fn test_process_target_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
-
-        let target = Target {
-            id: "eastus2".to_owned(),
-            labels: vec!["region:eastus2".to_owned()],
-        };
-
-        let operation_id = OperationId::create();
-
-        let event = create_event::<TargetMessage>(
-            &None,
-            &Some(target.into()),
-            EventType::Created,
-            ModelType::Target,
-            &operation_id,
-        );
-
-        reconciler.process(&event).unwrap();
-
-        let assignments = reconciler.assignment_service.list().unwrap();
-
-        assert_eq!(assignments.len(), 2);
-    }
-
-    #[test]
-    fn test_process_workload_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
-
-        let workload = Workload {
-            id: "workload-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-        };
-
-        reconciler.workload_service.create(&workload, None).unwrap();
-
-        let operation_id = OperationId::create();
-
-        let event = create_event::<WorkloadMessage>(
-            &None,
-            &Some(workload.into()),
-            EventType::Created,
-            ModelType::Workload,
-            &operation_id,
-        );
-
-        reconciler.process(&event).unwrap();
-
-        let assignments = reconciler.assignment_service.list().unwrap();
-
-        assert_eq!(assignments.len(), 2);
-    }
-
-    #[test]
-    fn test_process_template_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
-
-        let operation_id = OperationId::create();
-
-        let template = Template {
-            id: "template-fixture".to_owned(),
-            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
-            path: "external-service".to_owned(),
-        };
-
-        let event = create_event::<TemplateMessage>(
-            &None,
-            &Some(template.into()),
-            EventType::Created,
-            ModelType::Template,
-            &operation_id,
-        );
-
-        reconciler.process(&event).unwrap();
-
-        let assignments = reconciler.assignment_service.list().unwrap();
-
-        assert_eq!(assignments.len(), 2);
     }
 
     #[test]
@@ -571,17 +466,11 @@ mod tests {
 
         let operation_id = OperationId::create();
 
-        let deployment = Deployment {
-            id: "deployment-fixture".to_owned(),
-            target_id: "eastus2".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: None,
-            host_count: 2,
-        };
+        let deployment = get_deployment_fixture(None);
 
         let event = create_event::<DeploymentMessage>(
             &None,
-            &Some(deployment.into()),
+            &Some(deployment),
             EventType::Created,
             ModelType::Deployment,
             &operation_id,
@@ -644,14 +533,78 @@ mod tests {
     }
 
     #[test]
+    fn test_process_target_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let target = get_target_fixture(None);
+
+        let operation_id = OperationId::create();
+
+        let event = create_event::<TargetMessage>(
+            &None,
+            &Some(target),
+            EventType::Created,
+            ModelType::Target,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
+    fn test_process_workload_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let workload = get_workload_fixture(None).into();
+        reconciler.workload_service.create(&workload, None).unwrap();
+
+        let operation_id = OperationId::create();
+
+        let event = create_event::<WorkloadMessage>(
+            &None,
+            &Some(workload.into()),
+            EventType::Created,
+            ModelType::Workload,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
+    fn test_process_template_event() {
+        let reconciler = create_reconciler_fixture().unwrap();
+
+        let operation_id = OperationId::create();
+
+        let template = get_template_fixture(None);
+
+        let event = create_event::<TemplateMessage>(
+            &None,
+            &Some(template),
+            EventType::Created,
+            ModelType::Template,
+            &operation_id,
+        );
+
+        reconciler.process(&event).unwrap();
+
+        let assignments = reconciler.assignment_service.list().unwrap();
+
+        assert_eq!(assignments.len(), 2);
+    }
+
+    #[test]
     fn test_new_deployment() {
-        let deployment = Deployment {
-            id: "created-deployment".to_string(),
-            target_id: "target-id".to_string(),
-            workload_id: "workload-id".to_string(),
-            template_id: None,
-            host_count: 1,
-        };
+        let deployment = get_deployment_fixture(None).into();
 
         let existing_assignments: Vec<Assignment> = Vec::new();
         let target_matching_hosts = vec![
@@ -690,17 +643,11 @@ mod tests {
 
     #[test]
     fn test_scale_up_deployment() {
-        let deployment = Deployment {
-            id: "created-deployment".to_string(),
-            target_id: "target-id".to_string(),
-            workload_id: "workload-id".to_string(),
-            template_id: None,
-            host_count: 2,
-        };
+        let deployment: Deployment = get_deployment_fixture(None).into();
 
         let existing_assignments: Vec<Assignment> = vec![Assignment {
-            id: "assignment1-id".to_string(),
-            deployment_id: "deployment-id".to_string(),
+            id: AssignmentMessage::make_id(&deployment.id, "host1-id"),
+            deployment_id: deployment.id.to_string(),
             host_id: "host1-id".to_string(),
         }];
 
@@ -736,23 +683,17 @@ mod tests {
 
     #[test]
     fn test_scale_down_deployment() {
-        let deployment = Deployment {
-            id: "deployment-id".to_string(),
-            target_id: "target-id".to_string(),
-            workload_id: "workload-id".to_string(),
-            template_id: None,
-            host_count: 2,
-        };
+        let deployment: Deployment = get_deployment_fixture(None).into();
 
         let existing_assignments: Vec<Assignment> = vec![
             Assignment {
-                id: "assignment1-id".to_string(),
-                deployment_id: "deployment-id".to_string(),
+                id: AssignmentMessage::make_id(&deployment.id, "host1-id"),
+                deployment_id: deployment.id.to_string(),
                 host_id: "host1-id".to_string(),
             },
             Assignment {
-                id: "assignment2-id".to_string(),
-                deployment_id: "deployment-id".to_string(),
+                id: AssignmentMessage::make_id(&deployment.id, "host2-id"),
+                deployment_id: deployment.id.to_string(),
                 host_id: "host2-id".to_string(),
             },
         ];
@@ -789,23 +730,17 @@ mod tests {
 
     #[test]
     fn test_host_deleted_deployment() {
-        let deployment = Deployment {
-            id: "deployment-id".to_string(),
-            target_id: "target-id".to_string(),
-            workload_id: "workload-id".to_string(),
-            template_id: None,
-            host_count: 2,
-        };
+        let deployment: Deployment = get_deployment_fixture(None).into();
 
         let existing_assignments: Vec<Assignment> = vec![
             Assignment {
-                id: "assignment1-id".to_string(),
-                deployment_id: "deployment-id".to_string(),
+                id: AssignmentMessage::make_id(&deployment.id, "host1-id"),
+                deployment_id: deployment.id.to_string(),
                 host_id: "host1-id".to_string(),
             },
             Assignment {
-                id: "assignment2-id".to_string(),
-                deployment_id: "deployment-id".to_string(),
+                id: AssignmentMessage::make_id(&deployment.id, "host2-id"),
+                deployment_id: deployment.id.to_string(),
                 host_id: "host2-id".to_string(),
             },
         ];
@@ -840,17 +775,11 @@ mod tests {
 
     #[test]
     fn test_do_nothing_deployment() {
-        let deployment = Deployment {
-            id: "created-deployment".to_string(),
-            target_id: "target-id".to_string(),
-            workload_id: "workload-id".to_string(),
-            template_id: None,
-            host_count: 2,
-        };
+        let deployment: Deployment = get_deployment_fixture(None).into();
 
         let existing_assignments: Vec<Assignment> = vec![Assignment {
-            id: "assignment1-id".to_string(),
-            deployment_id: "deployment-id".to_string(),
+            id: AssignmentMessage::make_id(&deployment.id, "host1-id"),
+            deployment_id: deployment.id.to_string(),
             host_id: "host1-id".to_string(),
         }];
 

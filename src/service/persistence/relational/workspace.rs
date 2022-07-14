@@ -76,6 +76,8 @@ impl Persistence<Workspace> for WorkspaceRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_workspace_fixture;
+
     use super::*;
     use crate::models::Workspace;
 
@@ -84,22 +86,19 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_workspace = Workspace {
-            id: "workspace-under-test".to_owned(),
-        };
-
         let workspace_persistence = WorkspaceRelationalPersistence::default();
+        let workspace: Workspace =
+            get_workspace_fixture(Some("relational-create-workspace")).into();
 
-        // delete workspace if it exists
-        let _ = workspace_persistence.delete(&new_workspace.id).unwrap();
+        workspace_persistence.delete(&workspace.id).unwrap();
 
-        let inserted_workspace_id = workspace_persistence.create(&new_workspace).unwrap();
+        let inserted_workspace_id = workspace_persistence.create(&workspace).unwrap();
 
         let fetched_workspace = workspace_persistence
             .get_by_id(&inserted_workspace_id)
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_workspace.id, new_workspace.id);
+        assert_eq!(fetched_workspace.id, workspace.id);
 
         let deleted_workspaces = workspace_persistence
             .delete(&inserted_workspace_id)

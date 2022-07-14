@@ -116,6 +116,7 @@ impl WorkloadTrait for GrpcWorkloadService {
             .iter()
             .map(|workload| WorkloadMessage {
                 id: workload.id.clone(),
+                name: workload.name.clone(),
                 template_id: workload.template_id.clone(),
                 workspace_id: workload.workspace_id.clone(),
             })
@@ -147,6 +148,7 @@ impl WorkloadTrait for GrpcWorkloadService {
             .iter()
             .map(|workload| WorkloadMessage {
                 id: workload.id.clone(),
+                name: workload.name.clone(),
                 template_id: workload.template_id.clone(),
                 workspace_id: workload.workspace_id.clone(),
             })
@@ -163,12 +165,13 @@ impl WorkloadTrait for GrpcWorkloadService {
 #[cfg(test)]
 mod tests {
     use akira_core::common::TemplateIdRequest;
+    use akira_core::test::get_workload_fixture;
     use akira_core::{EventStream, ListWorkloadsRequest, WorkloadIdRequest, WorkloadTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 
-    use super::{GrpcWorkloadService, WorkloadMessage};
+    use super::GrpcWorkloadService;
 
     use crate::persistence::memory::WorkloadMemoryPersistence;
     use crate::services::WorkloadService;
@@ -184,12 +187,9 @@ mod tests {
         });
 
         let workload_grpc_service = GrpcWorkloadService::new(Arc::clone(&workload_service));
+        let workload = get_workload_fixture(None);
 
-        let request = Request::new(WorkloadMessage {
-            id: "cribbage-api".to_owned(),
-            template_id: "external-service".to_owned(),
-            workspace_id: "cribbage-api-team".to_owned(),
-        });
+        let request = Request::new(workload.clone());
 
         let create_response = workload_grpc_service
             .create(request)
@@ -200,7 +200,7 @@ mod tests {
         assert_eq!(create_response.id.len(), 36);
 
         let request = Request::new(TemplateIdRequest {
-            template_id: "external-service".to_string(),
+            template_id: workload.template_id,
         });
 
         let response = workload_grpc_service
@@ -222,15 +222,19 @@ mod tests {
         assert_eq!(list_response.workloads.len(), 1);
 
         let request = Request::new(WorkloadIdRequest {
-            workload_id: "cribbage-api".to_owned(),
+            workload_id: workload.id.clone(),
         });
 
-        let get_by_id_response = workload_grpc_service.get_by_id(request).await.unwrap();
+        let get_by_id_response = workload_grpc_service
+            .get_by_id(request)
+            .await
+            .unwrap()
+            .into_inner();
 
-        assert_eq!(get_by_id_response.into_inner().id, "cribbage-api");
+        assert_eq!(get_by_id_response.id, workload.id);
 
         let request = Request::new(WorkloadIdRequest {
-            workload_id: "cribbage-api".to_owned(),
+            workload_id: workload.id,
         });
 
         let delete_response = workload_grpc_service

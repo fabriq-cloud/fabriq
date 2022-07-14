@@ -119,6 +119,7 @@ impl WorkspaceService {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_workspace_fixture;
     use akira_memory_stream::MemoryEventStream;
 
     use super::*;
@@ -147,24 +148,19 @@ mod tests {
             workload_service,
         };
 
-        let new_workspace = Workspace {
-            id: "workspace-under-test".to_owned(),
-        };
+        let workspace: Workspace = get_workspace_fixture(None).into();
 
-        let create_operation_id = workspace_service.create(&new_workspace, &None).unwrap();
+        let create_operation_id = workspace_service.create(&workspace, &None).unwrap();
         assert_eq!(create_operation_id.id.len(), 36);
 
-        let fetched_workspace = workspace_service
-            .get_by_id(&new_workspace.id)
-            .unwrap()
-            .unwrap();
-        assert_eq!(fetched_workspace.id, new_workspace.id);
+        let fetched_workspace = workspace_service.get_by_id(&workspace.id).unwrap().unwrap();
+        assert_eq!(fetched_workspace.id, workspace.id);
 
         let all_workspaces = workspace_service.list().unwrap();
         assert_eq!(all_workspaces.len(), 1);
 
         let delete_operation_id = workspace_service
-            .delete(&new_workspace.id, Some(OperationId::create()))
+            .delete(&workspace.id, Some(OperationId::create()))
             .unwrap();
         assert_eq!(delete_operation_id.id.len(), 36);
     }

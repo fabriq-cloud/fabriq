@@ -20,8 +20,9 @@ message ListDeploymentsResponse {
 
 message DeploymentMessage {
     string          id = 1;
-    string          target_id = 2;
-    string          workload_id = 3;
-    int32           host_count = 4;
-    optional string template_id = 5;
+    string          name = 2;
+    string          target_id = 3;
+    string          workload_id = 4;
+    int32           host_count = 5;
+    optional string template_id = 6;
 }

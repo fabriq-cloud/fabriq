@@ -21,13 +21,7 @@ impl ConfigService {
         config: &Config,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let config_id = self.persistence.create(config)?;
-
-        let config = self.get_by_id(&config_id)?;
-        let config = match config {
-            Some(config) => config,
-            None => return Err(anyhow::anyhow!("Couldn't find created config id returned")),
-        };
+        self.persistence.create(config)?;
 
         let operation_id = OperationId::unwrap_or_create(operation_id);
         let create_event = create_event::<ConfigMessage>(
@@ -151,23 +145,14 @@ mod tests {
             ConfigMemoryPersistence, DeploymentMemoryPersistence, WorkloadMemoryPersistence,
         },
     };
-    use akira_core::ConfigValueType;
+    use akira_core::test::{
+        get_deployment_fixture, get_string_config_fixture, get_workload_fixture,
+    };
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
-
-        let new_config = Config {
-            id: "config-persist-single-under-test".to_owned(),
-
-            owning_model: "workload:workload-fixture".to_owned(),
-
-            key: "sample-key".to_owned(),
-            value: "sample-value".to_owned(),
-
-            value_type: ConfigValueType::StringType as i32,
-        };
 
         let config_persistence = ConfigMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap());
@@ -178,12 +163,7 @@ mod tests {
             persistence: workload_persistence,
         });
 
-        let workload = Workload {
-            id: "workload-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-        };
-
+        let workload: Workload = get_workload_fixture(None).into();
         workload_service.create(&workload, None).unwrap();
 
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
@@ -192,14 +172,7 @@ mod tests {
             persistence: deployment_persistence,
         });
 
-        let deployment = Deployment {
-            id: "deployment-fixture".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: Some("template-fixture".to_owned()),
-            host_count: 1,
-            target_id: "target-fixture".to_owned(),
-        };
-
+        let deployment: Deployment = get_deployment_fixture(None).into();
         deployment_service.create(&deployment, &None).unwrap();
 
         let config_service = ConfigService {
@@ -210,25 +183,23 @@ mod tests {
             workload_service,
         };
 
+        let config: Config = get_string_config_fixture().into();
+
         let config_created_operation_id = config_service
-            .create(&new_config, &Some(OperationId::create()))
+            .create(&config, &Some(OperationId::create()))
             .unwrap();
         assert_eq!(config_created_operation_id.id.len(), 36);
 
-        let fetched_config = config_service.get_by_id(&new_config.id).unwrap().unwrap();
-        assert_eq!(fetched_config.id, new_config.id);
+        let fetched_config = config_service.get_by_id(&config.id).unwrap().unwrap();
+        assert_eq!(fetched_config.id, config.id);
 
-        let configs_by_workload = config_service
-            .get_by_workload_id("workload-fixture")
-            .unwrap();
+        let configs_by_workload = config_service.get_by_workload_id(&workload.id).unwrap();
         assert_eq!(configs_by_workload.len(), 1);
 
-        let config_for_deployment = config_service
-            .query("deployment-fixture", "workload-fixture")
-            .unwrap();
+        let config_for_deployment = config_service.query(&deployment.id, &workload.id).unwrap();
         assert_eq!(config_for_deployment.len(), 1);
 
-        let deleted_operation_id = config_service.delete(&new_config.id, &None).unwrap();
+        let deleted_operation_id = config_service.delete(&config.id, &None).unwrap();
         assert_eq!(deleted_operation_id.id.len(), 36);
     }
 }

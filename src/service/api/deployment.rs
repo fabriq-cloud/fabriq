@@ -189,9 +189,10 @@ impl DeploymentTrait for GrpcDeploymentService {
 #[cfg(test)]
 mod tests {
     use akira_core::common::TemplateIdRequest;
+    use akira_core::test::get_deployment_fixture;
     use akira_core::{
-        DeploymentIdRequest, DeploymentMessage, DeploymentTrait, EventStream,
-        ListDeploymentsRequest, WorkloadIdRequest,
+        DeploymentIdRequest, DeploymentTrait, EventStream, ListDeploymentsRequest,
+        WorkloadIdRequest,
     };
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
@@ -214,13 +215,9 @@ mod tests {
 
         let deployment_grpc_service = GrpcDeploymentService::new(Arc::clone(&deployment_service));
 
-        let request = Request::new(DeploymentMessage {
-            id: "deployment-grpc-test".to_string(),
-            target_id: "target-fixture".to_string(),
-            workload_id: "workload-fixture".to_string(),
-            template_id: Some("external-service".to_string()),
-            host_count: 2,
-        });
+        let deployment = get_deployment_fixture(None);
+
+        let request = Request::new(deployment.clone());
 
         let response = deployment_grpc_service
             .create(request)
@@ -231,7 +228,7 @@ mod tests {
         assert_eq!(response.id.len(), 36);
 
         let request = Request::new(DeploymentIdRequest {
-            deployment_id: "deployment-grpc-test".to_string(),
+            deployment_id: deployment.id.clone(),
         });
 
         let response = deployment_grpc_service
@@ -240,10 +237,10 @@ mod tests {
             .unwrap()
             .into_inner();
 
-        assert_eq!(response.id, "deployment-grpc-test");
+        assert_eq!(response.id, deployment.id);
 
         let request = Request::new(TemplateIdRequest {
-            template_id: "external-service".to_string(),
+            template_id: deployment.template_id.unwrap(),
         });
 
         let response = deployment_grpc_service
@@ -255,7 +252,7 @@ mod tests {
         assert_eq!(response.deployments.len(), 1);
 
         let request = Request::new(WorkloadIdRequest {
-            workload_id: "workload-fixture".to_string(),
+            workload_id: deployment.workload_id.clone(),
         });
 
         let response = deployment_grpc_service
@@ -276,7 +273,7 @@ mod tests {
         assert_eq!(response.deployments.len(), 1);
 
         let request = Request::new(DeploymentIdRequest {
-            deployment_id: "deployment-grpc-test".to_string(),
+            deployment_id: deployment.id.to_string(),
         });
         let response = deployment_grpc_service
             .delete(request)

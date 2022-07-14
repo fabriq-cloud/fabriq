@@ -151,39 +151,36 @@ impl AssignmentService {
 mod tests {
     use super::*;
     use crate::persistence::memory::AssignmentMemoryPersistence;
+    use akira_core::test::get_assignment_fixture;
     use akira_memory_stream::MemoryEventStream;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_assignment = Assignment {
-            id: "external-service".to_owned(),
-            host_id: "host-fixture".to_owned(),
-            deployment_id: "deployment-fixture".to_owned(),
-        };
-
         let assignment_persistence = AssignmentMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
+        let assignment: Assignment =
+            get_assignment_fixture(Some("service-assignment-create")).into();
 
         let assignment_service = AssignmentService {
             persistence: Box::new(assignment_persistence),
             event_stream,
         };
 
-        let create_operation_id = assignment_service.create(&new_assignment, &None).unwrap();
+        let create_operation_id = assignment_service.create(&assignment, &None).unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 
         let fetched_assignment = assignment_service
-            .get_by_id(&new_assignment.id)
+            .get_by_id(&assignment.id)
             .unwrap()
             .unwrap();
 
-        assert_eq!(fetched_assignment.id, new_assignment.id);
+        assert_eq!(fetched_assignment.id, assignment.id);
 
         let delete_operation_id = assignment_service
-            .delete(&new_assignment.id, &Some(create_operation_id))
+            .delete(&assignment.id, &Some(create_operation_id))
             .unwrap();
 
         assert_eq!(delete_operation_id.id.len(), 36);
@@ -193,14 +190,9 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_assignment = Assignment {
-            id: "assignment-service-under-many-test".to_owned(),
-            deployment_id: "deployment-fixture".to_owned(),
-            host_id: "host-fixture".to_owned(),
-        };
-
         let assignment_persistence = AssignmentMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
+        let assignment: Assignment = get_assignment_fixture(None).into();
 
         let assignment_service = AssignmentService {
             persistence: Box::new(assignment_persistence),
@@ -208,14 +200,14 @@ mod tests {
         };
 
         assignment_service
-            .create_many(&[new_assignment.clone()], &None)
+            .create_many(&[assignment.clone()], &None)
             .unwrap();
 
         let event_count = event_stream.receive().count();
         assert_eq!(event_count, 1);
 
         assignment_service
-            .delete_many(&[new_assignment], &None)
+            .delete_many(&[assignment], &None)
             .unwrap();
 
         let event_count = event_stream.receive().count();

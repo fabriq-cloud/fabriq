@@ -2,6 +2,7 @@ pub mod api;
 mod event_stream;
 pub mod git;
 mod protobufs;
+pub mod test;
 
 pub use event_stream::EventStream;
 use prost::Message;

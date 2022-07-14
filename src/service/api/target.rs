@@ -126,9 +126,8 @@ impl TargetTrait for GrpcTargetService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::{
-        EventStream, ListTargetsRequest, TargetIdRequest, TargetMessage, TargetTrait,
-    };
+    use akira_core::test::get_target_fixture;
+    use akira_core::{EventStream, ListTargetsRequest, TargetIdRequest, TargetTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
@@ -151,10 +150,9 @@ mod tests {
 
         let target_grpc_service = GrpcTargetService::new(Arc::clone(&target_service));
 
-        let request = Request::new(TargetMessage {
-            id: "target-grpc-test".to_string(),
-            labels: vec!["region:eastus2".to_string()],
-        });
+        let target = get_target_fixture(None);
+
+        let request = Request::new(target.clone());
 
         let response = target_grpc_service
             .create(request)
@@ -174,7 +172,7 @@ mod tests {
         assert!(!list_response.targets.is_empty());
 
         let request = Request::new(TargetIdRequest {
-            target_id: "target-grpc-test".to_string(),
+            target_id: target.id.to_string(),
         });
         let get_response = target_grpc_service
             .get_by_id(request)
@@ -182,10 +180,10 @@ mod tests {
             .unwrap()
             .into_inner();
 
-        assert_eq!(get_response.id, "target-grpc-test");
+        assert_eq!(get_response.id, target.id);
 
         let request = Request::new(TargetIdRequest {
-            target_id: "target-grpc-test".to_string(),
+            target_id: target.id.to_string(),
         });
         let response = target_grpc_service
             .delete(request)

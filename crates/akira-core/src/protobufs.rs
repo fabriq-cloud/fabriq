@@ -34,6 +34,12 @@ pub mod assignment {
 pub use assignment::assignment_server::{Assignment as AssignmentTrait, AssignmentServer};
 pub use assignment::{AssignmentMessage, ListAssignmentsRequest, ListAssignmentsResponse};
 
+impl AssignmentMessage {
+    pub fn make_id(deployment_id: &str, host_id: &str) -> String {
+        format!("{}-{}", deployment_id, host_id)
+    }
+}
+
 // config protobufs
 
 pub mod config {
@@ -56,6 +62,28 @@ pub struct ConfigKeyValue {
 }
 
 impl ConfigMessage {
+    pub const CONFIG_ID_SEPARATOR: char = '|';
+    pub const OWNING_MODEL_SEPARATOR: char = '/';
+
+    pub fn make_id(owning_model: &str, key: &str) -> String {
+        format!("{owning_model}{}{key}", ConfigMessage::CONFIG_ID_SEPARATOR)
+    }
+
+    pub fn make_owning_model(
+        owning_model_type: &str,
+        owning_model_id: &str,
+    ) -> anyhow::Result<String> {
+        match owning_model_type {
+            "workload" | "deployment" | "template" => {
+                Ok(format!("{}/{}", owning_model_type, owning_model_id))
+            }
+            _ => Err(anyhow::anyhow!(
+                "unknown owning model type: {}",
+                owning_model_type
+            )),
+        }
+    }
+
     pub fn deserialize_keyvalue_pairs(&self) -> anyhow::Result<Vec<ConfigKeyValue>> {
         if self.value_type != ConfigValueType::KeyValueType as i32 {
             return Err(anyhow::anyhow!(
@@ -89,6 +117,17 @@ pub mod deployment {
 
 pub use deployment::deployment_server::{Deployment as DeploymentTrait, DeploymentServer};
 pub use deployment::{DeploymentMessage, ListDeploymentsRequest, ListDeploymentsResponse};
+
+impl DeploymentMessage {
+    const DEPLOYMENT_ID_SEPARATOR: char = ':';
+
+    pub fn make_id(workload_id: &str, deployment_name: &str) -> String {
+        format!(
+            "{workload_id}{}{deployment_name}",
+            DeploymentMessage::DEPLOYMENT_ID_SEPARATOR
+        )
+    }
+}
 
 // event protobufs
 
@@ -205,6 +244,17 @@ pub mod workload {
 
 pub use workload::workload_server::{Workload as WorkloadTrait, WorkloadServer};
 pub use workload::{ListWorkloadsRequest, ListWorkloadsResponse, WorkloadMessage};
+
+impl WorkloadMessage {
+    const WORKLOAD_ID_SEPARATOR: char = ':';
+
+    pub fn make_id(workspace_id: &str, workload_name: &str) -> String {
+        format!(
+            "{workspace_id}{}{workload_name}",
+            WorkloadMessage::WORKLOAD_ID_SEPARATOR
+        )
+    }
+}
 
 // workspace protobufs
 

@@ -76,6 +76,8 @@ impl Persistence<Target> for TargetRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_target_fixture;
+
     use super::*;
     use crate::models::Target;
 
@@ -84,23 +86,19 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_target = Target {
-            id: "target-under-test".to_owned(),
-            labels: vec!["cloud:azure".to_string()],
-        };
-
         let target_persistence = TargetRelationalPersistence::default();
+        let target: Target = get_target_fixture(Some("target-create")).into();
 
         // delete target if it exists
-        let _ = target_persistence.delete(&new_target.id).unwrap();
+        target_persistence.delete(&target.id).unwrap();
 
-        let inserted_target_id = target_persistence.create(&new_target).unwrap();
+        let inserted_target_id = target_persistence.create(&target).unwrap();
 
         let fetched_target = target_persistence
             .get_by_id(&inserted_target_id)
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_target.id, new_target.id);
+        assert_eq!(fetched_target.id, target.id);
 
         let deleted_targets = target_persistence.delete(&inserted_target_id).unwrap();
         assert_eq!(deleted_targets, 1);

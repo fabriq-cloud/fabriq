@@ -61,12 +61,10 @@ impl From<ConfigMessage> for Config {
 }
 
 impl Config {
-    pub fn make_owning_model(model_type: &str, model_id: &str) -> String {
-        format!("{}:{}", model_type, model_id)
-    }
-
     pub fn split_owning_model(&self) -> (String, String) {
-        let mut split = self.owning_model.split(':');
+        let mut split = self
+            .owning_model
+            .split(ConfigMessage::OWNING_MODEL_SEPARATOR);
         (
             split.next().unwrap().to_owned(),
             split.next().unwrap().to_owned(),

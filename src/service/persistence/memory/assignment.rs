@@ -100,17 +100,15 @@ impl Default for AssignmentMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_assignment_fixture;
+
     use super::*;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_assignment = Assignment {
-            id: "assignment-under-test".to_owned(),
-            deployment_id: "deployment-fixture".to_owned(),
-            host_id: "host-fixture".to_owned(),
-        };
+        let new_assignment: Assignment = get_assignment_fixture(None).into();
 
         let assignment_persistence = AssignmentMemoryPersistence::default();
 
@@ -140,11 +138,7 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_assignment = Assignment {
-            id: "assignment-under-test".to_owned(),
-            deployment_id: "deployment-fixture".to_owned(),
-            host_id: "host-fixture".to_owned(),
-        };
+        let new_assignment: Assignment = get_assignment_fixture(None).into();
 
         let assignment_persistence = AssignmentMemoryPersistence::default();
 

@@ -1,8 +1,8 @@
 use tonic::{Request, Response, Status};
 
 use crate::{
-    ConfigIdRequest, ConfigMessage, ConfigTrait, ConfigValueType, OperationId, QueryConfigRequest,
-    QueryConfigResponse,
+    ConfigIdRequest, ConfigMessage, ConfigTrait, ConfigValueType, DeploymentMessage, OperationId,
+    QueryConfigRequest, QueryConfigResponse, WorkloadMessage,
 };
 
 pub struct MockConfigClient {}
@@ -27,34 +27,43 @@ impl ConfigTrait for MockConfigClient {
         &self,
         _request: Request<QueryConfigRequest>,
     ) -> Result<Response<QueryConfigResponse>, Status> {
+        let workspace_id = "workspace-fixture";
+        let workload_name = "workload-fixture";
+        let workload_id = WorkloadMessage::make_id(workspace_id, workload_name);
+        let deployment_name = "deployment-fixture";
+        let deployment_id = DeploymentMessage::make_id(&workload_id, deployment_name);
+
         let configs = vec![
             ConfigMessage {
-                id: "deployment-fixture:replicas".to_owned(),
-                owning_model: "deployment:deployment-fixture".to_owned(),
+                id: ConfigMessage::make_id(&deployment_id, "replicas"),
+                owning_model: ConfigMessage::make_owning_model("deployment", &deployment_id)
+                    .unwrap(),
                 key: "replicas".to_owned(),
                 value: "5".to_owned(),
 
                 value_type: ConfigValueType::StringType as i32,
             },
             ConfigMessage {
-                id: "deployment-fixture:labels".to_owned(),
-                owning_model: "deployment:deployment-fixture".to_owned(),
+                id: ConfigMessage::make_id(&deployment_id, "labels"),
+                owning_model: ConfigMessage::make_owning_model("deployment", &deployment_id)
+                    .unwrap(),
                 key: "labels".to_owned(),
                 value: "cloud=azure;region=eastus2".to_owned(),
 
                 value_type: ConfigValueType::KeyValueType as i32,
             },
             ConfigMessage {
-                id: "workload-fixture:port".to_owned(),
-                owning_model: "workload:workload-fixture".to_owned(),
+                id: ConfigMessage::make_id(&workload_id, "port"),
+                owning_model: ConfigMessage::make_owning_model("workload", &workload_id).unwrap(),
                 key: "port".to_owned(),
                 value: "80".to_owned(),
 
                 value_type: ConfigValueType::StringType as i32,
             },
             ConfigMessage {
-                id: "deployment-fixture:image".to_owned(),
-                owning_model: "deployment:deployment-fixture".to_owned(),
+                id: ConfigMessage::make_id(&workload_id, "image"),
+                owning_model: ConfigMessage::make_owning_model("deployment", &deployment_id)
+                    .unwrap(),
                 key: "image".to_owned(),
                 value: "ghcr.io/timfpark/akira-gitops:aa14d4371cfc107bb5cc35d2cade57896841e0f9"
                     .to_owned(),
@@ -62,16 +71,16 @@ impl ConfigTrait for MockConfigClient {
                 value_type: ConfigValueType::StringType as i32,
             },
             ConfigMessage {
-                id: "workload-fixture:metricsEndpoint".to_owned(),
-                owning_model: "workload:workload-fixture".to_owned(),
+                id: ConfigMessage::make_id(&workload_id, "metricsEndpoint"),
+                owning_model: ConfigMessage::make_owning_model("workload", &workload_id).unwrap(),
                 key: "metricsEndpoint".to_owned(),
                 value: "/metrics".to_owned(),
 
                 value_type: ConfigValueType::StringType as i32,
             },
             ConfigMessage {
-                id: "workload-fixture:healthEndpoint".to_owned(),
-                owning_model: "workload:workload-fixture".to_owned(),
+                id: ConfigMessage::make_id(&workload_id, "healthEndpoint"),
+                owning_model: ConfigMessage::make_owning_model("workload", &workload_id).unwrap(),
                 key: "healthEndpoint".to_owned(),
                 value: "/healthz".to_owned(),
 

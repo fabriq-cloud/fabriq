@@ -102,6 +102,8 @@ impl HostPersistence for HostRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::{get_host_fixture, get_target_fixture};
+
     use super::*;
 
     #[tokio::test]
@@ -109,22 +111,18 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_host = Host {
-            id: "host-under-test".to_owned(),
-            labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
-        };
-
         let host_persistence = HostRelationalPersistence::default();
+        let host: Host = get_host_fixture(Some("host-create")).into();
 
-        let _ = host_persistence.delete(&new_host.id).unwrap();
+        host_persistence.delete(&host.id).unwrap();
 
-        let inserted_host_id = host_persistence.create(&new_host).unwrap();
+        let inserted_host_id = host_persistence.create(&host).unwrap();
 
         let fetched_host = host_persistence
             .get_by_id(&inserted_host_id)
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_host.id, new_host.id);
+        assert_eq!(fetched_host.id, host.id);
 
         let deleted_hosts = host_persistence.delete(&inserted_host_id).unwrap();
         assert_eq!(deleted_hosts, 1);
@@ -136,9 +134,10 @@ mod tests {
         crate::persistence::relational::ensure_fixtures();
 
         let host_persistence = HostRelationalPersistence::default();
+        let host: Host = get_host_fixture(None).into();
 
-        let fetched_host = host_persistence.get_by_id("host-fixture").unwrap().unwrap();
-        assert_eq!(fetched_host.id, "host-fixture");
+        let fetched_host = host_persistence.get_by_id(&host.id).unwrap().unwrap();
+        assert_eq!(fetched_host.id, host.id);
     }
 
     #[test]
@@ -148,16 +147,13 @@ mod tests {
 
         let host_persistence = HostRelationalPersistence::default();
 
-        let matching_target = Target {
-            id: "target-eastus2".to_owned(),
-            labels: vec!["region:eastus2".to_string()],
-        };
+        let matching_target: Target = get_target_fixture(None).into();
 
         let matching_hosts = host_persistence
             .get_matching_target(&matching_target)
             .unwrap();
 
-        assert_eq!(matching_hosts.len(), 1);
+        assert!(!matching_hosts.is_empty());
 
         let non_matching_target = Target {
             id: "target-hawaii".to_owned(),
@@ -175,18 +171,16 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_host = Host {
-            id: "host-under-many-test".to_owned(),
-            labels: vec!["cloud:aws".to_owned(), "region:westus2".to_owned()],
-        };
-
         let host_persistence = HostRelationalPersistence::default();
+        let host: Host = get_host_fixture(Some("relational-host-create-many")).into();
 
-        let inserted_host_ids = host_persistence.create_many(&[new_host.clone()]).unwrap();
+        host_persistence.delete(&host.id).unwrap();
+
+        let inserted_host_ids = host_persistence.create_many(&[host.clone()]).unwrap();
         assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], new_host.id);
+        assert_eq!(inserted_host_ids[0], host.id);
 
-        let deleted_hosts = host_persistence.delete_many(&[&new_host.id]).unwrap();
+        let deleted_hosts = host_persistence.delete_many(&[&host.id]).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }

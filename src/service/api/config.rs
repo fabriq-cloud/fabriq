@@ -91,10 +91,10 @@ impl ConfigTrait for GrpcConfigService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::{
-        ConfigIdRequest, ConfigMessage, ConfigTrait, ConfigValueType, EventStream,
-        QueryConfigRequest,
+    use akira_core::test::{
+        get_deployment_fixture, get_string_config_fixture, get_workload_fixture,
     };
+    use akira_core::{ConfigIdRequest, ConfigTrait, EventStream, QueryConfigRequest};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
@@ -118,11 +118,7 @@ mod tests {
             persistence: workload_persistence,
         });
 
-        let workload = Workload {
-            id: "workload-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-        };
+        let workload: Workload = get_workload_fixture(None).into();
 
         workload_service.create(&workload, None).unwrap();
 
@@ -132,13 +128,7 @@ mod tests {
             persistence: deployment_persistence,
         });
 
-        let deployment = Deployment {
-            id: "deployment-fixture".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            template_id: Some("template-fixture".to_owned()),
-            host_count: 1,
-            target_id: "target-fixture".to_owned(),
-        };
+        let deployment: Deployment = get_deployment_fixture(None).into();
 
         deployment_service.create(&deployment, &None).unwrap();
 
@@ -152,16 +142,9 @@ mod tests {
 
         let config_grpc_service = GrpcConfigService::new(Arc::clone(&config_service));
 
-        let request = Request::new(ConfigMessage {
-            id: "config-persist-single-under-test".to_owned(),
+        let config = get_string_config_fixture();
 
-            owning_model: "workload:workload-fixture".to_owned(),
-
-            key: "sample-key".to_owned(),
-            value: "sample-value".to_owned(),
-
-            value_type: ConfigValueType::StringType as i32,
-        });
+        let request = Request::new(config.clone());
 
         let response = config_grpc_service
             .create(request)
@@ -172,19 +155,22 @@ mod tests {
         assert_eq!(response.id.len(), 36);
 
         let request = Request::new(QueryConfigRequest {
-            deployment_id: "deployment-fixture".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
+            deployment_id: deployment.id,
+            workload_id: workload.id,
         });
 
-        let _ = config_grpc_service
+        let response = config_grpc_service
             .query(request)
             .await
             .unwrap()
             .into_inner();
 
+        assert_eq!(response.configs.len(), 1);
+
         let request = Request::new(ConfigIdRequest {
-            config_id: "config-persist-single-under-test".to_string(),
+            config_id: config.id.clone(),
         });
+
         let response = config_grpc_service
             .delete(request)
             .await

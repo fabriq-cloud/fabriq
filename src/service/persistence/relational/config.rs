@@ -1,3 +1,4 @@
+use akira_core::ConfigMessage;
 use diesel::prelude::*;
 
 use crate::persistence::{ConfigPersistence, Persistence};
@@ -79,7 +80,8 @@ impl ConfigPersistence for ConfigRelationalPersistence {
     fn get_by_deployment_id(&self, query_deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         let connection = crate::db::get_connection()?;
 
-        let query_owning_model = Config::make_owning_model("deployment", query_deployment_id);
+        let query_owning_model =
+            ConfigMessage::make_owning_model("deployment", query_deployment_id)?;
 
         let results = configs
             .filter(owning_model.eq(query_owning_model))
@@ -91,7 +93,7 @@ impl ConfigPersistence for ConfigRelationalPersistence {
     fn get_by_template_id(&self, query_template_id: &str) -> anyhow::Result<Vec<Config>> {
         let connection = crate::db::get_connection()?;
 
-        let query_owning_model = Config::make_owning_model("template", query_template_id);
+        let query_owning_model = ConfigMessage::make_owning_model("template", query_template_id)?;
 
         let results = configs
             .filter(owning_model.eq(query_owning_model))
@@ -104,7 +106,7 @@ impl ConfigPersistence for ConfigRelationalPersistence {
     fn get_by_workload_id(&self, query_workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let connection = crate::db::get_connection()?;
 
-        let query_owning_model = Config::make_owning_model("workload", query_workload_id);
+        let query_owning_model = ConfigMessage::make_owning_model("workload", query_workload_id)?;
 
         let results = configs
             .filter(owning_model.eq(query_owning_model))
@@ -116,7 +118,10 @@ impl ConfigPersistence for ConfigRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::ConfigValueType;
+    use akira_core::test::{
+        get_deployment_fixture, get_keyvalue_config_fixture, get_string_config_fixture,
+        get_workload_fixture,
+    };
 
     use super::*;
     use crate::models::Config;
@@ -126,21 +131,13 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_config = Config {
-            id: "config-persist-single-under-test".to_owned(),
-
-            owning_model: "workload:workload-fixture".to_owned(),
-
-            key: "sample-key".to_owned(),
-            value: "key1:value1;key2:value2".to_owned(),
-
-            value_type: ConfigValueType::KeyValueType as i32,
-        };
+        let new_config: Config = get_string_config_fixture().into();
+        let config_workload = get_workload_fixture(None);
 
         let config_persistence = ConfigRelationalPersistence::default();
 
         // delete config if it exists
-        let _ = config_persistence.delete(&new_config.id).unwrap();
+        config_persistence.delete(&new_config.id).unwrap();
         let inserted_config_id = config_persistence.create(&new_config).unwrap();
 
         let fetched_config = config_persistence
@@ -150,7 +147,7 @@ mod tests {
         assert_eq!(fetched_config.id, new_config.id);
 
         let configs_for_workload = config_persistence
-            .get_by_workload_id("workload-fixture")
+            .get_by_workload_id(&config_workload.id)
             .unwrap();
         assert_eq!(configs_for_workload.len(), 1);
 
@@ -163,18 +160,9 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_config = Config {
-            id: "config-persist-many-under-test".to_owned(),
-
-            owning_model: "deployment:deployment-fixture".to_owned(),
-
-            key: "sample-key".to_owned(),
-            value: "sample-value".to_owned(),
-
-            value_type: ConfigValueType::StringType as i32,
-        };
-
         let config_persistence = ConfigRelationalPersistence::default();
+        let new_config: Config = get_keyvalue_config_fixture().into();
+        let config_deployment = get_deployment_fixture(None);
 
         let inserted_config_ids = config_persistence
             .create_many(&[new_config.clone()])
@@ -183,7 +171,7 @@ mod tests {
         assert_eq!(inserted_config_ids[0], new_config.id);
 
         let configs_for_deployment = config_persistence
-            .get_by_deployment_id("deployment-fixture")
+            .get_by_deployment_id(&config_deployment.id)
             .unwrap();
         assert_eq!(configs_for_deployment.len(), 1);
 

@@ -26,12 +26,6 @@ pub struct Assignment {
     pub host_id: String,
 }
 
-impl Assignment {
-    pub fn make_id(deployment_id: &str, host_id: &str) -> String {
-        format!("{}-{}", deployment_id, host_id)
-    }
-}
-
 impl PersistableModel<Assignment> for Assignment {
     fn get_id(&self) -> String {
         self.id.clone()

@@ -26,6 +26,11 @@ lazy_static! {
 
 #[cfg(test)]
 pub fn ensure_fixtures() {
+    use akira_core::test::{
+        get_deployment_fixture, get_host_fixture, get_target_fixture, get_template_fixture,
+        get_workload_fixture, get_workspace_fixture,
+    };
+
     use crate::{
         models::{Deployment, Host, Target, Template, Workload, Workspace},
         persistence::Persistence,
@@ -42,77 +47,64 @@ pub fn ensure_fixtures() {
     }
 
     let workspace_persistence = WorkspaceRelationalPersistence::default();
-    let workspace_fixture = workspace_persistence
-        .get_by_id("workspace-fixture")
+    let workspace_fixture: Workspace = get_workspace_fixture(None).into();
+    let workspace = workspace_persistence
+        .get_by_id(&workspace_fixture.id)
         .unwrap();
 
-    if workspace_fixture.is_none() {
-        let workspace_fixture = Workspace {
-            id: "workspace-fixture".to_string(),
-        };
+    if workspace.is_none() {
+        let workspace_fixture: Workspace = get_workspace_fixture(None).into();
         workspace_persistence.create(&workspace_fixture).unwrap();
     }
 
     let host_persistence = HostRelationalPersistence::default();
-    let host_fixture = host_persistence.get_by_id("host-fixture").unwrap();
+    let host_fixture: Host = get_host_fixture(None).into();
+    let host_fixture = host_persistence.get_by_id(&host_fixture.id).unwrap();
 
     if host_fixture.is_none() {
-        let host_fixture = Host {
-            id: "host-fixture".to_string(),
-            labels: vec!["region:eastus2".to_string()],
-        };
+        let host_fixture: Host = get_host_fixture(None).into();
         host_persistence.create(&host_fixture).unwrap();
     }
 
     let target_persistence = TargetRelationalPersistence::default();
-    let target_fixture = target_persistence.get_by_id("target-fixture").unwrap();
+    let target_fixture: Target = get_target_fixture(None).into();
+    let target_fixture = target_persistence.get_by_id(&target_fixture.id).unwrap();
 
     if target_fixture.is_none() {
-        let target_fixture = Target {
-            id: "target-fixture".to_string(),
-            labels: vec!["location:eastus2".to_string()],
-        };
+        let target_fixture: Target = get_target_fixture(None).into();
         target_persistence.create(&target_fixture).unwrap();
     }
 
     let template_persistence = TemplateRelationalPersistence::default();
-    let template_fixture = template_persistence.get_by_id("template-fixture").unwrap();
+    let template_fixture: Template = get_template_fixture(None).into();
+    let template_fixture = template_persistence
+        .get_by_id(&template_fixture.id)
+        .unwrap();
 
     if template_fixture.is_none() {
-        let template_fixture = Template {
-            id: "template-fixture".to_string(),
-            repository: "https://github.com/timfpark/deployment-templates".to_string(),
-            branch: "main".to_string(),
-            path: "./external-service".to_string(),
-        };
+        let template_fixture: Template = get_template_fixture(None).into();
         template_persistence.create(&template_fixture).unwrap();
     }
 
     let workload_persistence = WorkloadRelationalPersistence::default();
-    let workload_fixture = workload_persistence.get_by_id("workload-fixture").unwrap();
+    let workload_fixture: Workload = get_workload_fixture(None).into();
+    let workload = workload_persistence
+        .get_by_id(&workload_fixture.id)
+        .unwrap();
 
-    if workload_fixture.is_none() {
-        let workload_fixture = Workload {
-            id: "workload-fixture".to_string(),
-            workspace_id: "workspace-fixture".to_string(),
-            template_id: "template-fixture".to_string(),
-        };
+    if workload.is_none() {
+        let workload_fixture: Workload = get_workload_fixture(None).into();
         workload_persistence.create(&workload_fixture).unwrap();
     }
 
     let deployment_persistence = DeploymentRelationalPersistence::default();
-    let deployment_fixture = deployment_persistence
-        .get_by_id("deployment-fixture")
+    let deployment_fixture: Deployment = get_deployment_fixture(None).into();
+    let deployment = deployment_persistence
+        .get_by_id(&deployment_fixture.id)
         .unwrap();
 
-    if deployment_fixture.is_none() {
-        let deployment_fixture = Deployment {
-            id: "deployment-fixture".to_string(),
-            workload_id: "workload-fixture".to_string(),
-            target_id: "target-fixture".to_string(),
-            template_id: Some("template-fixture".to_string()),
-            host_count: 2,
-        };
+    if deployment.is_none() {
+        let deployment_fixture: Deployment = get_deployment_fixture(None).into();
         deployment_persistence.create(&deployment_fixture).unwrap();
     }
 }

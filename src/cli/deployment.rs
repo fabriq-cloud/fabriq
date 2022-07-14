@@ -11,28 +11,28 @@ use crate::context::Context;
 pub fn args() -> Command<'static> {
     Command::new("deployment")
         .long_flag("deployment")
-        .about("Manage deployments")
+        .about("manage deployments")
         .subcommand(
             Command::new("create")
-                .about("Create deployment")
+                .about("create deployment")
                 .arg(
                     Arg::new("workload")
                         .long("workload")
-                        .help("Workload ID for deployment")
+                        .help("workload id for deployment")
                         .takes_value(true)
                         .multiple_values(false),
                 )
                 .arg(
                     Arg::new("target")
                         .long("target")
-                        .help("Target ID for deployment")
+                        .help("target id for deployment")
                         .takes_value(true)
                         .multiple_values(false),
                 )
                 .arg(
                     Arg::new("template")
                         .long("template")
-                        .help("Template override for deployment")
+                        .help("template override for deployment")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -43,13 +43,13 @@ pub fn args() -> Command<'static> {
                         .takes_value(true)
                         .multiple_values(false),
                 )
-                .arg(arg!(<ID> "Deployment ID"))
+                .arg(arg!(<NAME> "deployment name"))
                 .arg_required_else_help(true),
         )
         .subcommand(
             Command::new("delete")
-                .about("Delete deployment")
-                .arg(arg!(<ID> "ID of deployment"))
+                .about("delete deployment")
+                .arg(arg!(<ID> "deployment id"))
                 .arg_required_else_help(true),
         )
         .subcommand(Command::new("list").about("List deployments"))
@@ -70,8 +70,8 @@ pub async fn handlers(
 
     match model_match.subcommand() {
         Some(("create", add_match)) => {
-            let id = add_match
-                .value_of("ID")
+            let deployment_name = add_match
+                .value_of("NAME")
                 .expect("Deployment name expected")
                 .to_string();
             let workload_id = add_match
@@ -89,7 +89,8 @@ pub async fn handlers(
                 .parse::<i32>()?;
 
             let request = tonic::Request::new(DeploymentMessage {
-                id: id.clone(),
+                id: DeploymentMessage::make_id(&workload_id, &deployment_name),
+                name: deployment_name.clone(),
                 workload_id,
                 target_id,
                 host_count,
@@ -98,7 +99,7 @@ pub async fn handlers(
 
             client.create(request).await?;
 
-            tracing::info!("deployment '{id}' created");
+            tracing::info!("deployment '{deployment_name}' created");
 
             Ok(())
         }
@@ -127,6 +128,7 @@ pub async fn handlers(
                 .map(|deployment| {
                     vec![
                         deployment.id.to_string(),
+                        deployment.name.to_string(),
                         deployment.workload_id.clone(),
                         deployment.target_id.clone(),
                         deployment.template_id.unwrap_or_else(|| "".to_string()),
@@ -146,6 +148,11 @@ pub async fn handlers(
             ascii_table
                 .column(0)
                 .set_header("ID")
+                .set_align(Align::Left);
+
+            ascii_table
+                .column(0)
+                .set_header("NAME")
                 .set_align(Align::Left);
 
             ascii_table

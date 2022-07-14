@@ -33,7 +33,7 @@ pub fn args() -> Command<'static> {
                         .takes_value(true)
                         .multiple_values(false),
                 )
-                .arg(arg!(<ID> "workload id"))
+                .arg(arg!(<NAME> "workload name"))
                 .arg_required_else_help(true),
         )
         .subcommand(
@@ -74,28 +74,29 @@ pub async fn handlers(
 
     match model_match.subcommand() {
         Some(("create", add_match)) => {
-            let id = add_match
-                .value_of("ID")
-                .expect("Workload name expected")
+            let workload_name = add_match
+                .value_of("NAME")
+                .expect("workload name expected")
                 .to_string();
             let workspace_id = add_match
                 .value_of("workspace")
-                .expect("Workspace ID expected")
+                .expect("workspace id expected")
                 .to_string();
             let template_id = add_match
                 .value_of("template")
-                .expect("Template ID expected")
+                .expect("template id expected")
                 .to_string();
 
             let request = tonic::Request::new(WorkloadMessage {
-                id: id.clone(),
+                id: WorkloadMessage::make_id(&workspace_id, &workload_name),
+                name: workload_name.clone(),
                 workspace_id,
                 template_id,
             });
 
             client.create(request).await?;
 
-            tracing::info!("workload '{id}' created");
+            tracing::info!("workload '{workload_name}' created");
 
             Ok(())
         }
@@ -162,6 +163,7 @@ pub async fn handlers(
                 .map(|workload| {
                     vec![
                         workload.id.to_string(),
+                        workload.name.to_string(),
                         workload.workspace_id.clone(),
                         workload.template_id,
                     ]
@@ -179,6 +181,11 @@ pub async fn handlers(
             ascii_table
                 .column(0)
                 .set_header("ID")
+                .set_align(Align::Left);
+
+            ascii_table
+                .column(0)
+                .set_header("NAME")
                 .set_align(Align::Left);
 
             ascii_table

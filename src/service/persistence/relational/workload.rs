@@ -89,6 +89,8 @@ impl WorkloadPersistence for WorkloadRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_workload_fixture;
+
     use super::*;
     use crate::models::Workload;
 
@@ -97,24 +99,18 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_workload = Workload {
-            id: "workload-under-test".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-        };
-
         let workload_persistence = WorkloadRelationalPersistence::default();
+        let workload: Workload = get_workload_fixture(Some("relational-workload-create")).into();
 
-        // delete workload if it exists
-        let _ = workload_persistence.delete(&new_workload.id).unwrap();
+        workload_persistence.delete(&workload.id).unwrap();
 
-        let inserted_workload_id = workload_persistence.create(&new_workload).unwrap();
+        let inserted_workload_id = workload_persistence.create(&workload).unwrap();
 
         let fetched_workload = workload_persistence
             .get_by_id(&inserted_workload_id)
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_workload.id, new_workload.id);
+        assert_eq!(fetched_workload.id, workload.id);
 
         let deleted_workloads = workload_persistence.delete(&inserted_workload_id).unwrap();
         assert_eq!(deleted_workloads, 1);
@@ -125,23 +121,19 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_workload = Workload {
-            id: "workload-under-many-test".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-        };
-
         let workload_persistence = WorkloadRelationalPersistence::default();
+        let workload: Workload =
+            get_workload_fixture(Some("relational-workload-create-many")).into();
+
+        workload_persistence.delete(&workload.id).unwrap();
 
         let inserted_workload_ids = workload_persistence
-            .create_many(&[new_workload.clone()])
+            .create_many(&[workload.clone()])
             .unwrap();
         assert_eq!(inserted_workload_ids.len(), 1);
-        assert_eq!(inserted_workload_ids[0], new_workload.id);
+        assert_eq!(inserted_workload_ids[0], workload.id);
 
-        let deleted_workloads = workload_persistence
-            .delete_many(&[&new_workload.id])
-            .unwrap();
+        let deleted_workloads = workload_persistence.delete_many(&[&workload.id]).unwrap();
         assert_eq!(deleted_workloads, 1);
     }
 }

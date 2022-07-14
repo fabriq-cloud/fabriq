@@ -133,10 +133,11 @@ impl AssignmentTrait for GrpcAssignmentService {
 #[cfg(test)]
 mod tests {
     use akira_core::common::AssignmentIdRequest;
+    use akira_core::test::get_assignment_fixture;
     use std::sync::Arc;
     use tonic::Request;
 
-    use akira_core::{AssignmentMessage, AssignmentTrait, EventStream, ListAssignmentsRequest};
+    use akira_core::{AssignmentTrait, EventStream, ListAssignmentsRequest};
     use akira_memory_stream::MemoryEventStream;
 
     use crate::api::GrpcAssignmentService;
@@ -155,11 +156,8 @@ mod tests {
 
         let assignment_grpc_service = GrpcAssignmentService::new(Arc::clone(&assignment_service));
 
-        let request = Request::new(AssignmentMessage {
-            id: "assignment-grpc-test".to_string(),
-            host_id: "host-fixture".to_string(),
-            deployment_id: "deployment-fixture".to_string(),
-        });
+        let assignment = get_assignment_fixture(None);
+        let request = Request::new(assignment.clone());
 
         let response = assignment_grpc_service
             .create(request)
@@ -177,8 +175,9 @@ mod tests {
             .into_inner();
 
         let request = Request::new(AssignmentIdRequest {
-            assignment_id: "assignment-grpc-test".to_string(),
+            assignment_id: assignment.id.clone(),
         });
+
         let response = assignment_grpc_service
             .delete(request)
             .await

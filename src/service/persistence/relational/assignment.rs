@@ -20,7 +20,9 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
 
         match results.first() {
             Some(assignment_id) => Ok(assignment_id.clone()),
-            None => Err(anyhow::anyhow!("Couldn't find created host id returned")),
+            None => Err(anyhow::anyhow!(
+                "Couldn't find created assignment id returned"
+            )),
         }
     }
 
@@ -89,24 +91,21 @@ impl AssignmentPersistence for AssignmentRelationalPersistence {
 }
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_assignment_fixture;
+
     use super::*;
     use crate::models::Assignment;
 
     #[test]
-    fn test_create_get_delete() {
+    fn test_assignment_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_assignment = Assignment {
-            id: "assignment-under-test".to_owned(),
-            deployment_id: "deployment-fixture".to_owned(),
-            host_id: "host-fixture".to_owned(),
-        };
-
         let assignment_persistence = AssignmentRelationalPersistence::default();
+        let new_assignment: Assignment = get_assignment_fixture(Some("assignment-create")).into();
 
         // delete assignment if it exists
-        let _ = assignment_persistence.delete(&new_assignment.id).unwrap();
+        assignment_persistence.delete(&new_assignment.id).unwrap();
 
         let inserted_assignment_id = assignment_persistence.create(&new_assignment).unwrap();
 
@@ -129,17 +128,13 @@ mod tests {
     }
 
     #[test]
-    fn test_create_get_delete_many() {
+    fn test_assigment_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_assignment = Assignment {
-            id: "assignment-under-many-test".to_owned(),
-            deployment_id: "deployment-fixture".to_owned(),
-            host_id: "host-fixture".to_owned(),
-        };
-
         let assignment_persistence = AssignmentRelationalPersistence::default();
+        let new_assignment: Assignment =
+            get_assignment_fixture(Some("assignment-create-many")).into();
 
         let inserted_host_ids = assignment_persistence
             .create_many(&[new_assignment.clone()])

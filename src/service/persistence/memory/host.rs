@@ -107,33 +107,29 @@ impl HostMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::{get_host_fixture, get_target_fixture};
+
     use super::*;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_host = Host {
-            id: "host-under-test".to_owned(),
-            labels: vec!["cloud:azure".to_owned(), "region:eastus2".to_owned()],
-        };
+        let host: Host = get_host_fixture(Some("host-create")).into();
 
         let host_persistence = HostMemoryPersistence::default();
 
-        let inserted_host_id = host_persistence.create(&new_host).unwrap();
-        assert_eq!(inserted_host_id, new_host.id);
+        let inserted_host_id = host_persistence.create(&host).unwrap();
+        assert_eq!(inserted_host_id, host.id);
 
         let fetched_host = host_persistence
             .get_by_id(&inserted_host_id)
             .unwrap()
             .unwrap();
 
-        assert_eq!(fetched_host.id, new_host.id);
+        assert_eq!(fetched_host.id, host.id);
 
-        let target = Target {
-            id: "azure".to_owned(),
-            labels: vec!["cloud:azure".to_owned()],
-        };
+        let target = get_target_fixture(None).into();
 
         let hosts_for_target = host_persistence.get_matching_target(&target).unwrap();
 
@@ -147,18 +143,15 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_host = Host {
-            id: "host-under-test".to_owned(),
-            labels: vec!["cloud:azure".to_owned(), "region:eastus2".to_owned()],
-        };
+        let host: Host = get_host_fixture(Some("host-create-many")).into();
 
         let host_persistence = HostMemoryPersistence::default();
 
-        let inserted_host_ids = host_persistence.create_many(&[new_host.clone()]).unwrap();
+        let inserted_host_ids = host_persistence.create_many(&[host.clone()]).unwrap();
         assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], new_host.id);
+        assert_eq!(inserted_host_ids[0], host.id);
 
-        let deleted_hosts = host_persistence.delete_many(&[&new_host.id]).unwrap();
+        let deleted_hosts = host_persistence.delete_many(&[&host.id]).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }

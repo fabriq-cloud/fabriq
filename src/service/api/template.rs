@@ -131,12 +131,13 @@ impl TemplateTrait for GrpcTemplateService {
 #[cfg(test)]
 mod tests {
     use akira_core::common::TemplateIdRequest;
+    use akira_core::test::get_template_fixture;
     use akira_core::{EventStream, ListTemplatesRequest, TemplateTrait};
     use akira_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 
-    use super::{GrpcTemplateService, TemplateMessage};
+    use super::GrpcTemplateService;
 
     use crate::models::Template;
     use crate::persistence::memory::MemoryPersistence;
@@ -154,12 +155,9 @@ mod tests {
 
         let template_grpc_service = GrpcTemplateService::new(Arc::clone(&template_service));
 
-        let request = Request::new(TemplateMessage {
-            id: "external-service".to_owned(),
-            repository: "http://github.com/timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
-            path: "external-service".to_owned(),
-        });
+        let template = get_template_fixture(None);
+
+        let request = Request::new(template.clone());
 
         let create_response = template_grpc_service
             .create(request)
@@ -180,15 +178,15 @@ mod tests {
         assert_eq!(list_response.templates.len(), 1);
 
         let request = Request::new(TemplateIdRequest {
-            template_id: "external-service".to_owned(),
+            template_id: template.id.clone(),
         });
 
         let get_by_id_response = template_grpc_service.get_by_id(request).await.unwrap();
 
-        assert_eq!(get_by_id_response.into_inner().id, "external-service");
+        assert_eq!(get_by_id_response.into_inner().id, template.id);
 
         let request = Request::new(TemplateIdRequest {
-            template_id: "external-service".to_owned(),
+            template_id: template.id,
         });
 
         let delete_response = template_grpc_service

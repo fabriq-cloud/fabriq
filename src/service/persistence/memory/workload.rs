@@ -100,32 +100,30 @@ impl Default for WorkloadMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
+    use akira_core::test::get_workload_fixture;
+
     use super::*;
 
     #[test]
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_workload = Workload {
-            id: "workload-under-test".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-        };
+        let workload = get_workload_fixture(None).into();
 
         let workload_persistence = WorkloadMemoryPersistence::default();
 
-        let inserted_workload_id = workload_persistence.create(&new_workload).unwrap();
-        assert_eq!(inserted_workload_id, new_workload.id);
+        let inserted_workload_id = workload_persistence.create(&workload).unwrap();
+        assert_eq!(inserted_workload_id, workload.id);
 
         let fetched_workload = workload_persistence
             .get_by_id(&inserted_workload_id)
             .unwrap()
             .unwrap();
 
-        assert_eq!(fetched_workload.id, new_workload.id);
+        assert_eq!(fetched_workload.id, workload.id);
 
         let workloads_for_target = workload_persistence
-            .get_by_template_id(&new_workload.template_id)
+            .get_by_template_id(&workload.template_id)
             .unwrap();
 
         assert_eq!(workloads_for_target.len(), 1);
@@ -138,23 +136,16 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_workload = Workload {
-            id: "workload-under-test".to_owned(),
-            workspace_id: "workspace-fixture".to_owned(),
-            template_id: "template-fixture".to_owned(),
-        };
-
+        let workload: Workload = get_workload_fixture(None).into();
         let workload_persistence = WorkloadMemoryPersistence::default();
 
         let inserted_host_ids = workload_persistence
-            .create_many(&[new_workload.clone()])
+            .create_many(&[workload.clone()])
             .unwrap();
         assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], new_workload.id);
+        assert_eq!(inserted_host_ids[0], workload.id);
 
-        let deleted_hosts = workload_persistence
-            .delete_many(&[&new_workload.id])
-            .unwrap();
+        let deleted_hosts = workload_persistence.delete_many(&[&workload.id]).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }
