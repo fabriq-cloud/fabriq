@@ -1,5 +1,3 @@
-use std::env;
-
 use akira_core::workload::workload_client::WorkloadClient;
 use akira_core::{ListWorkloadsRequest, WorkloadIdRequest, WorkloadMessage};
 use ascii_table::{Align, AsciiTable};
@@ -9,6 +7,7 @@ use tonic::transport::Channel;
 use tonic::Request;
 
 use crate::context::Context;
+use crate::profile::Profile;
 
 pub fn args() -> Command<'static> {
     Command::new("workload")
@@ -118,10 +117,10 @@ pub async fn handlers(
                 ));
             }
 
-            let pat = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
+            let profile = Profile::load().await?;
 
             let octocrab = octocrab::OctocrabBuilder::new()
-                .personal_token(pat)
+                .personal_token(profile.pat.clone())
                 .build()?;
 
             let user = octocrab.current().user().await?;

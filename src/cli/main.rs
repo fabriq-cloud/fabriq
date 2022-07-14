@@ -5,6 +5,8 @@ mod config;
 mod context;
 mod deployment;
 mod host;
+mod login;
+mod profile;
 mod target;
 mod template;
 mod workload;
@@ -23,6 +25,7 @@ fn cli() -> Command<'static> {
         .subcommand(config::args())
         .subcommand(deployment::args())
         .subcommand(host::args())
+        .subcommand(login::args())
         .subcommand(target::args())
         .subcommand(template::args())
         .subcommand(workload::args())
@@ -45,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
         Some(("config", submatches)) => Ok(config::handlers(submatches, &context).await?),
         Some(("deployment", submatches)) => Ok(deployment::handlers(submatches, &context).await?),
         Some(("host", submatches)) => Ok(host::handlers(submatches, &context).await?),
+        Some(("login", submatches)) => Ok(login::handlers(submatches, &context).await?),
         Some(("target", submatches)) => Ok(target::handlers(submatches, &context).await?),
         Some(("template", submatches)) => Ok(template::handlers(submatches, &context).await?),
         Some(("workload", submatches)) => Ok(workload::handlers(submatches, &context).await?),
