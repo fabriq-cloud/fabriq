@@ -28,7 +28,7 @@ pub async fn handlers(
         login: github_user.login,
     };
 
-    profile.save().await?;
+    profile.save()?;
 
     tracing::info!("Logged in as {}", profile.login);
 

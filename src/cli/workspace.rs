@@ -33,7 +33,7 @@ pub async fn handlers(
 ) -> anyhow::Result<()> {
     let channel = Channel::from_static(context.endpoint).connect().await?;
 
-    let token: MetadataValue<_> = context.token.parse()?;
+    let token: MetadataValue<_> = context.profile.pat.parse()?;
 
     let mut client = WorkspaceClient::with_interceptor(channel, move |mut req: Request<()>| {
         req.metadata_mut().insert("authorization", token.clone());

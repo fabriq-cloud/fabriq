@@ -42,7 +42,7 @@ pub async fn handlers(
     // TODO: Can this be made generic?
     let channel = Channel::from_static(context.endpoint).connect().await?;
 
-    let token: MetadataValue<_> = context.token.parse()?;
+    let token: MetadataValue<_> = context.profile.pat.parse()?;
 
     let mut client = HostClient::with_interceptor(channel, move |mut req: Request<()>| {
         req.metadata_mut().insert("authorization", token.clone());
