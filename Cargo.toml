@@ -12,7 +12,7 @@ members = [
 akira-core = { path = "crates/akira-core" }
 akira-mqtt-stream = { path = "crates/akira-mqtt-stream" }
 anyhow = "1.0"
-ascii_table = "4.0"
+ascii_table = { version = "4.0", features = ["auto_table_width"] }
 async-trait = "0.1"
 clap = { version = "3.1", features = ["derive"] }
 diesel = { version = "1.4", features = ["postgres", "r2d2"] }

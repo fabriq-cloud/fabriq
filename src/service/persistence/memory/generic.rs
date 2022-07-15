@@ -17,22 +17,20 @@ impl<Model> Persistence<Model> for MemoryPersistence<Model>
 where
     Model: PersistableModel<Model>,
 {
-    fn create(&self, model: &Model) -> anyhow::Result<String> {
+    fn create(&self, model: &Model) -> anyhow::Result<usize> {
         let mut locked_models = self.get_models_locked()?;
 
         locked_models.insert(model.get_id(), model.clone());
 
-        Ok(model.get_id())
+        Ok(1)
     }
 
-    fn create_many(&self, models: &[Model]) -> anyhow::Result<Vec<String>> {
-        let mut model_ids = Vec::new();
+    fn create_many(&self, models: &[Model]) -> anyhow::Result<usize> {
         for model in models.iter() {
-            let model_id = self.create(model)?;
-            model_ids.push(model_id);
+            self.create(model)?;
         }
 
-        Ok(model_ids)
+        Ok(models.len())
     }
 
     fn delete(&self, model_id: &str) -> anyhow::Result<usize> {

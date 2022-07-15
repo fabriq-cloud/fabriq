@@ -1,38 +1,52 @@
+use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 
 use crate::persistence::{DeploymentPersistence, Persistence};
 use crate::schema::deployments::table;
-use crate::{models::Deployment, schema::deployments, schema::deployments::dsl::*};
+use crate::{models::Deployment, schema::deployments::dsl::*};
 
 #[derive(Default, Debug)]
 pub struct DeploymentRelationalPersistence {}
 
 impl Persistence<Deployment> for DeploymentRelationalPersistence {
     #[tracing::instrument(name = "relational::deployment::create")]
-    fn create(&self, deployment: &Deployment) -> anyhow::Result<String> {
+    fn create(&self, deployment: &Deployment) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results: Vec<String> = diesel::insert_into(table)
+        let changed_count = diesel::insert_into(table)
             .values(deployment)
-            .returning(deployments::id)
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_update()
+            .set((
+                name.eq(deployment.name.clone()),
+                workload_id.eq(deployment.workload_id.clone()),
+                target_id.eq(deployment.target_id.clone()),
+                template_id.eq(deployment.template_id.clone()),
+                host_count.eq(deployment.host_count),
+            ))
+            .execute(&connection)?;
 
-        match results.first() {
-            Some(host_id) => Ok(host_id.clone()),
-            None => Err(anyhow::anyhow!("Couldn't find created host id returned")),
-        }
+        Ok(changed_count)
     }
 
     #[tracing::instrument(name = "relational::deployment::create_many")]
-    fn create_many(&self, models: &[Deployment]) -> anyhow::Result<Vec<String>> {
+    fn create_many(&self, models: &[Deployment]) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results = diesel::insert_into(table)
+        let changed_count = diesel::insert_into(table)
             .values(models)
-            .returning(deployments::id)
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_update()
+            .set((
+                name.eq(excluded(name)),
+                workload_id.eq(excluded(workload_id)),
+                target_id.eq(excluded(target_id)),
+                template_id.eq(excluded(template_id)),
+                host_count.eq(excluded(host_count)),
+            ))
+            .execute(&connection)?;
 
-        Ok(results)
+        Ok(changed_count)
     }
 
     #[tracing::instrument(name = "relational::deployment::delete")]
@@ -150,11 +164,10 @@ mod tests {
         // delete deployment if it exists
         deployment_persistence.delete(&new_deployment.id).unwrap();
 
-        let inserted_deployment_ids = deployment_persistence
+        let created_count = deployment_persistence
             .create_many(&[new_deployment.clone()])
             .unwrap();
-        assert_eq!(inserted_deployment_ids.len(), 1);
-        assert_eq!(inserted_deployment_ids[0], new_deployment.id);
+        assert_eq!(created_count, 1);
 
         let deleted_deployments = deployment_persistence
             .delete_many(&[&new_deployment.id])

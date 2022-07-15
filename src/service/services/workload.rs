@@ -45,8 +45,8 @@ impl WorkloadService {
     }
 
     #[tracing::instrument(name = "service::workload::get_by_id")]
-    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Workload>> {
-        self.persistence.get_by_id(host_id)
+    pub fn get_by_id(&self, workload_id: &str) -> anyhow::Result<Option<Workload>> {
+        self.persistence.get_by_id(workload_id)
     }
 
     #[tracing::instrument(name = "service::workload::delete")]

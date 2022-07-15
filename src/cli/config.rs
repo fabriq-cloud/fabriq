@@ -60,18 +60,26 @@ pub fn args() -> Command<'static> {
             Command::new("query")
                 .about("query configs")
                 .arg(
-                    Arg::new("workload")
-                        .short('w')
-                        .long("workload")
-                        .help("Workload to query config for")
-                        .takes_value(true)
-                        .multiple_values(false),
-                )
-                .arg(
                     Arg::new("deployment")
                         .short('d')
                         .long("deployment")
                         .help("Deployment to query config for")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(
+                    Arg::new("template")
+                        .short('t')
+                        .long("template")
+                        .help("Template to query config for")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(
+                    Arg::new("workload")
+                        .short('w')
+                        .long("workload")
+                        .help("Workload to query config for")
                         .takes_value(true)
                         .multiple_values(false),
                 ),
@@ -115,16 +123,14 @@ pub async fn handlers(
             };
 
             let owning_model = match workload_id {
-                Some(workload_id) => {
-                    format!("workload:{}", workload_id)
-                }
+                Some(workload_id) => ConfigMessage::make_owning_model("workload", workload_id)?,
                 None => match deployment_id {
                     Some(deployment_id) => {
-                        format!("deployment:{}", deployment_id)
+                        ConfigMessage::make_owning_model("deployment", deployment_id)?
                     }
                     None => match template_id {
                         Some(template_id) => {
-                            format!("template:{}", template_id)
+                            ConfigMessage::make_owning_model("template", template_id)?
                         }
                         None => {
                             panic!("owning workload, template, or deployment id must be specified")
@@ -133,7 +139,7 @@ pub async fn handlers(
                 },
             };
 
-            let id = format!("{}|{}", owning_model, key);
+            let id = ConfigMessage::make_id(&owning_model, &key);
 
             let request = tonic::Request::new(ConfigMessage {
                 id: id.clone(),
@@ -165,15 +171,28 @@ pub async fn handlers(
             Ok(())
         }
         Some(("query", list_match)) => {
-            let workload_id = list_match.value_of("workload").expect("workload expected");
-            let deployment_id = list_match
-                .value_of("deployment")
-                .expect("deployment expected");
+            let deployment_id = list_match.value_of("deployment");
+            let template_id = list_match.value_of("template");
+            let workload_id = list_match.value_of("workload");
 
-            let request = tonic::Request::new(QueryConfigRequest {
-                workload_id: workload_id.to_string(),
-                deployment_id: deployment_id.to_string(),
-            });
+            let request = if let Some(deployment_id) = deployment_id {
+                tonic::Request::new(QueryConfigRequest {
+                    model_name: "deployment".to_string(),
+                    model_id: deployment_id.to_string(),
+                })
+            } else if let Some(workload_id) = workload_id {
+                tonic::Request::new(QueryConfigRequest {
+                    model_name: "workload".to_string(),
+                    model_id: workload_id.to_string(),
+                })
+            } else if let Some(template_id) = template_id {
+                tonic::Request::new(QueryConfigRequest {
+                    model_name: "template".to_string(),
+                    model_id: template_id.to_string(),
+                })
+            } else {
+                panic!("owning workload, template, or deployment id must be specified")
+            };
 
             let response = client.query(request).await?;
 

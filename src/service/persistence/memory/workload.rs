@@ -14,22 +14,22 @@ pub struct WorkloadMemoryPersistence {
 }
 
 impl Persistence<Workload> for WorkloadMemoryPersistence {
-    fn create(&self, workload: &Workload) -> anyhow::Result<String> {
+    fn create(&self, workload: &Workload) -> anyhow::Result<usize> {
         let mut locked_workloads = self.get_models_locked()?;
 
         locked_workloads.insert(workload.get_id(), workload.clone());
 
-        Ok(workload.get_id())
+        Ok(1)
     }
 
-    fn create_many(&self, workloads: &[Workload]) -> anyhow::Result<Vec<String>> {
+    fn create_many(&self, workloads: &[Workload]) -> anyhow::Result<usize> {
         let mut workload_ids = Vec::new();
         for (_, workload) in workloads.iter().enumerate() {
             let workload_id = self.create(workload)?;
             workload_ids.push(workload_id);
         }
 
-        Ok(workload_ids)
+        Ok(workloads.len())
     }
 
     fn delete(&self, workload_id: &str) -> anyhow::Result<usize> {
@@ -108,15 +108,14 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
+        let workload_persistence = WorkloadMemoryPersistence::default();
         let workload = get_workload_fixture(None).into();
 
-        let workload_persistence = WorkloadMemoryPersistence::default();
-
-        let inserted_workload_id = workload_persistence.create(&workload).unwrap();
-        assert_eq!(inserted_workload_id, workload.id);
+        let created_count = workload_persistence.create(&workload).unwrap();
+        assert_eq!(created_count, 1);
 
         let fetched_workload = workload_persistence
-            .get_by_id(&inserted_workload_id)
+            .get_by_id(&workload.id)
             .unwrap()
             .unwrap();
 
@@ -128,7 +127,7 @@ mod tests {
 
         assert_eq!(workloads_for_target.len(), 1);
 
-        let deleted_workloads = workload_persistence.delete(&inserted_workload_id).unwrap();
+        let deleted_workloads = workload_persistence.delete(&workload.id).unwrap();
         assert_eq!(deleted_workloads, 1);
     }
 
@@ -139,11 +138,10 @@ mod tests {
         let workload: Workload = get_workload_fixture(None).into();
         let workload_persistence = WorkloadMemoryPersistence::default();
 
-        let inserted_host_ids = workload_persistence
+        let created_count = workload_persistence
             .create_many(&[workload.clone()])
             .unwrap();
-        assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], workload.id);
+        assert_eq!(created_count, 1);
 
         let deleted_hosts = workload_persistence.delete_many(&[&workload.id]).unwrap();
         assert_eq!(deleted_hosts, 1);

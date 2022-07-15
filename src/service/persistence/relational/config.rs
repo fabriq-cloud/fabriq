@@ -1,39 +1,41 @@
 use akira_core::ConfigMessage;
+use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 
 use crate::persistence::{ConfigPersistence, Persistence};
 use crate::schema::configs::table;
-use crate::{models::Config, schema::configs, schema::configs::dsl::*};
+use crate::{models::Config, schema::configs::dsl::*};
 
 #[derive(Default, Debug)]
 pub struct ConfigRelationalPersistence {}
 
 impl Persistence<Config> for ConfigRelationalPersistence {
     #[tracing::instrument(name = "relational::config::create")]
-    fn create(&self, config: &Config) -> anyhow::Result<String> {
+    fn create(&self, config: &Config) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results: Vec<String> = diesel::insert_into(table)
+        let changed = diesel::insert_into(table)
             .values(config)
-            .returning(configs::id)
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_update()
+            .set(value.eq(config.value.clone()))
+            .execute(&connection)?;
 
-        match results.first() {
-            Some(host_id) => Ok(host_id.clone()),
-            None => Err(anyhow::anyhow!("Couldn't find created host id returned")),
-        }
+        Ok(changed)
     }
 
     #[tracing::instrument(name = "relational::config::create_many")]
-    fn create_many(&self, models: &[Config]) -> anyhow::Result<Vec<String>> {
+    fn create_many(&self, models: &[Config]) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results = diesel::insert_into(table)
+        let changed = diesel::insert_into(table)
             .values(models)
-            .returning(configs::id)
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_update()
+            .set(id.eq(excluded(id)))
+            .execute(&connection)?;
 
-        Ok(results)
+        Ok(changed)
     }
 
     #[tracing::instrument(name = "relational::config::delete")]
@@ -83,6 +85,8 @@ impl ConfigPersistence for ConfigRelationalPersistence {
         let query_owning_model =
             ConfigMessage::make_owning_model("deployment", query_deployment_id)?;
 
+        println!("query_owning_model: {:#?}", query_owning_model);
+
         let results = configs
             .filter(owning_model.eq(query_owning_model))
             .load::<Config>(&connection)?;
@@ -131,27 +135,29 @@ mod tests {
         dotenv::from_filename(".env.test").ok();
         crate::persistence::relational::ensure_fixtures();
 
-        let new_config: Config = get_string_config_fixture().into();
+        let config: Config = get_string_config_fixture().into();
         let config_workload = get_workload_fixture(None);
 
         let config_persistence = ConfigRelationalPersistence::default();
 
         // delete config if it exists
-        config_persistence.delete(&new_config.id).unwrap();
-        let inserted_config_id = config_persistence.create(&new_config).unwrap();
+        config_persistence.delete(&config.id).unwrap();
+        let created_count = config_persistence.create(&config).unwrap();
 
-        let fetched_config = config_persistence
-            .get_by_id(&inserted_config_id)
-            .unwrap()
-            .unwrap();
-        assert_eq!(fetched_config.id, new_config.id);
+        assert_eq!(created_count, 1);
+
+        let fetched_config = config_persistence.get_by_id(&config.id).unwrap().unwrap();
+
+        assert_eq!(fetched_config.id, config.id);
 
         let configs_for_workload = config_persistence
             .get_by_workload_id(&config_workload.id)
             .unwrap();
+
         assert_eq!(configs_for_workload.len(), 1);
 
-        let deleted_configs = config_persistence.delete(&inserted_config_id).unwrap();
+        let deleted_configs = config_persistence.delete(&config.id).unwrap();
+
         assert_eq!(deleted_configs, 1);
     }
 
@@ -164,11 +170,10 @@ mod tests {
         let new_config: Config = get_keyvalue_config_fixture().into();
         let config_deployment = get_deployment_fixture(None);
 
-        let inserted_config_ids = config_persistence
+        let created_configs = config_persistence
             .create_many(&[new_config.clone()])
             .unwrap();
-        assert_eq!(inserted_config_ids.len(), 1);
-        assert_eq!(inserted_config_ids[0], new_config.id);
+        assert_eq!(created_configs, 1);
 
         let configs_for_deployment = config_persistence
             .get_by_deployment_id(&config_deployment.id)

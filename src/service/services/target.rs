@@ -19,9 +19,9 @@ impl TargetService {
         target: &Target,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let target_id = self.persistence.create(target)?;
+        self.persistence.create(target)?;
 
-        let target = self.get_by_id(&target_id)?;
+        let target = self.get_by_id(&target.id)?;
         let target = match target {
             Some(target) => target,
             None => return Err(anyhow::anyhow!("Couldn't find created target id returned")),

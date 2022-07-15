@@ -14,22 +14,20 @@ pub struct HostMemoryPersistence {
 }
 
 impl Persistence<Host> for HostMemoryPersistence {
-    fn create(&self, host: &Host) -> anyhow::Result<String> {
+    fn create(&self, host: &Host) -> anyhow::Result<usize> {
         let mut locked_hosts = self.get_models_locked()?;
 
         locked_hosts.insert(host.get_id(), host.clone());
 
-        Ok(host.get_id())
+        Ok(1)
     }
 
-    fn create_many(&self, hosts: &[Host]) -> anyhow::Result<Vec<String>> {
-        let mut host_ids = Vec::new();
+    fn create_many(&self, hosts: &[Host]) -> anyhow::Result<usize> {
         for (_, host) in hosts.iter().enumerate() {
-            let host_id = self.create(host)?;
-            host_ids.push(host_id);
+            self.create(host)?;
         }
 
-        Ok(host_ids)
+        Ok(hosts.len())
     }
 
     fn delete(&self, host_id: &str) -> anyhow::Result<usize> {
@@ -115,17 +113,13 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
+        let host_persistence = HostMemoryPersistence::default();
         let host: Host = get_host_fixture(Some("host-create")).into();
 
-        let host_persistence = HostMemoryPersistence::default();
+        let created_count = host_persistence.create(&host).unwrap();
+        assert_eq!(created_count, 1);
 
-        let inserted_host_id = host_persistence.create(&host).unwrap();
-        assert_eq!(inserted_host_id, host.id);
-
-        let fetched_host = host_persistence
-            .get_by_id(&inserted_host_id)
-            .unwrap()
-            .unwrap();
+        let fetched_host = host_persistence.get_by_id(&host.id).unwrap().unwrap();
 
         assert_eq!(fetched_host.id, host.id);
 
@@ -135,7 +129,7 @@ mod tests {
 
         assert_eq!(hosts_for_target.len(), 1);
 
-        let deleted_hosts = host_persistence.delete(&inserted_host_id).unwrap();
+        let deleted_hosts = host_persistence.delete(&host.id).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 
@@ -147,9 +141,8 @@ mod tests {
 
         let host_persistence = HostMemoryPersistence::default();
 
-        let inserted_host_ids = host_persistence.create_many(&[host.clone()]).unwrap();
-        assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], host.id);
+        let created_count = host_persistence.create_many(&[host.clone()]).unwrap();
+        assert_eq!(created_count, 1);
 
         let deleted_hosts = host_persistence.delete_many(&[&host.id]).unwrap();
         assert_eq!(deleted_hosts, 1);

@@ -1,38 +1,44 @@
+use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 
 use crate::persistence::{Persistence, WorkloadPersistence};
 use crate::schema::workloads::table;
-use crate::{models::Workload, schema::workloads, schema::workloads::dsl::*};
+use crate::{models::Workload, schema::workloads::dsl::*};
 
 #[derive(Default, Debug)]
 pub struct WorkloadRelationalPersistence {}
 
 impl Persistence<Workload> for WorkloadRelationalPersistence {
     #[tracing::instrument(name = "relational::workload::create")]
-    fn create(&self, workload: &Workload) -> anyhow::Result<String> {
+    fn create(&self, workload: &Workload) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results: Vec<String> = diesel::insert_into(table)
+        Ok(diesel::insert_into(table)
             .values(workload)
-            .returning(workloads::id)
-            .get_results(&connection)?;
-
-        match results.first() {
-            Some(host_id) => Ok(host_id.clone()),
-            None => Err(anyhow::anyhow!("Couldn't find created host id returned")),
-        }
+            .on_conflict(id)
+            .do_update()
+            .set((
+                name.eq(workload.name.clone()),
+                team_id.eq(workload.team_id.clone()),
+                template_id.eq(workload.template_id.clone()),
+            ))
+            .execute(&connection)?)
     }
 
     #[tracing::instrument(name = "relational::workload::create_many")]
-    fn create_many(&self, models: &[Workload]) -> anyhow::Result<Vec<String>> {
+    fn create_many(&self, models: &[Workload]) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results = diesel::insert_into(table)
+        Ok(diesel::insert_into(table)
             .values(models)
-            .returning(workloads::id)
-            .get_results(&connection)?;
-
-        Ok(results)
+            .on_conflict(id)
+            .do_update()
+            .set((
+                name.eq(excluded(name)),
+                team_id.eq(excluded(team_id)),
+                template_id.eq(excluded(template_id)),
+            ))
+            .execute(&connection)?)
     }
 
     #[tracing::instrument(name = "relational::workload::delete")]
@@ -104,15 +110,19 @@ mod tests {
 
         workload_persistence.delete(&workload.id).unwrap();
 
-        let inserted_workload_id = workload_persistence.create(&workload).unwrap();
+        let created_count = workload_persistence.create(&workload).unwrap();
+
+        assert_eq!(created_count, 1);
 
         let fetched_workload = workload_persistence
-            .get_by_id(&inserted_workload_id)
+            .get_by_id(&workload.id)
             .unwrap()
             .unwrap();
+
         assert_eq!(fetched_workload.id, workload.id);
 
-        let deleted_workloads = workload_persistence.delete(&inserted_workload_id).unwrap();
+        let deleted_workloads = workload_persistence.delete(&workload.id).unwrap();
+
         assert_eq!(deleted_workloads, 1);
     }
 
@@ -127,13 +137,14 @@ mod tests {
 
         workload_persistence.delete(&workload.id).unwrap();
 
-        let inserted_workload_ids = workload_persistence
+        let created_count = workload_persistence
             .create_many(&[workload.clone()])
             .unwrap();
-        assert_eq!(inserted_workload_ids.len(), 1);
-        assert_eq!(inserted_workload_ids[0], workload.id);
+
+        assert_eq!(created_count, 1);
 
         let deleted_workloads = workload_persistence.delete_many(&[&workload.id]).unwrap();
+
         assert_eq!(deleted_workloads, 1);
     }
 }

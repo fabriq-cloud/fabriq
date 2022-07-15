@@ -1,10 +1,9 @@
-use diesel::prelude::*;
+use diesel::{pg::upsert::excluded, prelude::*};
 
 use crate::{
     diesel::RunQueryDsl,
     models::{Host, Target},
     persistence::{HostPersistence, Persistence},
-    schema::hosts,
     schema::hosts::dsl::*,
     schema::hosts::table,
 };
@@ -14,30 +13,31 @@ pub struct HostRelationalPersistence {}
 
 impl Persistence<Host> for HostRelationalPersistence {
     #[tracing::instrument(name = "relational::host::create")]
-    fn create(&self, host: &Host) -> anyhow::Result<String> {
-        let conn = crate::db::get_connection()?;
+    fn create(&self, host: &Host) -> anyhow::Result<usize> {
+        let connection = crate::db::get_connection()?;
 
-        let results: Vec<String> = diesel::insert_into(table)
+        let changed_count = diesel::insert_into(table)
             .values(host)
-            .returning(hosts::id)
-            .get_results(&conn)?;
+            .on_conflict(id)
+            .do_update()
+            .set((labels.eq(host.labels.clone()),))
+            .execute(&connection)?;
 
-        match results.first() {
-            Some(host_id) => Ok(host_id.clone()),
-            None => Err(anyhow::anyhow!("Couldn't find created host id returned")),
-        }
+        Ok(changed_count)
     }
 
     #[tracing::instrument(name = "relational::host::create_many")]
-    fn create_many(&self, models: &[Host]) -> anyhow::Result<Vec<String>> {
+    fn create_many(&self, models: &[Host]) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results = diesel::insert_into(table)
+        let changed_count = diesel::insert_into(table)
             .values(models)
-            .returning(hosts::id)
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_update()
+            .set(labels.eq(excluded(labels)))
+            .execute(&connection)?;
 
-        Ok(results)
+        Ok(changed_count)
     }
 
     #[tracing::instrument(name = "relational::host::delete")]
@@ -116,15 +116,13 @@ mod tests {
 
         host_persistence.delete(&host.id).unwrap();
 
-        let inserted_host_id = host_persistence.create(&host).unwrap();
+        let changed_count = host_persistence.create(&host).unwrap();
+        assert_eq!(changed_count, 1);
 
-        let fetched_host = host_persistence
-            .get_by_id(&inserted_host_id)
-            .unwrap()
-            .unwrap();
+        let fetched_host = host_persistence.get_by_id(&host.id).unwrap().unwrap();
         assert_eq!(fetched_host.id, host.id);
 
-        let deleted_hosts = host_persistence.delete(&inserted_host_id).unwrap();
+        let deleted_hosts = host_persistence.delete(&host.id).unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 
@@ -176,9 +174,8 @@ mod tests {
 
         host_persistence.delete(&host.id).unwrap();
 
-        let inserted_host_ids = host_persistence.create_many(&[host.clone()]).unwrap();
-        assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], host.id);
+        let created_count = host_persistence.create_many(&[host.clone()]).unwrap();
+        assert_eq!(created_count, 1);
 
         let deleted_hosts = host_persistence.delete_many(&[&host.id]).unwrap();
         assert_eq!(deleted_hosts, 1);

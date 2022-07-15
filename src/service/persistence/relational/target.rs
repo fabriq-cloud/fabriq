@@ -1,38 +1,40 @@
+use diesel::pg::upsert::excluded;
 use diesel::prelude::*;
 
 use crate::persistence::Persistence;
 use crate::schema::targets::table;
-use crate::{models::Target, schema::targets, schema::targets::dsl::*};
+use crate::{models::Target, schema::targets::dsl::*};
 
 #[derive(Default, Debug)]
 pub struct TargetRelationalPersistence {}
 
 impl Persistence<Target> for TargetRelationalPersistence {
     #[tracing::instrument(name = "relational::target::create")]
-    fn create(&self, target: &Target) -> anyhow::Result<String> {
+    fn create(&self, target: &Target) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results: Vec<String> = diesel::insert_into(table)
+        let created_count = diesel::insert_into(table)
             .values(target)
-            .returning(targets::id)
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_update()
+            .set(labels.eq(target.labels.clone()))
+            .execute(&connection)?;
 
-        match results.first() {
-            Some(host_id) => Ok(host_id.clone()),
-            None => Err(anyhow::anyhow!("Couldn't find created host id returned")),
-        }
+        Ok(created_count)
     }
 
     #[tracing::instrument(name = "relational::target::create_many")]
-    fn create_many(&self, models: &[Target]) -> anyhow::Result<Vec<String>> {
+    fn create_many(&self, models: &[Target]) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results = diesel::insert_into(table)
+        let created_count = diesel::insert_into(table)
             .values(models)
-            .returning(targets::id)
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_update()
+            .set(labels.eq(excluded(labels)))
+            .execute(&connection)?;
 
-        Ok(results)
+        Ok(created_count)
     }
 
     #[tracing::instrument(name = "relational::target::delete")]
@@ -92,15 +94,14 @@ mod tests {
         // delete target if it exists
         target_persistence.delete(&target.id).unwrap();
 
-        let inserted_target_id = target_persistence.create(&target).unwrap();
+        let created_count = target_persistence.create(&target).unwrap();
 
-        let fetched_target = target_persistence
-            .get_by_id(&inserted_target_id)
-            .unwrap()
-            .unwrap();
+        assert_eq!(created_count, 1);
+
+        let fetched_target = target_persistence.get_by_id(&target.id).unwrap().unwrap();
         assert_eq!(fetched_target.id, target.id);
 
-        let deleted_targets = target_persistence.delete(&inserted_target_id).unwrap();
+        let deleted_targets = target_persistence.delete(&target.id).unwrap();
         assert_eq!(deleted_targets, 1);
     }
 
@@ -116,11 +117,10 @@ mod tests {
 
         let target_persistence = TargetRelationalPersistence::default();
 
-        let inserted_target_ids = target_persistence
+        let created_count = target_persistence
             .create_many(&[new_target.clone()])
             .unwrap();
-        assert_eq!(inserted_target_ids.len(), 1);
-        assert_eq!(inserted_target_ids[0], new_target.id);
+        assert_eq!(created_count, 1);
 
         let deleted_targets = target_persistence.delete_many(&[&new_target.id]).unwrap();
         assert_eq!(deleted_targets, 1);

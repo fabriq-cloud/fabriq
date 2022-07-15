@@ -28,9 +28,9 @@ impl TemplateService {
             None => {}
         };
 
-        let template_id = self.persistence.create(template)?;
+        self.persistence.create(template)?;
 
-        let template = self.get_by_id(&template_id)?;
+        let template = self.get_by_id(&template.id)?;
         let template = match template {
             Some(template) => template,
             None => {

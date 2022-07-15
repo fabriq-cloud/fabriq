@@ -6,8 +6,8 @@ pub mod memory;
 pub mod relational;
 
 pub trait Persistence<Model>: Debug + Send + Sync {
-    fn create(&self, model: &Model) -> anyhow::Result<String>;
-    fn create_many(&self, models: &[Model]) -> anyhow::Result<Vec<String>>;
+    fn create(&self, model: &Model) -> anyhow::Result<usize>;
+    fn create_many(&self, models: &[Model]) -> anyhow::Result<usize>;
     fn delete(&self, model_id: &str) -> anyhow::Result<usize>;
     fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize>;
     fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Model>>;

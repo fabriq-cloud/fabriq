@@ -1,4 +1,6 @@
-use akira_core::{create_event, ConfigMessage, EventStream, EventType, ModelType, OperationId};
+use akira_core::{
+    create_event, ConfigMessage, EventStream, EventType, ModelType, OperationId, QueryConfigRequest,
+};
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{models::Config, persistence::ConfigPersistence};
@@ -44,7 +46,7 @@ impl ConfigService {
         self.persistence.get_by_id(config_id)
     }
 
-    #[tracing::instrument(name = "service::config::delete")]
+    #[tracing::instrument(name = "service::config::d&elete")]
     pub fn delete(
         &self,
         config_id: &str,
@@ -79,31 +81,79 @@ impl ConfigService {
     }
 
     #[tracing::instrument(name = "service::config::query")]
-    pub fn query(&self, deployment_id: &str, workload_id: &str) -> anyhow::Result<Vec<Config>> {
-        let workload = match self.workload_service.get_by_id(workload_id)? {
-            Some(workload) => workload,
-            None => {
-                return Err(anyhow::anyhow!("Workload id {workload_id} not found"));
-            }
-        };
-
-        let deployment = match self.deployment_service.get_by_id(deployment_id)? {
-            Some(deployment) => deployment,
-            None => {
-                return Err(anyhow::anyhow!("Deployment id {deployment_id} not found"));
-            }
-        };
-
-        let template_id = match deployment.template_id {
-            Some(template_id) => template_id,
-            None => workload.template_id,
-        };
-
-        let template_config = self.persistence.get_by_template_id(&template_id)?;
-        let workload_config = self.persistence.get_by_workload_id(workload_id)?;
-        let deployment_config = self.persistence.get_by_deployment_id(deployment_id)?;
-
+    pub fn query(&self, query: &QueryConfigRequest) -> anyhow::Result<Vec<Config>> {
+        let model_name = query.model_name.as_str();
         let mut config_set = HashMap::new();
+
+        let template_config;
+        let mut deployment_config = vec![];
+        let mut workload_config = vec![];
+
+        match model_name {
+            "deployment" => {
+                println!("deployment");
+
+                let deployment = match self.deployment_service.get_by_id(&query.model_id)? {
+                    Some(deployment) => deployment,
+                    None => {
+                        return Err(anyhow::anyhow!(
+                            "Deployment id {} not found",
+                            query.model_id
+                        ));
+                    }
+                };
+
+                println!("deployment: {:#?}", deployment);
+
+                deployment_config = self.persistence.get_by_deployment_id(&deployment.id)?;
+
+                let workload = match self.workload_service.get_by_id(&deployment.workload_id)? {
+                    Some(workload) => workload,
+                    None => {
+                        return Err(anyhow::anyhow!(
+                            "workload id {} not found",
+                            deployment.workload_id
+                        ));
+                    }
+                };
+
+                println!("deployment_config: {:#?}", deployment_config);
+
+                if let Some(template_id) = deployment.template_id {
+                    template_config = self.persistence.get_by_template_id(&template_id)?;
+                } else {
+                    template_config = self.persistence.get_by_template_id(&workload.template_id)?;
+                }
+
+                println!("template_config: {:#?}", template_config);
+
+                workload_config = self
+                    .persistence
+                    .get_by_workload_id(&deployment.workload_id)?;
+
+                println!("workload_config: {:#?}", workload_config);
+            }
+
+            "workload" => {
+                let workload = match self.workload_service.get_by_id(&query.model_id)? {
+                    Some(deployment) => deployment,
+                    None => {
+                        return Err(anyhow::anyhow!(
+                            "Deployment id {} not found",
+                            query.model_id
+                        ));
+                    }
+                };
+
+                workload_config = self.persistence.get_by_workload_id(&query.model_id)?;
+                template_config = self.persistence.get_by_template_id(&workload.template_id)?;
+            }
+
+            "template" => {
+                template_config = self.persistence.get_by_template_id(&query.model_id)?;
+            }
+            _ => return Err(anyhow::anyhow!("Model type not supported")),
+        }
 
         // shred config in tiered order into a HashMap such that deployment config overrides
         // workload config overrides template config.
@@ -120,9 +170,7 @@ impl ConfigService {
             config_set.insert(config.id.clone(), config);
         }
 
-        let final_configs = config_set.values().cloned().collect();
-
-        Ok(final_configs)
+        Ok(config_set.values().cloned().collect())
     }
 
     #[tracing::instrument(name = "service::config::get_by_deployment_id")]
@@ -196,7 +244,12 @@ mod tests {
         let configs_by_workload = config_service.get_by_workload_id(&workload.id).unwrap();
         assert_eq!(configs_by_workload.len(), 1);
 
-        let config_for_deployment = config_service.query(&deployment.id, &workload.id).unwrap();
+        let query = QueryConfigRequest {
+            model_name: "deployment".to_string(),
+            model_id: deployment.id,
+        };
+
+        let config_for_deployment = config_service.query(&query).unwrap();
         assert_eq!(config_for_deployment.len(), 1);
 
         let deleted_operation_id = config_service.delete(&config.id, &None).unwrap();

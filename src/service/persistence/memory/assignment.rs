@@ -14,22 +14,20 @@ pub struct AssignmentMemoryPersistence {
 }
 
 impl Persistence<Assignment> for AssignmentMemoryPersistence {
-    fn create(&self, assignment: &Assignment) -> anyhow::Result<String> {
+    fn create(&self, assignment: &Assignment) -> anyhow::Result<usize> {
         let mut locked_assignments = self.get_models_locked()?;
 
         locked_assignments.insert(assignment.get_id(), assignment.clone());
 
-        Ok(assignment.get_id())
+        Ok(1)
     }
 
-    fn create_many(&self, assignments: &[Assignment]) -> anyhow::Result<Vec<String>> {
-        let mut assignment_ids = Vec::new();
+    fn create_many(&self, assignments: &[Assignment]) -> anyhow::Result<usize> {
         for (_, assignment) in assignments.iter().enumerate() {
-            let assignment_id = self.create(assignment)?;
-            assignment_ids.push(assignment_id);
+            self.create(assignment)?;
         }
 
-        Ok(assignment_ids)
+        Ok(assignments.len())
     }
 
     fn delete(&self, assignment_id: &str) -> anyhow::Result<usize> {
@@ -108,29 +106,26 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_assignment: Assignment = get_assignment_fixture(None).into();
-
         let assignment_persistence = AssignmentMemoryPersistence::default();
+        let assignment: Assignment = get_assignment_fixture(None).into();
 
-        let inserted_assignment_id = assignment_persistence.create(&new_assignment).unwrap();
-        assert_eq!(inserted_assignment_id, new_assignment.id);
+        let inserted_count = assignment_persistence.create(&assignment).unwrap();
+        assert_eq!(inserted_count, 1);
 
         let fetched_assignment = assignment_persistence
-            .get_by_id(&inserted_assignment_id)
+            .get_by_id(&assignment.id)
             .unwrap()
             .unwrap();
 
-        assert_eq!(fetched_assignment.id, new_assignment.id);
+        assert_eq!(fetched_assignment.id, assignment.id);
 
         let deployment_assignments = assignment_persistence
-            .get_by_deployment_id(&new_assignment.deployment_id)
+            .get_by_deployment_id(&assignment.deployment_id)
             .unwrap();
 
         assert_eq!(deployment_assignments.len(), 1);
 
-        let deleted_assignments = assignment_persistence
-            .delete(&inserted_assignment_id)
-            .unwrap();
+        let deleted_assignments = assignment_persistence.delete(&assignment.id).unwrap();
         assert_eq!(deleted_assignments, 1);
     }
 
@@ -138,18 +133,16 @@ mod tests {
     fn test_create_get_delete_many() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_assignment: Assignment = get_assignment_fixture(None).into();
-
         let assignment_persistence = AssignmentMemoryPersistence::default();
+        let assignment: Assignment = get_assignment_fixture(None).into();
 
-        let inserted_host_ids = assignment_persistence
-            .create_many(&[new_assignment.clone()])
+        let created_count = assignment_persistence
+            .create_many(&[assignment.clone()])
             .unwrap();
-        assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], new_assignment.id);
+        assert_eq!(created_count, 1);
 
         let deleted_hosts = assignment_persistence
-            .delete_many(&[&new_assignment.id])
+            .delete_many(&[&assignment.id])
             .unwrap();
         assert_eq!(deleted_hosts, 1);
     }

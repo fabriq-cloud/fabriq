@@ -14,22 +14,20 @@ pub struct DeploymentMemoryPersistence {
 }
 
 impl Persistence<Deployment> for DeploymentMemoryPersistence {
-    fn create(&self, deployment: &Deployment) -> anyhow::Result<String> {
+    fn create(&self, deployment: &Deployment) -> anyhow::Result<usize> {
         let mut locked_deployments = self.get_models_locked()?;
 
         locked_deployments.insert(deployment.get_id(), deployment.clone());
 
-        Ok(deployment.get_id())
+        Ok(1)
     }
 
-    fn create_many(&self, deployments: &[Deployment]) -> anyhow::Result<Vec<String>> {
-        let mut deployment_ids = Vec::new();
+    fn create_many(&self, deployments: &[Deployment]) -> anyhow::Result<usize> {
         for (_, deployment) in deployments.iter().enumerate() {
-            let deployment_id = self.create(deployment)?;
-            deployment_ids.push(deployment_id);
+            self.create(deployment)?;
         }
 
-        Ok(deployment_ids)
+        Ok(deployments.len())
     }
 
     fn delete(&self, deployment_id: &str) -> anyhow::Result<usize> {
@@ -134,36 +132,26 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let new_deployment = Deployment {
-            id: "workspace-fixture:workload-fixture:test-deployment".to_owned(),
-            name: "test-deployment".to_owned(),
-            workload_id: "workload-fixture".to_owned(),
-            target_id: "target-fixture".to_owned(),
-            template_id: None,
-            host_count: 3,
-        };
-
         let deployment_persistence = DeploymentMemoryPersistence::default();
+        let deployment = get_deployment_fixture(None).into();
 
-        let inserted_deployment_id = deployment_persistence.create(&new_deployment).unwrap();
-        assert_eq!(inserted_deployment_id, new_deployment.id);
+        let created_count = deployment_persistence.create(&deployment).unwrap();
+        assert_eq!(created_count, 1);
 
         let fetched_deployment = deployment_persistence
-            .get_by_id(&inserted_deployment_id)
+            .get_by_id(&deployment.id)
             .unwrap()
             .unwrap();
 
-        assert_eq!(fetched_deployment.id, new_deployment.id);
+        assert_eq!(fetched_deployment.id, deployment.id);
 
         let deployments_for_target = deployment_persistence
-            .get_by_target_id(&new_deployment.target_id)
+            .get_by_target_id(&deployment.target_id)
             .unwrap();
 
         assert_eq!(deployments_for_target.len(), 1);
 
-        let deleted_deployments = deployment_persistence
-            .delete(&inserted_deployment_id)
-            .unwrap();
+        let deleted_deployments = deployment_persistence.delete(&deployment.id).unwrap();
         assert_eq!(deleted_deployments, 1);
     }
 
@@ -175,11 +163,10 @@ mod tests {
 
         let deployment_persistence = DeploymentMemoryPersistence::default();
 
-        let inserted_host_ids = deployment_persistence
+        let created_count = deployment_persistence
             .create_many(&[deployment.clone()])
             .unwrap();
-        assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], deployment.id);
+        assert_eq!(created_count, 1);
 
         let deleted_hosts = deployment_persistence
             .delete_many(&[&deployment.id])

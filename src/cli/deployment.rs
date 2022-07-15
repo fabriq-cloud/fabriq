@@ -131,7 +131,9 @@ pub async fn handlers(
                         deployment.name.to_string(),
                         deployment.workload_id.clone(),
                         deployment.target_id.clone(),
-                        deployment.template_id.unwrap_or_else(|| "".to_string()),
+                        deployment
+                            .template_id
+                            .unwrap_or_else(|| "(inherited)".to_string()),
                         deployment.host_count.to_string(),
                     ]
                 })
@@ -151,27 +153,27 @@ pub async fn handlers(
                 .set_align(Align::Left);
 
             ascii_table
-                .column(0)
+                .column(1)
                 .set_header("NAME")
                 .set_align(Align::Left);
 
             ascii_table
-                .column(1)
+                .column(2)
                 .set_header("WORKLOAD ID")
                 .set_align(Align::Left);
 
             ascii_table
-                .column(2)
+                .column(3)
                 .set_header("TARGET ID")
                 .set_align(Align::Left);
 
             ascii_table
-                .column(3)
+                .column(4)
                 .set_header("TEMPLATE ID")
                 .set_align(Align::Left);
 
             ascii_table
-                .column(4)
+                .column(5)
                 .set_header("HOST COUNT")
                 .set_align(Align::Left);
 

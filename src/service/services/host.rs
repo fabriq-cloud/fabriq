@@ -19,9 +19,9 @@ impl HostService {
         host: &Host,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let host_id = self.persistence.create(host)?;
+        self.persistence.create(host)?;
 
-        let host = self.get_by_id(&host_id)?;
+        let host = self.get_by_id(&host.id)?;
         let host = match host {
             Some(host) => host,
             None => return Err(anyhow::anyhow!("Couldn't find created host id returned")),

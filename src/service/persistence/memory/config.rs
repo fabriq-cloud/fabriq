@@ -14,22 +14,20 @@ pub struct ConfigMemoryPersistence {
 }
 
 impl Persistence<Config> for ConfigMemoryPersistence {
-    fn create(&self, config: &Config) -> anyhow::Result<String> {
+    fn create(&self, config: &Config) -> anyhow::Result<usize> {
         let mut locked_configs = self.get_models_locked()?;
 
         locked_configs.insert(config.get_id(), config.clone());
 
-        Ok(config.get_id())
+        Ok(1)
     }
 
-    fn create_many(&self, configs: &[Config]) -> anyhow::Result<Vec<String>> {
-        let mut config_ids = Vec::new();
+    fn create_many(&self, configs: &[Config]) -> anyhow::Result<usize> {
         for (_, config) in configs.iter().enumerate() {
-            let config_id = self.create(config)?;
-            config_ids.push(config_id);
+            self.create(config)?;
         }
 
-        Ok(config_ids)
+        Ok(configs.len())
     }
 
     fn delete(&self, config_id: &str) -> anyhow::Result<usize> {
@@ -140,18 +138,15 @@ mod tests {
     fn test_create_get_delete() {
         dotenv::from_filename(".env.test").ok();
 
-        let config: Config = get_string_config_fixture().into();
         let workload = get_workload_fixture(None);
 
         let config_persistence = ConfigMemoryPersistence::default();
+        let config: Config = get_string_config_fixture().into();
 
-        let inserted_config_id = config_persistence.create(&config).unwrap();
-        assert_eq!(inserted_config_id, config.id);
+        let created_count = config_persistence.create(&config).unwrap();
+        assert_eq!(created_count, 1);
 
-        let fetched_config = config_persistence
-            .get_by_id(&inserted_config_id)
-            .unwrap()
-            .unwrap();
+        let fetched_config = config_persistence.get_by_id(&config.id).unwrap().unwrap();
 
         assert_eq!(fetched_config.id, config.id);
 
@@ -159,7 +154,7 @@ mod tests {
 
         assert_eq!(configs_for_workload.len(), 1);
 
-        let deleted_configs = config_persistence.delete(&inserted_config_id).unwrap();
+        let deleted_configs = config_persistence.delete(&config.id).unwrap();
         assert_eq!(deleted_configs, 1);
     }
 
@@ -172,9 +167,8 @@ mod tests {
 
         let config_persistence = ConfigMemoryPersistence::default();
 
-        let inserted_host_ids = config_persistence.create_many(&[config.clone()]).unwrap();
-        assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], config.id);
+        let created_count = config_persistence.create_many(&[config.clone()]).unwrap();
+        assert_eq!(created_count, 1);
 
         let configs_for_deployment = config_persistence
             .get_by_deployment_id(&deployment.id)

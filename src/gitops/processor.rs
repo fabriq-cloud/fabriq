@@ -353,8 +353,8 @@ impl GitOpsProcessor {
             .into_inner();
 
         let config_request = Request::new(QueryConfigRequest {
-            deployment_id: deployment.id.clone(),
-            workload_id: deployment.workload_id.clone(),
+            model_name: "deployment".to_string(),
+            model_id: deployment.id.clone(),
         });
 
         let response = self.config_client.query(config_request).await?.into_inner();

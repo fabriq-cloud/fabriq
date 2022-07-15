@@ -9,32 +9,27 @@ pub struct AssignmentRelationalPersistence {}
 
 impl Persistence<Assignment> for AssignmentRelationalPersistence {
     #[tracing::instrument(name = "relational::assignment::create")]
-    fn create(&self, assignment: &Assignment) -> anyhow::Result<String> {
+    fn create(&self, assignment: &Assignment) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
-        let results: Vec<String> = diesel::insert_into(table)
+        let changed = diesel::insert_into(table)
             .values(assignment)
-            .returning(assignments::id)
-            .on_conflict_do_nothing()
-            .get_results(&connection)?;
+            .on_conflict(id)
+            .do_nothing()
+            .execute(&connection)?;
 
-        match results.first() {
-            Some(assignment_id) => Ok(assignment_id.clone()),
-            None => Err(anyhow::anyhow!(
-                "Couldn't find created assignment id returned"
-            )),
-        }
+        Ok(changed)
     }
 
     #[tracing::instrument(name = "relational::assignment::create_many")]
-    fn create_many(&self, models: &[Assignment]) -> anyhow::Result<Vec<String>> {
+    fn create_many(&self, models: &[Assignment]) -> anyhow::Result<usize> {
         let connection = crate::db::get_connection()?;
 
         let results = diesel::insert_into(table)
             .values(models)
             .returning(assignments::id)
             .on_conflict_do_nothing()
-            .get_results(&connection)?;
+            .execute(&connection)?;
 
         Ok(results)
     }
@@ -102,28 +97,27 @@ mod tests {
         crate::persistence::relational::ensure_fixtures();
 
         let assignment_persistence = AssignmentRelationalPersistence::default();
-        let new_assignment: Assignment = get_assignment_fixture(Some("assignment-create")).into();
+        let assignment: Assignment = get_assignment_fixture(Some("assignment-create")).into();
 
         // delete assignment if it exists
-        assignment_persistence.delete(&new_assignment.id).unwrap();
+        assignment_persistence.delete(&assignment.id).unwrap();
 
-        let inserted_assignment_id = assignment_persistence.create(&new_assignment).unwrap();
+        let created_count = assignment_persistence.create(&assignment).unwrap();
+        assert_eq!(created_count, 1);
 
         let fetched_assignment = assignment_persistence
-            .get_by_id(&inserted_assignment_id)
+            .get_by_id(&assignment.id)
             .unwrap()
             .unwrap();
-        assert_eq!(fetched_assignment.id, new_assignment.id);
+        assert_eq!(fetched_assignment.id, assignment.id);
 
         let deployment_assignments = assignment_persistence
-            .get_by_deployment_id(&new_assignment.deployment_id)
+            .get_by_deployment_id(&assignment.deployment_id)
             .unwrap();
 
         assert!(!deployment_assignments.is_empty());
 
-        let deleted_assignments = assignment_persistence
-            .delete(&inserted_assignment_id)
-            .unwrap();
+        let deleted_assignments = assignment_persistence.delete(&assignment.id).unwrap();
         assert_eq!(deleted_assignments, 1);
     }
 
@@ -136,15 +130,14 @@ mod tests {
         let new_assignment: Assignment =
             get_assignment_fixture(Some("assignment-create-many")).into();
 
-        let inserted_host_ids = assignment_persistence
+        let created_count = assignment_persistence
             .create_many(&[new_assignment.clone()])
             .unwrap();
-        assert_eq!(inserted_host_ids.len(), 1);
-        assert_eq!(inserted_host_ids[0], new_assignment.id);
+        assert_eq!(created_count, 1);
 
-        let deleted_hosts = assignment_persistence
+        let deleted_count = assignment_persistence
             .delete_many(&[&new_assignment.id])
             .unwrap();
-        assert_eq!(deleted_hosts, 1);
+        assert_eq!(deleted_count, 1);
     }
 }

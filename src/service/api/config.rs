@@ -69,7 +69,9 @@ impl ConfigTrait for GrpcConfigService {
     ) -> Result<Response<QueryConfigResponse>, Status> {
         let query = request.into_inner();
 
-        let configs = match self.service.query(&query.deployment_id, &query.workload_id) {
+        println!("query: {:?}", query);
+
+        let configs = match self.service.query(&query) {
             Ok(configs) => configs,
             Err(err) => {
                 return Err(Status::new(
@@ -155,8 +157,8 @@ mod tests {
         assert_eq!(response.id.len(), 36);
 
         let request = Request::new(QueryConfigRequest {
-            deployment_id: deployment.id,
-            workload_id: workload.id,
+            model_name: "deployment".to_string(),
+            model_id: deployment.id.clone(),
         });
 
         let response = config_grpc_service

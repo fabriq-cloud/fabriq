@@ -16,8 +16,8 @@ message ConfigIdRequest {
 message ListConfigRequest {}
 
 message QueryConfigRequest {
-    string deployment_id = 1;
-    string workload_id = 2;
+    string model_name = 1;
+    string model_id = 2;
 }
 
 message QueryConfigResponse {
