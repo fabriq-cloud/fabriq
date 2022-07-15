@@ -8,9 +8,9 @@ mod host;
 mod login;
 mod profile;
 mod target;
+mod team;
 mod template;
 mod workload;
-mod workspace;
 
 use context::Context;
 
@@ -29,7 +29,7 @@ fn cli() -> Command<'static> {
         .subcommand(target::args())
         .subcommand(template::args())
         .subcommand(workload::args())
-        .subcommand(workspace::args())
+        .subcommand(team::args())
 }
 
 #[tokio::main]
@@ -50,9 +50,9 @@ async fn main() -> anyhow::Result<()> {
         Some(("host", submatches)) => Ok(host::handlers(submatches, &context).await?),
         Some(("login", submatches)) => Ok(login::handlers(submatches, &context).await?),
         Some(("target", submatches)) => Ok(target::handlers(submatches, &context).await?),
+        Some(("team", submatches)) => Ok(team::handlers(submatches, &context).await?),
         Some(("template", submatches)) => Ok(template::handlers(submatches, &context).await?),
         Some(("workload", submatches)) => Ok(workload::handlers(submatches, &context).await?),
-        Some(("workspace", submatches)) => Ok(workspace::handlers(submatches, &context).await?),
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachable
     }
 }

@@ -1,6 +1,6 @@
 use akira_core::WorkloadMessage;
 
-use crate::models::{Template, Workspace};
+use crate::models::Template;
 use crate::persistence::PersistableModel;
 use crate::schema::workloads;
 
@@ -18,12 +18,11 @@ use crate::schema::workloads;
 )]
 #[table_name = "workloads"]
 #[belongs_to(Template)]
-#[belongs_to(Workspace)]
 pub struct Workload {
     pub id: String,
-    pub workspace_id: String,
-    pub template_id: String,
     pub name: String,
+    pub team_id: String,
+    pub template_id: String,
 }
 
 impl PersistableModel<Workload> for Workload {
@@ -37,7 +36,7 @@ impl From<Workload> for WorkloadMessage {
         Self {
             id: workload.id,
             name: workload.name,
-            workspace_id: workload.workspace_id,
+            team_id: workload.team_id,
             template_id: workload.template_id,
         }
     }
@@ -48,7 +47,7 @@ impl From<WorkloadMessage> for Workload {
         Self {
             id: workload.id,
             name: workload.name,
-            workspace_id: workload.workspace_id,
+            team_id: workload.team_id,
             template_id: workload.template_id,
         }
     }

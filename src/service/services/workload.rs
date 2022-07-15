@@ -16,7 +16,7 @@ impl WorkloadService {
         workload: &Workload,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let expected_workload_id = WorkloadMessage::make_id(&workload.workspace_id, &workload.name);
+        let expected_workload_id = WorkloadMessage::make_id(&workload.team_id, &workload.name);
 
         if workload.id != expected_workload_id {
             return Err(anyhow::anyhow!(

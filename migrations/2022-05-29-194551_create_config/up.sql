@@ -4,7 +4,9 @@ CREATE TABLE configs (
   owning_model TEXT NOT NULL,
 
   key          TEXT NOT NULL,
-  value        TEXT NOT NULL
+  value        TEXT NOT NULL,
+
+  value_type   INTEGER NOT NULL
 );
 
 CREATE INDEX configs_owning_model ON configs(owning_model);

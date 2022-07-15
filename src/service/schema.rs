@@ -19,11 +19,11 @@ table! {
 table! {
     deployments (id) {
         id -> Text,
+        name -> Text,
         workload_id -> Text,
         target_id -> Text,
         template_id -> Nullable<Text>,
         host_count -> Int4,
-        name -> Text,
     }
 }
 
@@ -53,15 +53,9 @@ table! {
 table! {
     workloads (id) {
         id -> Text,
-        workspace_id -> Text,
-        template_id -> Text,
         name -> Text,
-    }
-}
-
-table! {
-    workspaces (id) {
-        id -> Text,
+        team_id -> Text,
+        template_id -> Text,
     }
 }
 
@@ -71,7 +65,6 @@ joinable!(deployments -> targets (target_id));
 joinable!(deployments -> templates (template_id));
 joinable!(deployments -> workloads (workload_id));
 joinable!(workloads -> templates (template_id));
-joinable!(workloads -> workspaces (workspace_id));
 
 allow_tables_to_appear_in_same_query!(
     assignments,
@@ -81,5 +74,4 @@ allow_tables_to_appear_in_same_query!(
     targets,
     templates,
     workloads,
-    workspaces,
 );

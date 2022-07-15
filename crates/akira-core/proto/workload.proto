@@ -20,6 +20,6 @@ message ListWorkloadsResponse {
 message WorkloadMessage {
     string id = 1;    
     string name = 2;
-    string workspace_id = 3;
+    string team_id = 3;
     string template_id = 4;
 }

@@ -1,6 +1,7 @@
 CREATE TABLE workloads (
   id           TEXT PRIMARY KEY,
+  name         TEXT NOT NULL,
   
-  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
+  team_id      TEXT NOT NULL,
   template_id  TEXT NOT NULL REFERENCES templates(id)
 );

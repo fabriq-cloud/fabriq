@@ -10,7 +10,7 @@ use akira::{
     models::{Assignment, Deployment, Host, Target, Template, Workload},
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
-        WorkloadService, WorkspaceService,
+        WorkloadService,
     },
 };
 use akira_core::{
@@ -27,7 +27,6 @@ pub struct Reconciler {
     pub target_service: Arc<TargetService>,
     pub template_service: Arc<TemplateService>,
     pub workload_service: Arc<WorkloadService>,
-    pub workspace_service: Arc<WorkspaceService>,
 }
 
 impl Reconciler {
@@ -54,9 +53,6 @@ impl Reconciler {
             }
             model_type if model_type == ModelType::Workload as i32 => {
                 self.process_workload_event(event)
-            }
-            model_type if model_type == ModelType::Workspace as i32 => {
-                self.process_workspace_event(event)
             }
             _ => {
                 let msg = format!("unhandled model type: {}", model_type);
@@ -362,7 +358,7 @@ impl Reconciler {
 
 #[cfg(test)]
 mod tests {
-    use akira::models::{Template, Workspace};
+    use akira::models::Template;
     use akira::persistence::memory::{
         AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
         MemoryPersistence, WorkloadMemoryPersistence,
@@ -415,14 +411,6 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
         });
 
-        let workspace_persistence = Box::new(MemoryPersistence::<Workspace>::default());
-        let workspace_service = Arc::new(WorkspaceService {
-            persistence: workspace_persistence,
-            event_stream: Arc::clone(&event_stream),
-
-            workload_service: Arc::clone(&workload_service),
-        });
-
         let reconciler = Reconciler {
             assignment_service,
             deployment_service,
@@ -430,7 +418,6 @@ mod tests {
             target_service,
             template_service,
             workload_service,
-            workspace_service,
         };
 
         let host1 = get_host_fixture(Some("host1-id")).into();

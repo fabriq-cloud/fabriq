@@ -13,7 +13,7 @@ use akira_core::{
     get_current_or_previous_model, AssignmentMessage, ConfigMessage, ConfigTrait, ConfigValueType,
     DeploymentIdRequest, DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage,
     ModelType, QueryConfigRequest, TargetMessage, TemplateMessage, TemplateTrait,
-    WorkloadIdRequest, WorkloadMessage, WorkloadTrait, WorkspaceMessage,
+    WorkloadIdRequest, WorkloadMessage, WorkloadTrait,
 };
 
 pub struct GitOpsProcessor {
@@ -60,9 +60,6 @@ impl GitOpsProcessor {
             }
             model_type if model_type == ModelType::Workload as i32 => {
                 self.process_workload_event(event).await
-            }
-            model_type if model_type == ModelType::Workspace as i32 => {
-                self.process_workspace_event(event).await
             }
             _ => {
                 let message = format!("Unknown model type: {}", model_type);
@@ -281,29 +278,6 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
-    async fn process_workspace_event(&self, event: &Event) -> anyhow::Result<()> {
-        let event_type = event.event_type;
-        let workspace = get_current_or_previous_model::<WorkspaceMessage>(event)?;
-
-        match event_type {
-            event_type if event_type == EventType::Created as i32 => {
-                tracing::info!("workspace id {} created (NOP)", workspace.id);
-            }
-            event_type if event_type == EventType::Updated as i32 => {
-                tracing::info!("workspace id {} updated (NOP)", workspace.id);
-            }
-            event_type if event_type == EventType::Deleted as i32 => {
-                tracing::info!("workspace id {} deleted (NOP)", workspace.id);
-            }
-            _ => {
-                tracing::error!("unsupported event type: {:?}", event);
-            }
-        };
-
-        Ok(())
-    }
-
     async fn update_assignment(
         &self,
         assignment: &AssignmentMessage,
@@ -332,15 +306,17 @@ impl GitOpsProcessor {
         if created {
             self.render_assignment(
                 &assignment.host_id,
-                &workload.workspace_id,
+                &workload.team_id,
                 &workload.name,
                 &deployment.name,
             )
             .await?;
         } else {
+            let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
             let assignment_path = GitOpsProcessor::make_assignment_path(
                 &assignment.host_id,
-                &workload.workspace_id,
+                &organization_name,
+                &team_name,
                 &workload.name,
                 &deployment.name,
             );
@@ -384,8 +360,10 @@ impl GitOpsProcessor {
         let response = self.config_client.query(config_request).await?.into_inner();
         let configs = response.configs;
 
+        let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
         let deployment_repo_path = Self::make_deployment_path(
-            &workload.workspace_id,
+            &organization_name,
+            &team_name,
             &deployment.workload_id,
             &deployment.id,
         );
@@ -467,21 +445,28 @@ impl GitOpsProcessor {
     async fn render_assignment(
         &self,
         host_id: &str,
-        workspace_id: &str,
+        team_id: &str,
         workload_name: &str,
         deployment_name: &str,
     ) -> anyhow::Result<()> {
+        let (organization_name, team_name) = WorkloadMessage::split_team_id(team_id)?;
+
         let assignment_path = GitOpsProcessor::make_assignment_path(
             host_id,
-            workspace_id,
+            &organization_name,
+            &team_name,
             workload_name,
             deployment_name,
         );
 
-        let deployment_path =
-            GitOpsProcessor::make_deployment_path(workspace_id, workload_name, deployment_name);
+        let deployment_path = GitOpsProcessor::make_deployment_path(
+            &organization_name,
+            &team_name,
+            workload_name,
+            deployment_name,
+        );
 
-        let host_relative_deployment_path = format!("../../../../../{}", deployment_path);
+        let host_relative_deployment_path = format!("../../../../../../{}", deployment_path);
         let template_string = fs::read_to_string("templates/assignment.yaml")?;
 
         let mut handlebars = Handlebars::new();
@@ -515,24 +500,26 @@ impl GitOpsProcessor {
 
     fn make_assignment_path(
         host_id: &str,
-        workspace_id: &str,
+        organization_name: &str,
+        team_name: &str,
         workload_name: &str,
         deployment_name: &str,
     ) -> String {
         format!(
-            "hosts/{}/{}/{}/{}/kustomization.yaml",
-            host_id, workspace_id, workload_name, deployment_name
+            "hosts/{}/{}/{}/{}/{}/kustomization.yaml",
+            host_id, organization_name, team_name, workload_name, deployment_name
         )
     }
 
     fn make_deployment_path(
-        workspace_id: &str,
+        organization_name: &str,
+        team_name: &str,
         workload_name: &str,
         deployment_name: &str,
     ) -> String {
         format!(
-            "deployments/{}/{}/{}",
-            workspace_id, workload_name, deployment_name
+            "deployments/{}/{}/{}/{}",
+            organization_name, team_name, workload_name, deployment_name
         )
     }
 
@@ -552,8 +539,14 @@ impl GitOpsProcessor {
 
         let template_paths = template_repo.list(template.path.clone().into())?;
 
-        let deployment_repo_path =
-            Self::make_deployment_path(&workload.workspace_id, &workload.name, &deployment.name);
+        let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
+
+        let deployment_repo_path = Self::make_deployment_path(
+            &organization_name,
+            &team_name,
+            &workload.name,
+            &deployment.name,
+        );
 
         for template_path in template_paths {
             let template_bytes = template_repo.read_file(template_path.clone())?;
@@ -586,9 +579,10 @@ impl GitOpsProcessor {
             }
 
             values.insert(
-                "workspace".to_owned(),
-                to_json(workload.workspace_id.clone()),
+                "organization".to_owned(),
+                to_json(organization_name.clone()),
             );
+            values.insert("team".to_owned(), to_json(team_name.clone()));
             values.insert("workload".to_owned(), to_json(workload.name.clone()));
             values.insert("deployment".to_owned(), to_json(deployment.name.clone()));
 
@@ -637,10 +631,10 @@ mod tests {
         git::{GitRepo, GitRepoFactory, MemoryGitRepo},
         test::{
             get_assignment_fixture, get_deployment_fixture, get_host_fixture,
-            get_string_config_fixture, get_template_fixture, get_workload_fixture,
-            get_workspace_fixture,
+            get_string_config_fixture, get_team_fixture, get_template_fixture,
+            get_workload_fixture,
         },
-        EventType, ModelType, OperationId,
+        EventType, ModelType, OperationId, WorkloadMessage,
     };
 
     use std::{
@@ -679,12 +673,14 @@ mod tests {
     async fn test_process_assignment_events() {
         let deployment = get_deployment_fixture(None);
         let host = get_host_fixture(None);
-        let workspace = get_workspace_fixture(None);
+        let team_id = get_team_fixture();
         let workload = get_workload_fixture(None);
 
+        let (organization_name, team_name) = WorkloadMessage::split_team_id(&team_id).unwrap();
         let assignment_path = GitOpsProcessor::make_assignment_path(
             &host.id,
-            &workspace.id,
+            &organization_name,
+            &team_name,
             &workload.name,
             &deployment.name,
         );
@@ -703,7 +699,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 15009592673730869112);
+        assert_eq!(assignment_hash, 6461699303385233265);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
@@ -717,7 +713,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 15009592673730869112);
+        assert_eq!(assignment_hash, 6461699303385233265);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -726,7 +722,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_config_events() {
-        let deployment_path = "deployments/workspace-fixture/workload-fixture/deployment-fixture";
+        let deployment_path =
+            "deployments/akira-network/service/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -767,7 +764,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_deployment_events() {
-        let deployment_path = "deployments/workspace-fixture/workload-fixture/deployment-fixture";
+        let deployment_path =
+            "deployments/akira-network/service/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -783,7 +781,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 10329066041225746084);
+        assert_eq!(deployment_hash, 16869808730898710072);
 
         gitops_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -801,7 +799,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 10329066041225746084);
+        assert_eq!(deployment_hash, 16869808730898710072);
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -810,7 +808,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_template_events() {
-        let deployment_path = "deployments/workspace-fixture/workload-fixture/deployment-fixture";
+        let deployment_path =
+            "deployments/akira-network/service/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -826,7 +825,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_workload_events() {
-        let deployment_path = "deployments/workspace-fixture/workload-fixture/deployment-fixture";
+        let deployment_path =
+            "deployments/akira-network/service/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -841,7 +841,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 10329066041225746084);
+        assert_eq!(deployment_hash, 16869808730898710072);
 
         gitops_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -859,7 +859,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 10329066041225746084);
+        assert_eq!(deployment_hash, 16869808730898710072);
 
         create_and_process_workload_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 

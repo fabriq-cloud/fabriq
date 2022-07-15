@@ -1,1 +1,0 @@
-ALTER TABLE configs DROP COLUMN value_type;

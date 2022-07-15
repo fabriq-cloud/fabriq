@@ -246,23 +246,26 @@ pub use workload::workload_server::{Workload as WorkloadTrait, WorkloadServer};
 pub use workload::{ListWorkloadsRequest, ListWorkloadsResponse, WorkloadMessage};
 
 impl WorkloadMessage {
+    const TEAM_ID_SEPARATOR: char = ':';
     const WORKLOAD_ID_SEPARATOR: char = ':';
 
-    pub fn make_id(workspace_id: &str, workload_name: &str) -> String {
+    pub fn make_id(team_id: &str, workload_name: &str) -> String {
         format!(
-            "{workspace_id}{}{workload_name}",
+            "{team_id}{}{workload_name}",
             WorkloadMessage::WORKLOAD_ID_SEPARATOR
         )
     }
+
+    pub fn split_team_id(team_id: &str) -> anyhow::Result<(String, String)> {
+        let team_id_parts = team_id
+            .split(WorkloadMessage::TEAM_ID_SEPARATOR)
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        if team_id_parts.len() != 2 {
+            return Err(anyhow::anyhow!("invalid team id"));
+        }
+
+        Ok((team_id_parts[0].to_string(), team_id_parts[1].to_string()))
+    }
 }
-
-// workspace protobufs
-
-pub mod workspace {
-    tonic::include_proto!("akira.workspace");
-}
-
-pub use workspace::workspace_server::{Workspace as WorkspaceTrait, WorkspaceServer};
-pub use workspace::{
-    DeleteWorkspaceRequest, ListWorkspacesRequest, ListWorkspacesResponse, WorkspaceMessage,
-};

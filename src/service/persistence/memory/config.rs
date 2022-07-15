@@ -98,12 +98,9 @@ impl ConfigPersistence for ConfigMemoryPersistence {
     fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let locked_configs = self.get_models_locked()?;
 
-        println!("{:?}", locked_configs);
-
         let mut configs_for_target = Vec::new();
         for config in (*locked_configs).values() {
             let (model_type, model_id) = config.split_owning_model();
-            println!("{} {}", model_type, model_id);
             if model_type == "workload" && model_id == workload_id {
                 configs_for_target.push(config.clone());
             }

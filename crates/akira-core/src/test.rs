@@ -1,6 +1,6 @@
 use crate::{
     AssignmentMessage, ConfigMessage, ConfigValueType, DeploymentMessage, HostMessage,
-    TargetMessage, TemplateMessage, WorkloadMessage, WorkspaceMessage,
+    TargetMessage, TemplateMessage, WorkloadMessage,
 };
 
 pub fn get_assignment_fixture(id: Option<&str>) -> AssignmentMessage {
@@ -95,20 +95,18 @@ pub fn get_template_fixture(name: Option<&str>) -> TemplateMessage {
 pub fn get_workload_fixture(name: Option<&str>) -> WorkloadMessage {
     let workload_name = name.unwrap_or("workload-fixture").to_string();
     let template = get_template_fixture(None);
-    let workspace = get_workspace_fixture(None);
+    let team_id = get_team_fixture();
 
-    let workload_id = WorkloadMessage::make_id(&workspace.id, &workload_name);
+    let workload_id = WorkloadMessage::make_id(&team_id, &workload_name);
 
     WorkloadMessage {
         id: workload_id,
         name: workload_name,
         template_id: template.id,
-        workspace_id: workspace.id,
+        team_id,
     }
 }
 
-pub fn get_workspace_fixture(name: Option<&str>) -> WorkspaceMessage {
-    let id = name.unwrap_or("workspace-fixture").to_string();
-
-    WorkspaceMessage { id }
+pub fn get_team_fixture() -> String {
+    "akira-network:service".to_string()
 }

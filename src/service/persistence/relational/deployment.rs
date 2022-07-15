@@ -125,16 +125,8 @@ mod tests {
         let new_deployment: Deployment =
             get_deployment_fixture(Some("create-deployment-fixture")).into();
 
-        println!("{:?}", new_deployment);
-
-        // delete deployment if it exists
         deployment_persistence.delete(&new_deployment.id).unwrap();
-
-        println!("1");
-
         deployment_persistence.create(&new_deployment).unwrap();
-
-        println!("2");
 
         let fetched_deployment = deployment_persistence
             .get_by_id(&new_deployment.id)

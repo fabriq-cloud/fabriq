@@ -13,22 +13,21 @@ use akira::acl;
 use akira::api::{
     GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
     GrpcHostService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
-    GrpcWorkspaceService,
 };
 use akira::persistence::relational::{
     AssignmentRelationalPersistence, ConfigRelationalPersistence, DeploymentRelationalPersistence,
-    HostRelationalPersistence, TargetRelationalPersistence, WorkspaceRelationalPersistence,
+    HostRelationalPersistence, TargetRelationalPersistence,
 };
 use akira::persistence::relational::{
     TemplateRelationalPersistence, WorkloadRelationalPersistence,
 };
 use akira::services::{
     AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
-    TemplateService, WorkloadService, WorkspaceService,
+    TemplateService, WorkloadService,
 };
 use akira_core::{
     AssignmentServer, DeploymentServer, HealthServer, HostServer, TargetServer, TemplateServer,
-    WorkloadServer, WorkspaceServer,
+    WorkloadServer,
 };
 use akira_core::{ConfigServer, EventStream};
 use akira_mqtt_stream::MqttEventStream;
@@ -104,14 +103,6 @@ async fn main() -> anyhow::Result<()> {
         event_stream: Arc::clone(&event_stream),
     });
 
-    let workspace_persistence = Box::new(WorkspaceRelationalPersistence::default());
-    let workspace_service = Arc::new(WorkspaceService {
-        persistence: workspace_persistence,
-        event_stream: Arc::clone(&event_stream),
-
-        workload_service: Arc::clone(&workload_service),
-    });
-
     let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "[::1]:50051".to_owned());
     let addr = endpoint.parse()?;
 
@@ -153,11 +144,6 @@ async fn main() -> anyhow::Result<()> {
         acl::authorize,
     );
 
-    let workspace_grpc_service = WorkspaceServer::with_interceptor(
-        GrpcWorkspaceService::new(Arc::clone(&workspace_service)),
-        acl::authorize,
-    );
-
     tracing::info!("grpc services listening on {}", addr);
 
     let tracing_layer = ServiceBuilder::new().layer(TraceLayer::new_for_grpc().make_span_with(
@@ -182,7 +168,6 @@ async fn main() -> anyhow::Result<()> {
         .add_service(tonic_web::enable(health_grpc_service))
         .add_service(tonic_web::enable(host_grpc_service))
         .add_service(tonic_web::enable(workload_grpc_service))
-        .add_service(tonic_web::enable(workspace_grpc_service))
         .add_service(tonic_web::enable(target_grpc_service))
         .add_service(tonic_web::enable(template_grpc_service))
         .serve(addr)

@@ -21,13 +21,13 @@ use crate::{persistence::PersistableModel, schema::deployments};
 #[belongs_to(Target)]
 pub struct Deployment {
     pub id: String,
+    pub name: String,
     pub workload_id: String,
     pub target_id: String,
     pub template_id: Option<String>,
 
     #[sql_type = "Integer"]
     pub host_count: i32,
-    pub name: String,
 }
 
 impl PersistableModel<Deployment> for Deployment {

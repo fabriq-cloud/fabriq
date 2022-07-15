@@ -2,11 +2,11 @@ use akira::{
     persistence::relational::{
         AssignmentRelationalPersistence, DeploymentRelationalPersistence,
         HostRelationalPersistence, TargetRelationalPersistence, TemplateRelationalPersistence,
-        WorkloadRelationalPersistence, WorkspaceRelationalPersistence,
+        WorkloadRelationalPersistence,
     },
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
-        WorkloadService, WorkspaceService,
+        WorkloadService,
     },
 };
 use akira_core::EventStream;
@@ -84,14 +84,6 @@ fn main() -> anyhow::Result<()> {
         event_stream: Arc::clone(&event_stream),
     });
 
-    let workspace_persistence = Box::new(WorkspaceRelationalPersistence::default());
-    let workspace_service = Arc::new(WorkspaceService {
-        persistence: workspace_persistence,
-        event_stream: Arc::clone(&event_stream),
-
-        workload_service: Arc::clone(&workload_service),
-    });
-
     let reconciler = Reconciler {
         assignment_service,
         deployment_service,
@@ -99,7 +91,6 @@ fn main() -> anyhow::Result<()> {
         target_service,
         template_service,
         workload_service,
-        workspace_service,
     };
 
     tracing::info!("reconciler: starting event loop");

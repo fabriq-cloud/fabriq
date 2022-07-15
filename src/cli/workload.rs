@@ -7,7 +7,6 @@ use tonic::transport::Channel;
 use tonic::Request;
 
 use crate::context::Context;
-use crate::profile::Profile;
 
 pub fn args() -> Command<'static> {
     Command::new("workload")
@@ -17,10 +16,10 @@ pub fn args() -> Command<'static> {
             Command::new("create")
                 .about("Create workload")
                 .arg(
-                    Arg::new("workspace")
+                    Arg::new("team")
                         .short('w')
-                        .long("workspace")
-                        .help("workspace this workload belongs to")
+                        .long("team")
+                        .help("team this workload belongs to")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -77,9 +76,9 @@ pub async fn handlers(
                 .value_of("NAME")
                 .expect("workload name expected")
                 .to_string();
-            let workspace_id = add_match
-                .value_of("workspace")
-                .expect("workspace id expected")
+            let team_id = add_match
+                .value_of("team")
+                .expect("team id expected")
                 .to_string();
             let template_id = add_match
                 .value_of("template")
@@ -87,9 +86,9 @@ pub async fn handlers(
                 .to_string();
 
             let request = tonic::Request::new(WorkloadMessage {
-                id: WorkloadMessage::make_id(&workspace_id, &workload_name),
+                id: WorkloadMessage::make_id(&team_id, &workload_name),
                 name: workload_name.clone(),
-                workspace_id,
+                team_id,
                 template_id,
             });
 
@@ -117,10 +116,8 @@ pub async fn handlers(
                 ));
             }
 
-            let profile = Profile::load()?;
-
             let octocrab = octocrab::OctocrabBuilder::new()
-                .personal_token(profile.pat.clone())
+                .personal_token(context.profile.pat.clone())
                 .build()?;
 
             let user = octocrab.current().user().await?;
@@ -163,7 +160,7 @@ pub async fn handlers(
                     vec![
                         workload.id.to_string(),
                         workload.name.to_string(),
-                        workload.workspace_id.clone(),
+                        workload.team_id.clone(),
                         workload.template_id,
                     ]
                 })
@@ -189,7 +186,7 @@ pub async fn handlers(
 
             ascii_table
                 .column(1)
-                .set_header("WORKSPACE ID")
+                .set_header("TEAM ID")
                 .set_align(Align::Left);
 
             ascii_table

@@ -2,8 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{workload}}-deployment
-  namespace: {{workspace}}-{{workload}}-{{deployment}}
+  namespace: {{organization}}-{{team}}-{{workload}}-{{deployment}}
   labels:
+    organization: {{organization}}
+    team: {{team}}
+    workload: {{workload}}
+    deployment: {{deployment}}
   {{#each labels as |kv|}}
     {{kv.key}}: {{kv.value}}
   {{/each}}
@@ -15,6 +19,10 @@ spec:
   template:
     metadata:
       labels:
+        organization: {{organization}}
+        team: {{team}}
+        workload: {{workload}}
+        deployment: {{deployment}}
       {{#each labels as |kv|}}
         {{kv.key}}: {{kv.value}}
       {{/each}}
@@ -34,12 +42,6 @@ spec:
           limits:
             cpu: {{cpu}}
             memory: {{memory}}
-        readinessProbe:
-          httpGet:
-            path: {{healthEndpoint}}
-            port: {{port}}
-          initialDelaySeconds: 10
-          periodSeconds: 10
         envFrom:
         - configMapRef:
               name: {{workload}}-configmap

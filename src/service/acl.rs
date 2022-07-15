@@ -14,7 +14,7 @@ pub fn authorize(req: Request<()>) -> Result<Request<()>, Status> {
         }
     };
 
-    let pat = match auth_header.to_str() {
+    let _pat = match auth_header.to_str() {
         Ok(pat) => pat,
         Err(_) => {
             return Err(Status::new(
@@ -25,8 +25,6 @@ pub fn authorize(req: Request<()>) -> Result<Request<()>, Status> {
     };
 
     // TODO: validate PAT when https://github.com/hyperium/tonic/pull/910 lands async interceptors
-
-    println!("{:#?}", pat);
 
     Ok(req)
 }

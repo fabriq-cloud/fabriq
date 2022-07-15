@@ -114,12 +114,7 @@ impl WorkloadTrait for GrpcWorkloadService {
 
         let workload_messages = workloads
             .iter()
-            .map(|workload| WorkloadMessage {
-                id: workload.id.clone(),
-                name: workload.name.clone(),
-                template_id: workload.template_id.clone(),
-                workspace_id: workload.workspace_id.clone(),
-            })
+            .map(|workload| workload.clone().into())
             .collect();
 
         let response = ListWorkloadsResponse {
@@ -146,12 +141,7 @@ impl WorkloadTrait for GrpcWorkloadService {
 
         let workload_messages = workloads
             .iter()
-            .map(|workload| WorkloadMessage {
-                id: workload.id.clone(),
-                name: workload.name.clone(),
-                template_id: workload.template_id.clone(),
-                workspace_id: workload.workspace_id.clone(),
-            })
+            .map(|workload| workload.clone().into())
             .collect();
 
         let response = ListWorkloadsResponse {

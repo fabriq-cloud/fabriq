@@ -86,6 +86,22 @@ impl ConfigTrait for MockConfigClient {
 
                 value_type: ConfigValueType::StringType as i32,
             },
+            ConfigMessage {
+                id: ConfigMessage::make_id(&workload_id, "cpu"),
+                owning_model: ConfigMessage::make_owning_model("workload", &workload_id).unwrap(),
+                key: "cpu".to_owned(),
+                value: "1000m".to_owned(),
+
+                value_type: ConfigValueType::StringType as i32,
+            },
+            ConfigMessage {
+                id: ConfigMessage::make_id(&workload_id, "memory"),
+                owning_model: ConfigMessage::make_owning_model("workload", &workload_id).unwrap(),
+                key: "memory".to_owned(),
+                value: "128M".to_owned(),
+
+                value_type: ConfigValueType::StringType as i32,
+            },
         ];
 
         Ok(Response::new(QueryConfigResponse { configs }))

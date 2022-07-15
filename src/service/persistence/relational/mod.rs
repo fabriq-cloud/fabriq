@@ -9,7 +9,6 @@ mod host;
 mod target;
 mod template;
 mod workload;
-mod workspace;
 
 pub use assignment::AssignmentRelationalPersistence;
 pub use config::ConfigRelationalPersistence;
@@ -18,7 +17,6 @@ pub use host::HostRelationalPersistence;
 pub use target::TargetRelationalPersistence;
 pub use template::TemplateRelationalPersistence;
 pub use workload::WorkloadRelationalPersistence;
-pub use workspace::WorkspaceRelationalPersistence;
 
 lazy_static! {
     pub static ref FIXTURES_CREATED: Mutex<bool> = Mutex::new(false);
@@ -28,11 +26,11 @@ lazy_static! {
 pub fn ensure_fixtures() {
     use akira_core::test::{
         get_deployment_fixture, get_host_fixture, get_target_fixture, get_template_fixture,
-        get_workload_fixture, get_workspace_fixture,
+        get_workload_fixture,
     };
 
     use crate::{
-        models::{Deployment, Host, Target, Template, Workload, Workspace},
+        models::{Deployment, Host, Target, Template, Workload},
         persistence::Persistence,
     };
 
@@ -44,17 +42,6 @@ pub fn ensure_fixtures() {
         return;
     } else {
         *fixtures_created = true;
-    }
-
-    let workspace_persistence = WorkspaceRelationalPersistence::default();
-    let workspace_fixture: Workspace = get_workspace_fixture(None).into();
-    let workspace = workspace_persistence
-        .get_by_id(&workspace_fixture.id)
-        .unwrap();
-
-    if workspace.is_none() {
-        let workspace_fixture: Workspace = get_workspace_fixture(None).into();
-        workspace_persistence.create(&workspace_fixture).unwrap();
     }
 
     let host_persistence = HostRelationalPersistence::default();
