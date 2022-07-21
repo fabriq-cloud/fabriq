@@ -18,14 +18,14 @@ Logs in with Github
 Creates PAT for CLI and stores it locally?
 Automatically creates a group for the user and makes it the default?
 
-## Seed sample node.js application
+## Seed sample node.js service
 
-Let's use a sample node.js application to see how easy it is to deploy.
+Let's use a sample node.js service to see how easy it is to deploy.
 
 Let's template out a simple service from a Github template:
 
 ```
-$ akira service template hello-service --from microsoft/nodejs-service-api
+$ akira workload template hello-service --from microsoft/nodejs-service-api
 ```
 
 This is just a convience function and we could have templated it from GitHub itself.
@@ -63,7 +63,7 @@ deployment created:
 
 We could have named this deployment by adding a `name` parameter, but by default `akira` will choose the name of the current branch of our Git repo.
 
-`[--service hello-service]` is assumed in the above because of you are running the command in the `hello-service` service repo and Akira will pull defaults from `.akira/service.yaml`.
+`[--workload hello-service]` is assumed in the above because of you are running the command in the `hello-service` service repo and Akira will pull defaults from `.akira/service.yaml`.
 
 Likewise, since we didn't override them, the deployment will inherit the same deployment template and target from the service. This is usually what you want, but you can override them, if, for example you have a very large production deployment or very small dev deployment that you want to do. (too much detail?)
 
