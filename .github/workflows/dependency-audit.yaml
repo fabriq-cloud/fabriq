@@ -18,7 +18,7 @@ jobs:
           toolchain: stable
           override: true
           components: clippy, rustfmt
-      - run: cargo audit --ignore RUSTSEC-2020-0071
+      - run: cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2020-0159
       - run: rustup toolchain install nightly
       - run: cargo install cargo-udeps --locked
       - run: cargo +nightly udeps --all-targets
