@@ -4,5 +4,5 @@ diesel migration run
 cargo test --lib --bins --tests --examples
 cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes
 cargo fmt --all -- --check
-cargo +nightly udeps
-cargo audit --ignore RUSTSEC-2020-0071
+cargo +nightly udeps --all
+cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2020-0159 --ignore RUSTSEC-2021-0139

@@ -17,17 +17,15 @@ pub fn args() -> Command<'static> {
                 .about("Create template")
                 .arg(
                     Arg::new("repo")
-                        .short('r')
                         .long("repo")
                         .help("Git repository that contains template")
                         .takes_value(true)
                         .multiple_values(false),
                 )
                 .arg(
-                    Arg::new("branch")
-                        .short('b')
-                        .long("branch")
-                        .help("Git repo branch that contains template")
+                    Arg::new("ref")
+                        .long("ref")
+                        .help("Git ref that contains template")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -74,13 +72,13 @@ pub async fn handlers(
                 .value_of("repo")
                 .expect("Repo URL expected")
                 .to_string();
-            let branch = add_match.value_of("branch").unwrap_or("main").to_string();
+            let git_ref = add_match.value_of("ref").unwrap_or("main").to_string();
             let path = add_match.value_of("path").unwrap_or("./").to_string();
 
             let request = tonic::Request::new(TemplateMessage {
                 id: id.clone(),
                 repository,
-                branch,
+                git_ref,
                 path,
             });
 
@@ -115,7 +113,7 @@ pub async fn handlers(
                     vec![
                         template.id.to_string(),
                         template.repository.clone(),
-                        template.branch.clone(),
+                        template.git_ref.clone(),
                         template.path,
                     ]
                 })

@@ -115,7 +115,7 @@ impl TemplateTrait for GrpcTemplateService {
             .map(|template| TemplateMessage {
                 id: template.id.clone(),
                 repository: template.repository.clone(),
-                branch: template.branch.clone(),
+                git_ref: template.git_ref.clone(),
                 path: template.path.clone(),
             })
             .collect();

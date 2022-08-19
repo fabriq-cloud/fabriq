@@ -45,7 +45,7 @@ table! {
     templates (id) {
         id -> Text,
         repository -> Text,
-        branch -> Text,
+        git_ref -> Text,
         path -> Text,
     }
 }

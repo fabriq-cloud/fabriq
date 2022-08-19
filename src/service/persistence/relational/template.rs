@@ -19,7 +19,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
             .do_update()
             .set((
                 repository.eq(template.repository.clone()),
-                branch.eq(template.branch.clone()),
+                git_ref.eq(template.git_ref.clone()),
                 path.eq(template.path.clone()),
             ))
             .execute(&connection)?;
@@ -37,7 +37,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
             .do_update()
             .set((
                 repository.eq(excluded(repository)),
-                branch.eq(excluded(branch)),
+                git_ref.eq(excluded(git_ref)),
                 path.eq(excluded(path)),
             ))
             .execute(&connection)?;

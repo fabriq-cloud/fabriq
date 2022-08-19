@@ -78,14 +78,24 @@ impl EventStream for MqttEventStream {
         Ok(())
     }
 
-    fn receive(&self) -> Box<dyn Iterator<Item = Option<Event>> + '_> {
-        Box::new(self.rx.iter().map(|msg| {
-            if let Some(msg) = msg {
-                Event::decode(msg.payload()).ok()
-            } else {
-                None
-            }
-        }))
+    fn receive(&self, _: &str) -> anyhow::Result<Vec<Event>> {
+        let messages: Vec<Event> = self
+            .rx
+            .iter()
+            .filter_map(|msg| {
+                if let Some(msg) = msg {
+                    Event::decode(msg.payload()).ok()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(messages)
+    }
+
+    fn delete(&self, _: &Event, _: &str) -> anyhow::Result<usize> {
+        Ok(0)
     }
 }
 
@@ -114,6 +124,8 @@ mod tests {
         let host_stream = MqttEventStream::new(&mqtt_broker_uri, "mqtt-stream-test", true).unwrap();
         let operation_id = OperationId::create();
 
+        println!("setup finished");
+
         let timestamp = Timestamp {
             seconds: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -131,17 +143,31 @@ mod tests {
             timestamp: Some(timestamp),
         };
 
+        println!("sending event");
+
         host_stream.send(&create_host_event).unwrap();
 
-        let mut received_iterator = host_stream.receive();
-        let received_event = received_iterator.next().unwrap().unwrap();
+        println!("event sent");
+
+        let received_events = host_stream.receive("").unwrap();
+
+        println!("event received");
+
+        assert_eq!(received_events.len(), 1);
+
+        let received_event = received_events.first().unwrap();
 
         assert_eq!(received_event.event_type, EventType::Created as i32);
         assert_eq!(received_event.model_type, ModelType::Host as i32);
 
-        let host: HostMessage =
-            HostMessage::decode(received_event.serialized_current_model.unwrap().as_slice())
-                .unwrap();
+        let host: HostMessage = HostMessage::decode(
+            received_event
+                .serialized_current_model
+                .as_ref()
+                .unwrap()
+                .as_slice(),
+        )
+        .unwrap();
 
         assert_eq!(host.id, "azure-eastus2-1");
     }

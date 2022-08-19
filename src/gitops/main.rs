@@ -2,7 +2,7 @@ use akira_core::{
     git::{remote::RemoteGitRepoFactory, RemoteGitRepo},
     EventStream,
 };
-use akira_mqtt_stream::MqttEventStream;
+use akira_postgresql_stream::PostgresqlEventStream;
 use context::Context;
 use dotenv::dotenv;
 use processor::GitOpsProcessor;
@@ -16,14 +16,14 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod context;
 mod processor;
 
-const DEFAULT_GITOPS_CLIENT_ID: &str = "gitops";
+const DEFAULT_GITOPS_CONSUMER_ID: &str = "gitops";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
     let tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name(DEFAULT_GITOPS_CLIENT_ID)
+        .with_service_name(DEFAULT_GITOPS_CONSUMER_ID)
         .install_simple()
         .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
 
@@ -34,15 +34,10 @@ async fn main() -> anyhow::Result<()> {
         .try_init()
         .expect("Failed to register tracer with registry");
 
-    let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
-    let gitops_client_id =
-        env::var("GITOPS_CLIENT_ID").unwrap_or_else(|_| DEFAULT_GITOPS_CLIENT_ID.to_string());
+    let gitops_consumer_id =
+        env::var("GITOPS_CONSUMER_ID").unwrap_or_else(|_| DEFAULT_GITOPS_CONSUMER_ID.to_string());
 
-    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(MqttEventStream::new(
-        &mqtt_broker_uri,
-        &gitops_client_id,
-        true,
-    )?));
+    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(PostgresqlEventStream::new()?));
 
     let repo_url = env::var("GITOPS_REPO_URL").expect("GITOPS_REPO_URL must be set");
     let repo_branch = env::var("GITOPS_REPO_BRANCH").unwrap_or_else(|_| "main".to_owned());
@@ -97,8 +92,13 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("gitops processor: starting event loop");
 
-    for event in event_stream.receive().into_iter().flatten() {
+    for event in event_stream
+        .receive(&gitops_consumer_id)
+        .into_iter()
+        .flatten()
+    {
         gitops_processor.process(&event).await?;
+        event_stream.delete(&event, &gitops_consumer_id)?;
     }
 
     Ok(())

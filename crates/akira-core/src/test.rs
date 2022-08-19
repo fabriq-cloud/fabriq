@@ -87,7 +87,7 @@ pub fn get_template_fixture(name: Option<&str>) -> TemplateMessage {
     TemplateMessage {
         id,
         repository: "git@github.com:timfpark/deployment-templates".to_owned(),
-        branch: "main".to_owned(),
+        git_ref: "main".to_owned(),
         path: "external-service".to_owned(),
     }
 }

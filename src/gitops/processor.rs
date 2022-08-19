@@ -493,7 +493,7 @@ impl GitOpsProcessor {
         // TODO: Ability to use a different private ssh key for each template
         RemoteGitRepo::new(
             &template.repository,
-            &template.branch,
+            &template.git_ref,
             &self.private_ssh_key,
         )
     }
@@ -533,7 +533,7 @@ impl GitOpsProcessor {
     ) -> anyhow::Result<()> {
         let template_repo = self.template_repo_factory.create(
             &template.repository,
-            &template.branch,
+            &template.git_ref,
             &self.private_ssh_key,
         )?;
 

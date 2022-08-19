@@ -30,7 +30,7 @@ impl TemplateTrait for MockTemplateClient {
         Ok(Response::new(TemplateMessage {
             id: "template-fixture".to_owned(),
             repository: "git@github.com:timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
+            git_ref: "main".to_owned(),
             path: "external-service".to_owned(),
         }))
     }
@@ -42,7 +42,7 @@ impl TemplateTrait for MockTemplateClient {
         let template = TemplateMessage {
             id: "external-service".to_owned(),
             repository: "git@github.com:timfpark/deployment-templates".to_owned(),
-            branch: "main".to_owned(),
+            git_ref: "main".to_owned(),
             path: "external-service".to_owned(),
         };
 

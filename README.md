@@ -1,26 +1,27 @@
 # akira
 
-A PaaS for Multicloud
-
-Let's do a walkthrough to best understand how it works
+A developer-first cloud native engineering system for GitHub.
 
 ## Install CLI
 
 One line instructions to install the CLI...
 
+```
+$ curl http://.... | bash
+```
+
 ## Login
 
 ```
-$ akira login timfpark@gmail.com
+$ akira login PAT
 ```
 
-Logs in with Github
-Creates PAT for CLI and stores it locally?
-Automatically creates a group for the user and makes it the default?
+Uses PAT to fetch user details
+Saves user details and PAT locally
 
 ## Seed sample node.js service
 
-Let's use a sample node.js service to see how easy it is to deploy.
+Let's use a sample node.js application to see how easy it is to deploy.
 
 Let's template out a simple service from a Github template:
 
@@ -28,7 +29,7 @@ Let's template out a simple service from a Github template:
 $ akira workload template hello-service --from microsoft/nodejs-service-api
 ```
 
-This is just a convience function and we could have templated it from GitHub itself.
+Behind the scenes this is just a convienence function and we could have templated it from GitHub itself.
 
 ## Seed walkthrough
 

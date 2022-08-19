@@ -23,7 +23,7 @@ version = "0.1.0"
 dependencies = [
  "akira-core",
  "akira-memory-stream",
- "akira-mqtt-stream",
+ "akira-postgresql-stream",
  "anyhow",
  "ascii_table",
  "async-trait",
@@ -31,7 +31,6 @@ dependencies = [
  "diesel",
  "dirs",
  "dotenv",
- "futures",
  "handlebars",
  "hyper",
  "lazy_static",
@@ -92,6 +91,20 @@ dependencies = [
  "anyhow",
  "bytes",
  "paho-mqtt",
+ "prost",
+ "prost-types",
+]
+
+[[package]]
+name = "akira-postgresql-stream"
+version = "0.1.0"
+dependencies = [
+ "akira-core",
+ "anyhow",
+ "bytes",
+ "diesel",
+ "dotenv",
+ "lazy_static",
  "prost",
  "prost-types",
 ]

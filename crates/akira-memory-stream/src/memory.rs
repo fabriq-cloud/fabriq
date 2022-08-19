@@ -19,6 +19,16 @@ impl MemoryEventStream {
 }
 
 impl EventStream for MemoryEventStream {
+    fn delete(&self, event: &Event, _: &str) -> anyhow::Result<usize> {
+        let mut events = self.events.lock().unwrap();
+
+        let starting_len = events.len();
+        events.retain(|e| e.operation_id != event.operation_id);
+        let deleted_count = starting_len - events.len();
+
+        Ok(deleted_count)
+    }
+
     fn send(&self, event: &Event) -> anyhow::Result<()> {
         let mut events = self.events.lock().unwrap();
 
@@ -35,10 +45,10 @@ impl EventStream for MemoryEventStream {
         Ok(())
     }
 
-    fn receive(&self) -> Box<dyn Iterator<Item = Option<Event>> + '_> {
-        let mut events = self.events.lock().unwrap();
+    fn receive(&self, _: &str) -> anyhow::Result<Vec<Event>> {
+        let events = self.events.lock().unwrap();
 
-        Box::new(events.drain(..).map(Some).collect::<Vec<_>>().into_iter())
+        Ok(events.clone().iter().cloned().collect())
     }
 }
 
@@ -82,14 +92,21 @@ mod tests {
 
         host_stream.send(&create_host_event).unwrap();
 
-        let received_event = host_stream.receive().next().unwrap().unwrap();
+        let received_events = host_stream.receive("").unwrap();
 
+        assert_eq!(received_events.len(), 1);
+
+        let received_event = received_events.first().unwrap();
         assert_eq!(received_event.event_type, EventType::Created as i32);
         assert_eq!(received_event.model_type, ModelType::Host as i32);
 
-        let host: HostMessage =
-            HostMessage::decode(received_event.serialized_current_model.unwrap().as_slice())
-                .unwrap();
+        let encoded_message = received_event
+            .serialized_current_model
+            .as_ref()
+            .unwrap()
+            .as_slice();
+
+        let host: HostMessage = HostMessage::decode(encoded_message).unwrap();
 
         assert_eq!(host.id, "azure-eastus2-1");
     }

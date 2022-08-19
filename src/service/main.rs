@@ -30,16 +30,16 @@ use akira_core::{
     WorkloadServer,
 };
 use akira_core::{ConfigServer, EventStream};
-use akira_mqtt_stream::MqttEventStream;
+use akira_postgresql_stream::PostgresqlEventStream;
 
-const DEFAULT_SERVICE_CLIENT_ID: &str = "service";
+const DEFAULT_SERVICE_CONSUMER_ID: &str = "service";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
     let tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name(DEFAULT_SERVICE_CLIENT_ID)
+        .with_service_name(DEFAULT_SERVICE_CONSUMER_ID)
         .install_simple()
         .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
 
@@ -50,13 +50,9 @@ async fn main() -> anyhow::Result<()> {
         .try_init()
         .expect("Failed to register tracer with registry");
 
-    let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
-    let reconciler_client_id =
-        env::var("RECONCILER_CLIENT_ID").unwrap_or_else(|_| DEFAULT_SERVICE_CLIENT_ID.to_string());
+    let postgresql_event_stream = PostgresqlEventStream::new()?;
 
-    let mqtt_event_stream = MqttEventStream::new(&mqtt_broker_uri, &reconciler_client_id, true)?;
-
-    let event_stream: Arc<dyn EventStream> = Arc::new(mqtt_event_stream);
+    let event_stream: Arc<dyn EventStream> = Arc::new(postgresql_event_stream);
 
     let assignment_persistence = Box::new(AssignmentRelationalPersistence::default());
     let assignment_service = Arc::new(AssignmentService {

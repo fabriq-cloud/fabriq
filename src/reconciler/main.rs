@@ -10,7 +10,7 @@ use akira::{
     },
 };
 use akira_core::EventStream;
-use akira_mqtt_stream::MqttEventStream;
+use akira_postgresql_stream::PostgresqlEventStream;
 use dotenv::dotenv;
 use std::{env, sync::Arc};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -19,13 +19,13 @@ mod reconciler;
 
 pub use reconciler::Reconciler;
 
-const DEFAULT_RECONCILER_CLIENT_ID: &str = "reconciler";
+const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";
 
 fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
     let tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name(DEFAULT_RECONCILER_CLIENT_ID)
+        .with_service_name(DEFAULT_RECONCILER_CONSUMER_ID)
         .install_simple()
         .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
 
@@ -38,15 +38,10 @@ fn main() -> anyhow::Result<()> {
 
     tracing::info!("reconciler: starting");
 
-    let mqtt_broker_uri = env::var("MQTT_BROKER_URI").expect("MQTT_BROKER_URI must be set");
-    let gitops_client_id = env::var("RECONCILER_CLIENT_ID")
-        .unwrap_or_else(|_| DEFAULT_RECONCILER_CLIENT_ID.to_string());
+    let reconciler_consumer_id = env::var("RECONCILER_CONSUMER_ID")
+        .unwrap_or_else(|_| DEFAULT_RECONCILER_CONSUMER_ID.to_string());
 
-    let event_stream: Arc<dyn EventStream> = Arc::new(MqttEventStream::new(
-        &mqtt_broker_uri,
-        &gitops_client_id,
-        true,
-    )?);
+    let event_stream: Arc<dyn EventStream> = Arc::new(PostgresqlEventStream::new()?);
 
     let assignment_persistence = Box::new(AssignmentRelationalPersistence::default());
     let assignment_service = Arc::new(AssignmentService {
@@ -95,8 +90,13 @@ fn main() -> anyhow::Result<()> {
 
     tracing::info!("reconciler: starting event loop");
 
-    for event in event_stream.receive().into_iter().flatten() {
+    for event in event_stream
+        .receive(&reconciler_consumer_id)
+        .into_iter()
+        .flatten()
+    {
         reconciler.process(&event)?;
+        event_stream.delete(&event, &reconciler_consumer_id)?;
     }
 
     opentelemetry::global::shutdown_tracer_provider();

@@ -7,7 +7,7 @@ use crate::{persistence::PersistableModel, schema::templates};
 pub struct Template {
     pub id: String, // external-service
     pub repository: String,
-    pub branch: String,
+    pub git_ref: String,
     pub path: String,
 }
 
@@ -22,7 +22,7 @@ impl From<Template> for TemplateMessage {
         Self {
             id: template.id,
             repository: template.repository,
-            branch: template.branch,
+            git_ref: template.git_ref,
             path: template.path,
         }
     }
@@ -33,7 +33,7 @@ impl From<TemplateMessage> for Template {
         Self {
             id: template.id,
             repository: template.repository,
-            branch: template.branch,
+            git_ref: template.git_ref,
             path: template.path,
         }
     }
