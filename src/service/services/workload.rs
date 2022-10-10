@@ -30,6 +30,19 @@ impl WorkloadService {
             ));
         }
 
+        if workload
+            .team_id
+            .split(WorkloadMessage::TEAM_ID_SEPARATOR)
+            .into_iter()
+            .count()
+            != 2
+        {
+            return Err(anyhow::anyhow!(
+                "invalid team id, expected format <org>/<team>, found {}",
+                workload.team_id
+            ));
+        }
+
         let template = self
             .template_service
             .get_by_id(&workload.template_id)

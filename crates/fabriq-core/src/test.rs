@@ -108,5 +108,5 @@ pub fn get_workload_fixture(name: Option<&str>) -> WorkloadMessage {
 }
 
 pub fn get_team_fixture() -> String {
-    WorkloadMessage::make_id("org-fixture", "team-fixture")
+    WorkloadMessage::make_team_id("org-fixture", "team-fixture")
 }

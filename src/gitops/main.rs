@@ -118,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
         }
 
         if events.is_empty() {
-            tokio::time::sleep(Duration::from_millis(250)).await;
+            tokio::time::sleep(Duration::from_millis(5000)).await;
         }
     }
 }

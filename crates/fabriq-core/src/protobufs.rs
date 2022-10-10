@@ -246,14 +246,18 @@ pub use workload::workload_server::{Workload as WorkloadTrait, WorkloadServer};
 pub use workload::{ListWorkloadsRequest, ListWorkloadsResponse, WorkloadMessage};
 
 impl WorkloadMessage {
-    const TEAM_ID_SEPARATOR: char = ':';
-    const WORKLOAD_ID_SEPARATOR: char = ':';
+    pub const TEAM_ID_SEPARATOR: char = ':';
+    pub const WORKLOAD_ID_SEPARATOR: char = ':';
 
     pub fn make_id(team_id: &str, workload_name: &str) -> String {
         format!(
             "{team_id}{}{workload_name}",
             WorkloadMessage::WORKLOAD_ID_SEPARATOR
         )
+    }
+
+    pub fn make_team_id(org_id: &str, team_id: &str) -> String {
+        format!("{org_id}{}{team_id}", WorkloadMessage::TEAM_ID_SEPARATOR)
     }
 
     pub fn split_team_id(team_id: &str) -> anyhow::Result<(String, String)> {

@@ -166,7 +166,7 @@ impl GitOpsProcessor {
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 self.update_deployment(&deployment, true).await?;
-                tracing::info!("deployment id {} updated", deployment.id);
+                tracing::info!("deployment id {} created", deployment.id);
             }
             event_type if event_type == EventType::Updated as i32 => {
                 self.update_deployment(&deployment, true).await?;
