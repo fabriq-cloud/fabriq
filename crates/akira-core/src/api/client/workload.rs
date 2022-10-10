@@ -30,12 +30,12 @@ impl WrappedWorkloadClient {
 
 #[tonic::async_trait]
 impl WorkloadTrait for WrappedWorkloadClient {
-    async fn create(
+    async fn upsert(
         &self,
         request: Request<WorkloadMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let mut inner = self.inner.lock().await;
-        inner.create(request).await
+        inner.upsert(request).await
     }
 
     async fn delete(

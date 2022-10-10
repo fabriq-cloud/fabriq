@@ -22,19 +22,19 @@ impl GrpcDeploymentService {
 
 #[tonic::async_trait]
 impl DeploymentTrait for GrpcDeploymentService {
-    #[tracing::instrument(name = "grpc::deployment::create")]
-    async fn create(
+    #[tracing::instrument(name = "grpc::deployment::upsert")]
+    async fn upsert(
         &self,
         request: Request<DeploymentMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let new_deployment: Deployment = request.into_inner().into();
 
-        let operation_id = match self.service.create(&new_deployment, &None) {
+        let operation_id = match self.service.upsert(&new_deployment, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
-                    tonic::Code::AlreadyExists,
-                    format!("deployment {} already exists", err),
+                    tonic::Code::InvalidArgument,
+                    format!("upserting deployment failed with {}", err),
                 ))
             }
         };
@@ -53,6 +53,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         let operation_id = match self
             .service
             .delete(&request.into_inner().deployment_id, &None)
+            .await
         {
             Ok(operation_id) => operation_id,
             Err(err) => {
@@ -72,7 +73,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         request: Request<DeploymentIdRequest>,
     ) -> Result<Response<DeploymentMessage>, Status> {
         let deployment_id = request.into_inner().deployment_id;
-        let deployment = match self.service.get_by_id(&deployment_id) {
+        let deployment = match self.service.get_by_id(&deployment_id).await {
             Ok(deployment) => deployment,
             Err(err) => {
                 tracing::error!("get target with id {}: failed: {}", deployment_id, err);
@@ -106,6 +107,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         let deployments = match self
             .service
             .get_by_template_id(&request.into_inner().template_id)
+            .await
         {
             Ok(deployments) => deployments,
             Err(err) => {
@@ -136,6 +138,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         let deployments = match self
             .service
             .get_by_workload_id(&request.into_inner().workload_id)
+            .await
         {
             Ok(deployments) => deployments,
             Err(err) => {
@@ -163,7 +166,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         &self,
         _request: Request<ListDeploymentsRequest>,
     ) -> Result<Response<ListDeploymentsResponse>, Status> {
-        let deployments = match self.service.list() {
+        let deployments = match self.service.list().await {
             Ok(deployments) => deployments,
             Err(err) => {
                 return Err(Status::new(
@@ -189,7 +192,7 @@ impl DeploymentTrait for GrpcDeploymentService {
 #[cfg(test)]
 mod tests {
     use akira_core::common::TemplateIdRequest;
-    use akira_core::test::get_deployment_fixture;
+    use akira_core::test::{get_deployment_fixture, get_target_fixture};
     use akira_core::{
         DeploymentIdRequest, DeploymentTrait, EventStream, ListDeploymentsRequest,
         WorkloadIdRequest,
@@ -200,17 +203,29 @@ mod tests {
 
     use super::GrpcDeploymentService;
 
-    use crate::persistence::memory::DeploymentMemoryPersistence;
-    use crate::services::DeploymentService;
+    use crate::models::Target;
+    use crate::persistence::memory::{DeploymentMemoryPersistence, MemoryPersistence};
+    use crate::services::{DeploymentService, TargetService};
 
     #[tokio::test]
     async fn test_create_list_deployment() -> anyhow::Result<()> {
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
+        let target_persistence = MemoryPersistence::<Target>::default();
+        let target_service = Arc::new(TargetService {
+            persistence: Box::new(target_persistence),
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let target: Target = get_target_fixture(None).into();
+        target_service.upsert(&target, &None).await.unwrap();
+
         let deployment_service = Arc::new(DeploymentService {
             persistence: deployment_persistence,
-            event_stream,
+            event_stream: Arc::clone(&event_stream),
+
+            target_service,
         });
 
         let deployment_grpc_service = GrpcDeploymentService::new(Arc::clone(&deployment_service));
@@ -220,7 +235,7 @@ mod tests {
         let request = Request::new(deployment.clone());
 
         let response = deployment_grpc_service
-            .create(request)
+            .upsert(request)
             .await
             .unwrap()
             .into_inner();

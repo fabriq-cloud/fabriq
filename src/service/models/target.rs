@@ -1,16 +1,15 @@
 use akira_core::TargetMessage;
 
-use crate::{persistence::PersistableModel, schema::targets};
+use crate::persistence::Persistable;
 
-#[derive(Clone, Debug, Default, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
-#[table_name = "targets"]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Target {
     pub id: String,
 
     pub labels: Vec<String>,
 }
 
-impl PersistableModel<Target> for Target {
+impl Persistable<Target> for Target {
     fn get_id(&self) -> String {
         self.id.clone()
     }

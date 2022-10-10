@@ -9,3 +9,5 @@ CREATE TABLE deployments (
 );
 
 CREATE INDEX deployments_target_id ON deployments(target_id);
+CREATE INDEX deployments_template_id ON deployments(template_id);
+CREATE INDEX deployments_workload_id ON deployments(workload_id);

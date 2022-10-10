@@ -29,12 +29,12 @@ impl WrappedConfigClient {
 
 #[tonic::async_trait]
 impl ConfigTrait for WrappedConfigClient {
-    async fn create(
+    async fn upsert(
         &self,
         request: Request<ConfigMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let mut inner = self.inner.lock().await;
-        inner.create(request).await
+        inner.upsert(request).await
     }
 
     async fn delete(

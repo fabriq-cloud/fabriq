@@ -4,7 +4,7 @@ package akira.assignment;
 import "common.proto";
 
 service Assignment {
-    rpc Create(AssignmentMessage) returns (akira.common.OperationId);
+    rpc Upsert(AssignmentMessage) returns (akira.common.OperationId);
     rpc Delete(akira.common.AssignmentIdRequest) returns (akira.common.OperationId);
     rpc GetByDeploymentId(akira.common.DeploymentIdRequest) returns (ListAssignmentsResponse);
     rpc List(ListAssignmentsRequest) returns (ListAssignmentsResponse);

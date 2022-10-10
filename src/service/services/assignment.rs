@@ -12,24 +12,26 @@ pub struct AssignmentService {
 
 impl AssignmentService {
     #[tracing::instrument(name = "service::assignment::create")]
-    pub fn create(
+    pub async fn upsert(
         &self,
         assignment: &Assignment,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        self.persistence.create(assignment)?;
-
         let operation_id = OperationId::unwrap_or_create(operation_id);
 
-        let create_event = create_event::<AssignmentMessage>(
-            &None,
-            &Some(assignment.clone().into()),
-            EventType::Created,
-            ModelType::Assignment,
-            &operation_id,
-        );
+        let affected_count = self.persistence.upsert(assignment).await?;
 
-        self.event_stream.send(&create_event)?;
+        if affected_count > 0 {
+            let create_event = create_event::<AssignmentMessage>(
+                &None,
+                &Some(assignment.clone().into()),
+                EventType::Created,
+                ModelType::Assignment,
+                &operation_id,
+            );
+
+            self.event_stream.send(&create_event).await?;
+        }
 
         tracing::info!("assignment created: {:?}", assignment);
 
@@ -37,45 +39,32 @@ impl AssignmentService {
     }
 
     #[tracing::instrument(name = "service::assignment::create_many")]
-    pub fn create_many(
+    pub async fn upsert_many(
         &self,
         assignments: &[Assignment],
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        self.persistence.create_many(assignments)?;
 
-        let create_assignment_events = assignments
-            .iter()
-            .map(|assignment| {
-                tracing::info!("assignment created: {:?}", assignment);
-                create_event::<AssignmentMessage>(
-                    &None,
-                    &Some(assignment.clone().into()),
-                    EventType::Created,
-                    ModelType::Assignment,
-                    &operation_id,
-                )
-            })
-            .collect::<Vec<_>>();
-
-        self.event_stream.send_many(&create_assignment_events)?;
+        for assignment in assignments {
+            self.upsert(assignment, &Some(operation_id.clone())).await?;
+        }
 
         Ok(operation_id)
     }
 
     #[tracing::instrument(name = "service::assignment::delete")]
-    pub fn delete(
+    pub async fn delete(
         &self,
         assignment_id: &str,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let assignment = match self.get_by_id(assignment_id)? {
+        let assignment = match self.get_by_id(assignment_id).await? {
             Some(assignment) => assignment,
             None => return Err(anyhow::anyhow!("Deployment id {assignment_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(assignment_id)?;
+        let deleted_count = self.persistence.delete(assignment_id).await?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Assignment id {assignment_id} not found"));
@@ -91,7 +80,7 @@ impl AssignmentService {
             &operation_id,
         );
 
-        self.event_stream.send(&delete_event)?;
+        self.event_stream.send(&delete_event).await?;
 
         tracing::info!("assignment deleted: {:?}", assignment);
 
@@ -99,49 +88,37 @@ impl AssignmentService {
     }
 
     #[tracing::instrument(name = "service::assignment::delete_many")]
-    pub fn delete_many(
+    pub async fn delete_many(
         &self,
         assignments: &[Assignment],
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        let assignment_ids = assignments
-            .iter()
-            .map(|a| a.id.as_ref())
-            .collect::<Vec<_>>();
-        self.persistence.delete_many(&assignment_ids)?;
 
-        let delete_assignment_events = assignments
-            .iter()
-            .map(|assignment| {
-                create_event::<AssignmentMessage>(
-                    &Some(assignment.clone().into()),
-                    &None,
-                    EventType::Deleted,
-                    ModelType::Assignment,
-                    &operation_id,
-                )
-            })
-            .collect::<Vec<_>>();
-
-        self.event_stream.send_many(&delete_assignment_events)?;
+        for assignment in assignments {
+            self.delete(&assignment.id, &Some(operation_id.clone()))
+                .await?;
+        }
 
         Ok(operation_id)
     }
 
     #[tracing::instrument(name = "service::assignment::get_by_id")]
-    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
-        self.persistence.get_by_id(host_id)
+    pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
+        self.persistence.get_by_id(host_id).await
     }
 
     #[tracing::instrument(name = "service::assignment::get_by_deployment_id")]
-    pub fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
-        self.persistence.get_by_deployment_id(deployment_id)
+    pub async fn get_by_deployment_id(
+        &self,
+        deployment_id: &str,
+    ) -> anyhow::Result<Vec<Assignment>> {
+        self.persistence.get_by_deployment_id(deployment_id).await
     }
 
     #[tracing::instrument(name = "service::assignment::list")]
-    pub fn list(&self) -> anyhow::Result<Vec<Assignment>> {
-        let results = self.persistence.list()?;
+    pub async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
+        let results = self.persistence.list().await?;
 
         Ok(results)
     }
@@ -154,9 +131,9 @@ mod tests {
     use akira_core::test::get_assignment_fixture;
     use akira_memory_stream::MemoryEventStream;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let assignment_persistence = AssignmentMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
@@ -168,12 +145,13 @@ mod tests {
             event_stream,
         };
 
-        let create_operation_id = assignment_service.create(&assignment, &None).unwrap();
+        let create_operation_id = assignment_service.upsert(&assignment, &None).await.unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 
         let fetched_assignment = assignment_service
             .get_by_id(&assignment.id)
+            .await
             .unwrap()
             .unwrap();
 
@@ -181,14 +159,15 @@ mod tests {
 
         let delete_operation_id = assignment_service
             .delete(&assignment.id, &Some(create_operation_id))
+            .await
             .unwrap();
 
         assert_eq!(delete_operation_id.id.len(), 36);
     }
 
-    #[test]
-    fn test_create_get_delete_many() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete_many() {
+        dotenvy::from_filename(".env.test").ok();
 
         let assignment_persistence = AssignmentMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
@@ -200,17 +179,19 @@ mod tests {
         };
 
         assignment_service
-            .create_many(&[assignment.clone()], &None)
+            .upsert_many(&[assignment.clone()], &None)
+            .await
             .unwrap();
 
-        let event_count = event_stream.receive("reconciler").unwrap().len();
+        let event_count = event_stream.receive("reconciler").await.unwrap().len();
         assert!(event_count > 0);
 
         assignment_service
             .delete_many(&[assignment], &None)
+            .await
             .unwrap();
 
-        let event_count = event_stream.receive("reconciler").unwrap().len();
+        let event_count = event_stream.receive("reconciler").await.unwrap().len();
         assert!(event_count > 0);
     }
 }

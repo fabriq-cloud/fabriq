@@ -1,9 +1,4 @@
-#[macro_use]
-extern crate diesel;
-
-mod db;
-mod event;
+mod model;
 mod postgresql;
-mod schema;
 
 pub use postgresql::PostgresqlEventStream;

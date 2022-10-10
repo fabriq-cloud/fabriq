@@ -1,24 +1,8 @@
 use akira_core::AssignmentMessage;
 
-use crate::models::{Deployment, Host};
-use crate::persistence::PersistableModel;
-use crate::schema::assignments;
+use crate::persistence::Persistable;
 
-#[derive(
-    Associations,
-    Clone,
-    Debug,
-    Default,
-    Eq,
-    Identifiable,
-    Insertable,
-    PartialEq,
-    Queryable,
-    QueryableByName,
-)]
-#[table_name = "assignments"]
-#[belongs_to(Deployment)]
-#[belongs_to(Host)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Assignment {
     pub id: String,
 
@@ -26,7 +10,7 @@ pub struct Assignment {
     pub host_id: String,
 }
 
-impl PersistableModel<Assignment> for Assignment {
+impl Persistable<Assignment> for Assignment {
     fn get_id(&self) -> String {
         self.id.clone()
     }

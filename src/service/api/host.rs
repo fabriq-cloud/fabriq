@@ -20,11 +20,11 @@ impl GrpcHostService {
 
 #[tonic::async_trait]
 impl HostTrait for GrpcHostService {
-    #[tracing::instrument(name = "grpc::host::create")]
-    async fn create(&self, request: Request<HostMessage>) -> Result<Response<OperationId>, Status> {
+    #[tracing::instrument(name = "grpc::host::upsert")]
+    async fn upsert(&self, request: Request<HostMessage>) -> Result<Response<OperationId>, Status> {
         let new_host: Host = request.into_inner().into();
 
-        let operation_id = match self.service.create(&new_host, &None) {
+        let operation_id = match self.service.upsert(&new_host, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -45,7 +45,7 @@ impl HostTrait for GrpcHostService {
         // TODO: check that no workloads are currently still using host
         // Query workload service for workloads by host_id, error if any exist
 
-        let operation_id = match self.service.delete(&request.into_inner().id, None) {
+        let operation_id = match self.service.delete(&request.into_inner().id, None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -119,7 +119,7 @@ mod tests {
         let request = Request::new(host.clone());
 
         let response = host_grpc_service
-            .create(request)
+            .upsert(request)
             .await
             .unwrap()
             .into_inner();

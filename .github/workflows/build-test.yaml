@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -28,23 +30,19 @@ jobs:
           override: true
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v1
-      - name: Install diesel
-        run: cargo install diesel_cli --no-default-features --features postgres
-        id: diesel-install
-      - name: Diesel migration
-        run: diesel migration run
-        id: diesel-migration
+
+      - name: Install SQLx
+        run: cargo install sqlx-cli
+        id: sqlx-install
+      - name: Run SQLx migration
+        run: sqlx migrate run
+        id: sqlx-migration
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - name: Start Mosquitto MQTT Broker
-        uses: namoshek/mosquitto-github-action@v1
-        with:
-          version: "1.6"
-          ports: "1883:1883 8883:8883"
-          container-name: "mqtt"
+
       - name: Test
         run: cargo test
         id: test
         env:
-          PRIVATE_SSH_KEY: ${{ secrets.PRIVATE_SSH_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PRIVATE_SSH_KEY: ${{ secrets.PRIVATE_SSH_KEY }}

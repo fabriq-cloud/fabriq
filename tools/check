@@ -1,8 +1,12 @@
 #!/bin/bash
 
-diesel migration run
-cargo test --lib --bins --tests --examples
-cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes
+cargo update
+cargo sqlx prepare
+sqlx migrate run
+cargo test --bins --tests --examples
+cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::derive_partial_eq_without_eq
 cargo fmt --all -- --check
-cargo +nightly udeps --all
-cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2020-0159 --ignore RUSTSEC-2021-0139
+rustup default nightly-2022-08-20
+cargo udeps --all --all-targets
+rustup default stable-aarch64-apple-darwin
+cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2021-0139

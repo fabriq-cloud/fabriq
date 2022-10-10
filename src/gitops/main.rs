@@ -4,9 +4,11 @@ use akira_core::{
 };
 use akira_postgresql_stream::PostgresqlEventStream;
 use context::Context;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use processor::GitOpsProcessor;
+use sqlx::postgres::PgPoolOptions;
 use std::{env, fs, sync::Arc};
+use tokio::time::Duration;
 use tonic::{
     metadata::{Ascii, MetadataValue},
     transport::Channel,
@@ -37,7 +39,22 @@ async fn main() -> anyhow::Result<()> {
     let gitops_consumer_id =
         env::var("GITOPS_CONSUMER_ID").unwrap_or_else(|_| DEFAULT_GITOPS_CONSUMER_ID.to_string());
 
-    let event_stream: Arc<Box<dyn EventStream>> = Arc::new(Box::new(PostgresqlEventStream::new()?));
+    let database_url = dotenvy::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    let db = Arc::new(
+        PgPoolOptions::new()
+            .max_connections(20)
+            .connect(&database_url)
+            .await
+            .expect("failed to connect to DATABASE_URL"),
+    );
+
+    sqlx::migrate!().run(&*db).await?;
+
+    let event_stream = PostgresqlEventStream {
+        db: Arc::clone(&db),
+        subscribers: vec![],
+    };
 
     let repo_url = env::var("GITOPS_REPO_URL").expect("GITOPS_REPO_URL must be set");
     let repo_branch = env::var("GITOPS_REPO_BRANCH").unwrap_or_else(|_| "main".to_owned());
@@ -92,14 +109,16 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("gitops processor: starting event loop");
 
-    for event in event_stream
-        .receive(&gitops_consumer_id)
-        .into_iter()
-        .flatten()
-    {
-        gitops_processor.process(&event).await?;
-        event_stream.delete(&event, &gitops_consumer_id)?;
-    }
+    loop {
+        let events = event_stream.receive(&gitops_consumer_id).await?;
 
-    Ok(())
+        for event in events.iter() {
+            gitops_processor.process(event).await?;
+            event_stream.delete(event, &gitops_consumer_id).await?;
+        }
+
+        if events.is_empty() {
+            tokio::time::sleep(Duration::from_millis(250)).await;
+        }
+    }
 }

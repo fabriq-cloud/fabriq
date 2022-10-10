@@ -1,0 +1,1000 @@
+{
+  "db": "PostgreSQL",
+  "0353bd0149fd25e32dd765d409588d18a82e0a3739a7df28ca487dc969aed870": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "labels",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM targets\n            "
+  },
+  "06ce57b5339acffc7cd82a116c12e83b5a23bf7b3ebf39e3d8ebf2c0c68e0b02": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM workloads WHERE id = $1\n            "
+  },
+  "12abcbd0a3f92a3ca1bd0ea0e208a4fe1f5198bdc1d093fb4b61977a3abc3821": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workload_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "target_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_count",
+          "ordinal": 5,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM deployments WHERE template_id = $1\n            "
+  },
+  "1519920dbe3c75aa26c490cfdae83bf6bb3331950b69b83602d6cf94640c371b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "labels",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "TextArray"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM hosts WHERE $1 <@ labels\n            "
+  },
+  "1d38d28a37a870d6354bea4a24e06827d85eeb5aaba88732d125192c469bb690": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM templates\n            "
+  },
+  "2092285ce20aac44e2e9f86a3261d3ca001d2be740a7b7f1d47f207aff4fc12b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO configs\n               (id, owning_model, key, value, value_type)\n            VALUES\n               ($1, $2, $3, $4, $5)\n            ON CONFLICT (id) DO UPDATE SET\n               owning_model = $2,\n               key = $3,\n               value = $4,\n               value_type = $5\n            "
+  },
+  "27e0f66504b47df0a193473f15112818954f62d12753e856c2269911fdaa651b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO templates\n               (id, repository, git_ref, path)\n            VALUES\n               ($1, $2, $3, $4)\n            ON CONFLICT (id) DO UPDATE SET\n               repository = $2,\n               git_ref = $3,\n               path = $4\n            "
+  },
+  "295e2f02ddd832df44a12bf71ffb2f1c0158cd1b31551a340b37c128f64ada8d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "TextArray"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO targets\n               (id, labels)\n            VALUES\n               ($1, $2)\n            ON CONFLICT (id) DO UPDATE SET\n               labels = $2\n            "
+  },
+  "2c48a1d364e90109f7b83d8d7b0a136f8e2c4fd45b9071b8426a22edd8ac9377": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "owning_model",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "key",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "value",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "value_type",
+          "ordinal": 4,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM configs WHERE id = $1"
+  },
+  "366c89b1eb9372bf4ed4f02277c02dd80ce7457f4184a4e254819a9e6983156c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "team_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM workloads WHERE template_id = $1\n            "
+  },
+  "39346d8e0f309c8373713f195f7922eba5d1914e1b7164e2e75c8c188e5e437c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_id",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM assignments\n            "
+  },
+  "396da64f3b38fcbf05ffc65145e1a85bc51354bc5cb6cf37e73156eb46f82e0d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "TextArray"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO hosts\n               (id, labels)\n            VALUES\n               ($1, $2)\n            ON CONFLICT (id) DO UPDATE SET\n               labels = $2\n            "
+  },
+  "3d69e58e6ca0f3e80370381c76908c28e1e130c10cb150f93a7d67caed179bf1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM configs WHERE id = $1\n            "
+  },
+  "4578f49996c403210c9e3b6cb3b479303f62c0482604a63aa6dd4f8d57114d6c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "labels",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM targets WHERE id = $1"
+  },
+  "4ee57a8bc4b55b9c7061fe5b72856a7e84cebb73ffa8a01644ce177873423c5f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO workloads\n               (id, name, team_id, template_id)\n            VALUES\n               ($1, $2, $3, $4)\n            ON CONFLICT (id) DO UPDATE SET\n               name = $2,\n               team_id = $3,\n               template_id = $4\n            "
+  },
+  "516fe804eb1c2d8928fb06b4098893dcb20635d801bcdc0d6f157353d48ef388": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM hosts WHERE id = $1\n            "
+  },
+  "5765d8efc00c8f1e5cb9b1e34678b3fa759a1a09259c3774427ee4d2ff1a803d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "owning_model",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "key",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "value",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "value_type",
+          "ordinal": 4,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM configs WHERE owning_model = $1\n            "
+  },
+  "5c2679306c2f6316adea2ef04702f21add629f51ebc5e0bbe63e06bb67fc8179": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM templates WHERE id = $1\n            "
+  },
+  "76fed0057bb945263023e991bbb7a0f23365d06d15e7cb275e51c048651a23b5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM assignments WHERE id = $1\n            "
+  },
+  "7787c53d691e9221e13df1b84a302b8359b1661bb9507fc2b9df430b8d00b816": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO assignments\n               (id, deployment_id, host_id)\n            VALUES\n               ($1, $2, $3)\n            ON CONFLICT (id) DO UPDATE SET\n               deployment_id = $2,\n               host_id = $3\n            "
+  },
+  "7a9172c95b15052bb8d64d6e48d6bc0090ec98ae930088b5db38c7ceeecc6e8b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workload_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "target_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_count",
+          "ordinal": 5,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM deployments WHERE id = $1"
+  },
+  "7bd83abc10fb5e59df1ad0534351d5f8a5f7a5940a663569fbede6741f8b9f64": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "team_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM workloads WHERE id = $1"
+  },
+  "7c789c1b9209d3c7b0fedba07d1a553fa09fd90a6c4d960203de6ae59d380de9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM targets WHERE id = $1\n            "
+  },
+  "83181e3dedcb5c42b1518f815ea8bd5cc86bac9d3a12c23718e8e0bb237561e4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "team_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM workloads\n            "
+  },
+  "9b99af78ca4a9ae11337eb691237f90cdc7a5aa6ad5fe69b74fc54e5614aa337": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "labels",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM hosts\n            "
+  },
+  "a04d2a5ab38170d1c048d78b72ff2ba882081a3cb28b11410d0292fd05cf0e58": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "labels",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "TextArray"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM targets WHERE $1 <@ labels\n            "
+  },
+  "a31b17ca5ba81a66cd0104a7eebf7558d22992cf48715c34ef1098c246322f44": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_id",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM assignments WHERE deployment_id = $1\n            "
+  },
+  "b9d1c2211b172cce8fa982da052637f8968f749250a754fe098ce66276dccdf2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "labels",
+          "ordinal": 1,
+          "type_info": "TextArray"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM hosts WHERE id = $1"
+  },
+  "ce2921487afc54738ea394ab248c5602d215db4e5cf61484cf7b80c84b0cfe5c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "deployment_id",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM assignments WHERE id = $1"
+  },
+  "d26b9a937bdfd80b20f47920db5ea8351847b798b0bbce29a62ee00724414fa8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "repository",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "git_ref",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "path",
+          "ordinal": 3,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM templates WHERE id = $1"
+  },
+  "d99e3e75175a09403051236d1481c5f221652b5ffddc4686efc41ea9d95922f9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workload_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "target_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_count",
+          "ordinal": 5,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM deployments WHERE workload_id = $1\n            "
+  },
+  "dd75e08395870170ef2bae2053d9cce73f4e31957d995a9da2db13537b3bd295": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM deployments WHERE id = $1\n            "
+  },
+  "e7763a4e67db3d74935a3400b6a1d2def7d09af80e3129d338826c176e151736": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "owning_model",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "key",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "value",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "value_type",
+          "ordinal": 4,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM configs\n            "
+  },
+  "e91f8bd26ce5e25356157c1dae4402605c0c0735f7b0bf9c003aaf0f50bfeaf9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Text",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n            INSERT INTO deployments\n               (id, name, workload_id, target_id, template_id, host_count)\n            VALUES\n               ($1, $2, $3, $4, $5, $6)\n            ON CONFLICT (id) DO UPDATE SET\n               name = $2,\n               workload_id = $3,\n               target_id = $4,\n               template_id = $5,\n               host_count = $6\n            "
+  },
+  "ee13e258eca1790e7a230cd545f4ed7ff925df700d616e43afa867e08e1c57de": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workload_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "target_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_count",
+          "ordinal": 5,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM deployments WHERE target_id = $1\n            "
+  },
+  "fb748e6a839a74a5017df234616633566e6b41f34f990158cc8d3e153d41eeac": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "workload_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "target_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "template_id",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "host_count",
+          "ordinal": 5,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM deployments\n            "
+  }
+}

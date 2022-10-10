@@ -9,7 +9,7 @@ pub struct MockConfigClient {}
 
 #[tonic::async_trait]
 impl ConfigTrait for MockConfigClient {
-    async fn create(
+    async fn upsert(
         &self,
         _request: Request<ConfigMessage>,
     ) -> Result<Response<OperationId>, Status> {

@@ -11,45 +11,26 @@ pub struct TemplateService {
 
 impl TemplateService {
     #[tracing::instrument(name = "service::template::create")]
-    pub fn create(
+    pub async fn upsert(
         &self,
         template: &Template,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        // TODO: Use an Error enumeration to return specific error
-
-        match self.get_by_id(&template.id)? {
-            Some(template) => {
-                return Err(anyhow::anyhow!(
-                    "Template id {} already exists",
-                    template.id
-                ))
-            }
-            None => {}
-        };
-
-        self.persistence.create(template)?;
-
-        let template = self.get_by_id(&template.id)?;
-        let template = match template {
-            Some(template) => template,
-            None => {
-                return Err(anyhow::anyhow!(
-                    "Couldn't find created template id returned"
-                ))
-            }
-        };
+        let affected_count = self.persistence.upsert(template).await?;
 
         let operation_id = OperationId::unwrap_or_create(&operation_id);
-        let create_event = create_event::<TemplateMessage>(
-            &None,
-            &Some(template.clone().into()),
-            EventType::Created,
-            ModelType::Template,
-            &operation_id,
-        );
 
-        self.event_stream.send(&create_event)?;
+        if affected_count > 0 {
+            let create_event = create_event::<TemplateMessage>(
+                &None,
+                &Some(template.clone().into()),
+                EventType::Created,
+                ModelType::Template,
+                &operation_id,
+            );
+
+            self.event_stream.send(&create_event).await?;
+        }
 
         tracing::info!("template created: {:?}", template);
 
@@ -57,22 +38,22 @@ impl TemplateService {
     }
 
     #[tracing::instrument(name = "service::template::get_by_id")]
-    pub fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Template>> {
-        self.persistence.get_by_id(host_id)
+    pub async fn get_by_id(&self, template_id: &str) -> anyhow::Result<Option<Template>> {
+        self.persistence.get_by_id(template_id).await
     }
 
     #[tracing::instrument(name = "service::template::delete")]
-    pub fn delete(
+    pub async fn delete(
         &self,
         template_id: &str,
         operation_id: Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let template = match self.get_by_id(template_id)? {
+        let template = match self.get_by_id(template_id).await? {
             Some(template) => template,
             None => return Err(anyhow::anyhow!("Template id {template_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(template_id)?;
+        let deleted_count = self.persistence.delete(template_id).await?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Template id {template_id} not found"));
@@ -87,7 +68,7 @@ impl TemplateService {
             &operation_id,
         );
 
-        self.event_stream.send(&delete_event)?;
+        self.event_stream.send(&delete_event).await?;
 
         tracing::info!("template deleted: {:?}", template);
 
@@ -95,8 +76,8 @@ impl TemplateService {
     }
 
     #[tracing::instrument(name = "service::template::list")]
-    pub fn list(&self) -> anyhow::Result<Vec<Template>> {
-        let results = self.persistence.list()?;
+    pub async fn list(&self) -> anyhow::Result<Vec<Template>> {
+        let results = self.persistence.list().await?;
 
         Ok(results)
     }
@@ -110,9 +91,9 @@ mod tests {
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let template_persistence = MemoryPersistence::<Template>::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
@@ -124,16 +105,21 @@ mod tests {
 
         let template: Template = get_template_fixture(None).into();
 
-        let create_operation_id = template_service.create(&template, None).unwrap();
+        let create_operation_id = template_service.upsert(&template, None).await.unwrap();
 
         assert_eq!(create_operation_id.id.len(), 36);
 
-        let fetched_template = template_service.get_by_id(&template.id).unwrap().unwrap();
+        let fetched_template = template_service
+            .get_by_id(&template.id)
+            .await
+            .unwrap()
+            .unwrap();
 
         assert_eq!(fetched_template.id, template.id);
 
         let delete_operation_id = template_service
             .delete(&template.id, Some(create_operation_id))
+            .await
             .unwrap();
 
         assert_eq!(delete_operation_id.id.len(), 36);

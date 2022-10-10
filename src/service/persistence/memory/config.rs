@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, MutexGuard},
@@ -5,7 +6,7 @@ use std::{
 
 use crate::{
     models::Config,
-    persistence::{ConfigPersistence, PersistableModel, Persistence},
+    persistence::{ConfigPersistence, Persistable, Persistence},
 };
 
 #[derive(Debug)]
@@ -13,8 +14,9 @@ pub struct ConfigMemoryPersistence {
     models: Arc<Mutex<HashMap<String, Config>>>,
 }
 
+#[async_trait]
 impl Persistence<Config> for ConfigMemoryPersistence {
-    fn create(&self, config: &Config) -> anyhow::Result<usize> {
+    async fn upsert(&self, config: &Config) -> anyhow::Result<u64> {
         let mut locked_configs = self.get_models_locked()?;
 
         locked_configs.insert(config.get_id(), config.clone());
@@ -22,15 +24,7 @@ impl Persistence<Config> for ConfigMemoryPersistence {
         Ok(1)
     }
 
-    fn create_many(&self, configs: &[Config]) -> anyhow::Result<usize> {
-        for (_, config) in configs.iter().enumerate() {
-            self.create(config)?;
-        }
-
-        Ok(configs.len())
-    }
-
-    fn delete(&self, config_id: &str) -> anyhow::Result<usize> {
+    async fn delete(&self, config_id: &str) -> anyhow::Result<u64> {
         let mut locked_configs = self.get_models_locked()?;
 
         locked_configs.remove_entry(&config_id.to_string());
@@ -38,15 +32,7 @@ impl Persistence<Config> for ConfigMemoryPersistence {
         Ok(1)
     }
 
-    fn delete_many(&self, config_ids: &[&str]) -> anyhow::Result<usize> {
-        for (_, config_id) in config_ids.iter().enumerate() {
-            self.delete(config_id)?;
-        }
-
-        Ok(config_ids.len())
-    }
-
-    fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
+    async fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
         let locked_configs = self.get_models_locked()?;
 
         match locked_configs.get(config_id) {
@@ -55,7 +41,7 @@ impl Persistence<Config> for ConfigMemoryPersistence {
         }
     }
 
-    fn list(&self) -> anyhow::Result<Vec<Config>> {
+    async fn list(&self) -> anyhow::Result<Vec<Config>> {
         let locked_configs = self.get_models_locked()?;
 
         let configs = locked_configs.values().cloned().collect();
@@ -64,8 +50,9 @@ impl Persistence<Config> for ConfigMemoryPersistence {
     }
 }
 
+#[async_trait]
 impl ConfigPersistence for ConfigMemoryPersistence {
-    fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
+    async fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         let locked_configs = self.get_models_locked()?;
 
         let mut configs_for_deployment = Vec::new();
@@ -79,7 +66,7 @@ impl ConfigPersistence for ConfigMemoryPersistence {
         Ok(configs_for_deployment)
     }
 
-    fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Config>> {
+    async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Config>> {
         let locked_configs = self.get_models_locked()?;
 
         let mut configs_for_template = Vec::new();
@@ -93,7 +80,7 @@ impl ConfigPersistence for ConfigMemoryPersistence {
         Ok(configs_for_template)
     }
 
-    fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
+    async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let locked_configs = self.get_models_locked()?;
 
         let mut configs_for_target = Vec::new();
@@ -127,56 +114,38 @@ impl Default for ConfigMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::{
-        get_deployment_fixture, get_keyvalue_config_fixture, get_string_config_fixture,
-        get_workload_fixture,
-    };
+    use akira_core::test::{get_string_config_fixture, get_workload_fixture};
 
     use super::*;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let workload = get_workload_fixture(None);
 
         let config_persistence = ConfigMemoryPersistence::default();
         let config: Config = get_string_config_fixture().into();
 
-        let created_count = config_persistence.create(&config).unwrap();
+        let created_count = config_persistence.upsert(&config).await.unwrap();
         assert_eq!(created_count, 1);
 
-        let fetched_config = config_persistence.get_by_id(&config.id).unwrap().unwrap();
+        let fetched_config = config_persistence
+            .get_by_id(&config.id)
+            .await
+            .unwrap()
+            .unwrap();
 
         assert_eq!(fetched_config.id, config.id);
 
-        let configs_for_workload = config_persistence.get_by_workload_id(&workload.id).unwrap();
+        let configs_for_workload = config_persistence
+            .get_by_workload_id(&workload.id)
+            .await
+            .unwrap();
 
         assert_eq!(configs_for_workload.len(), 1);
 
-        let deleted_configs = config_persistence.delete(&config.id).unwrap();
+        let deleted_configs = config_persistence.delete(&config.id).await.unwrap();
         assert_eq!(deleted_configs, 1);
-    }
-
-    #[test]
-    fn test_create_get_delete_many() {
-        dotenv::from_filename(".env.test").ok();
-
-        let config: Config = get_keyvalue_config_fixture().into();
-        let deployment = get_deployment_fixture(None);
-
-        let config_persistence = ConfigMemoryPersistence::default();
-
-        let created_count = config_persistence.create_many(&[config.clone()]).unwrap();
-        assert_eq!(created_count, 1);
-
-        let configs_for_deployment = config_persistence
-            .get_by_deployment_id(&deployment.id)
-            .unwrap();
-
-        assert_eq!(configs_for_deployment.len(), 1);
-
-        let deleted_hosts = config_persistence.delete_many(&[&config.id]).unwrap();
-        assert_eq!(deleted_hosts, 1);
     }
 }

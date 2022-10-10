@@ -1,6 +1,6 @@
-use dotenv::dotenv;
 use http::Request;
 use hyper::Body;
+use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::sync::Arc;
 use tonic::codegen::http;
@@ -36,67 +36,105 @@ const DEFAULT_SERVICE_CONSUMER_ID: &str = "service";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenv().ok();
+    dotenvy::dotenv().ok();
 
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name(DEFAULT_SERVICE_CONSUMER_ID)
         .install_simple()
-        .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
+        .expect("failed to instantiate opentelemetry tracing");
 
     tracing_subscriber::registry() //(1)
         .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
         .with(tracing_opentelemetry::layer().with_tracer(tracer)) //(3)
         .with(tracing_subscriber::fmt::layer())
         .try_init()
-        .expect("Failed to register tracer with registry");
+        .expect("failed to register tracer with registry");
 
-    let postgresql_event_stream = PostgresqlEventStream::new()?;
+    let subscribers: Vec<String> = dotenvy::var("SUBSCRIBERS")
+        .unwrap_or_else(|_| "reconciler,gitops".to_string())
+        .split(',')
+        .map(|s| s.to_string())
+        .collect();
+
+    let database_url = dotenvy::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let db = Arc::new(
+        PgPoolOptions::new()
+            .max_connections(20)
+            .connect(&database_url)
+            .await
+            .expect("failed to connect to DATABASE_URL"),
+    );
+
+    sqlx::migrate!().run(&*db).await?;
+
+    let postgresql_event_stream = PostgresqlEventStream {
+        db: Arc::clone(&db),
+        subscribers,
+    };
 
     let event_stream: Arc<dyn EventStream> = Arc::new(postgresql_event_stream);
 
-    let assignment_persistence = Box::new(AssignmentRelationalPersistence::default());
+    let assignment_persistence = Box::new(AssignmentRelationalPersistence {
+        db: Arc::clone(&db),
+    });
     let assignment_service = Arc::new(AssignmentService {
         persistence: assignment_persistence,
         event_stream: Arc::clone(&event_stream),
     });
 
-    let deployment_persistence = Box::new(DeploymentRelationalPersistence::default());
+    let target_persistence = Box::new(TargetRelationalPersistence {
+        db: Arc::clone(&db),
+    });
+    let target_service = Arc::new(TargetService {
+        persistence: target_persistence,
+        event_stream: Arc::clone(&event_stream),
+    });
+
+    let deployment_persistence = Box::new(DeploymentRelationalPersistence {
+        db: Arc::clone(&db),
+    });
     let deployment_service = Arc::new(DeploymentService {
         persistence: deployment_persistence,
         event_stream: Arc::clone(&event_stream),
+
+        target_service: Arc::clone(&target_service),
     });
 
-    let workload_persistence = Box::new(WorkloadRelationalPersistence::default());
-    let workload_service = Arc::new(WorkloadService {
-        persistence: workload_persistence,
+    let host_persistence = Box::new(HostRelationalPersistence {
+        db: Arc::clone(&db),
+    });
+    let host_service = Arc::new(HostService {
+        persistence: host_persistence,
         event_stream: Arc::clone(&event_stream),
     });
 
-    let config_persistence = Box::new(ConfigRelationalPersistence::default());
+    let template_persistence = Box::new(TemplateRelationalPersistence {
+        db: Arc::clone(&db),
+    });
+    let template_service = Arc::new(TemplateService {
+        persistence: template_persistence,
+        event_stream: Arc::clone(&event_stream),
+    });
+
+    let workload_persistence = Box::new(WorkloadRelationalPersistence {
+        db: Arc::clone(&db),
+    });
+    let workload_service = Arc::new(WorkloadService {
+        persistence: workload_persistence,
+        event_stream: Arc::clone(&event_stream),
+
+        template_service: Arc::clone(&template_service),
+    });
+
+    let config_persistence = Box::new(ConfigRelationalPersistence {
+        db: Arc::clone(&db),
+    });
     let config_service = Arc::new(ConfigService {
         persistence: config_persistence,
         event_stream: Arc::clone(&event_stream),
 
         deployment_service: Arc::clone(&deployment_service),
         workload_service: Arc::clone(&workload_service),
-    });
-
-    let host_persistence = Box::new(HostRelationalPersistence::default());
-    let host_service = Arc::new(HostService {
-        persistence: host_persistence,
-        event_stream: Arc::clone(&event_stream),
-    });
-
-    let target_persistence = Box::new(TargetRelationalPersistence::default());
-    let target_service = Arc::new(TargetService {
-        persistence: target_persistence,
-        event_stream: Arc::clone(&event_stream),
-    });
-
-    let template_persistence = Box::new(TemplateRelationalPersistence::default());
-    let template_service = Arc::new(TemplateService {
-        persistence: template_persistence,
-        event_stream: Arc::clone(&event_stream),
     });
 
     let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "[::1]:50051".to_owned());

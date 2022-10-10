@@ -16,9 +16,9 @@ pub fn args() -> Command<'static> {
             Command::new("create")
                 .about("create deployment")
                 .arg(
-                    Arg::new("workload")
-                        .long("workload")
-                        .help("workload id for deployment")
+                    Arg::new("hosts")
+                        .long("hosts")
+                        .help("host count for deployment")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -30,6 +30,13 @@ pub fn args() -> Command<'static> {
                         .multiple_values(false),
                 )
                 .arg(
+                    Arg::new("team")
+                        .long("team")
+                        .help("team name for deployment")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(
                     Arg::new("template")
                         .long("template")
                         .help("template override for deployment")
@@ -37,9 +44,9 @@ pub fn args() -> Command<'static> {
                         .multiple_values(false),
                 )
                 .arg(
-                    Arg::new("hosts")
-                        .long("hosts")
-                        .help("host count for deployment")
+                    Arg::new("workload")
+                        .long("workload")
+                        .help("workload name for deployment")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -72,21 +79,27 @@ pub async fn handlers(
         Some(("create", add_match)) => {
             let deployment_name = add_match
                 .value_of("NAME")
-                .expect("Deployment name expected")
+                .expect("deployment name expected")
                 .to_string();
-            let workload_id = add_match
+            let workload_name = add_match
                 .value_of("workload")
-                .expect("Workload ID expected")
+                .expect("workload name expected")
                 .to_string();
             let target_id = add_match
                 .value_of("target")
-                .expect("Target ID expected")
+                .expect("target expected")
+                .to_string();
+            let team = add_match
+                .value_of("team")
+                .expect("team expected")
                 .to_string();
             let template_id: Option<String> = add_match.value_of("template").map(|s| s.to_string());
             let host_count = add_match
                 .value_of("hosts")
                 .expect("hosts expected")
                 .parse::<i32>()?;
+
+            let workload_id = format!("{}:{}", team, workload_name);
 
             let request = tonic::Request::new(DeploymentMessage {
                 id: DeploymentMessage::make_id(&workload_id, &deployment_name),
@@ -97,7 +110,7 @@ pub async fn handlers(
                 template_id,
             });
 
-            client.create(request).await?;
+            client.upsert(request).await?;
 
             tracing::info!("deployment '{deployment_name}' created");
 

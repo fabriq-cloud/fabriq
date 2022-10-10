@@ -18,23 +18,25 @@ pub struct ConfigService {
 
 impl ConfigService {
     #[tracing::instrument(name = "service::config::create")]
-    pub fn create(
+    pub async fn upsert(
         &self,
         config: &Config,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        self.persistence.create(config)?;
-
+        let affected_count = self.persistence.upsert(config).await?;
         let operation_id = OperationId::unwrap_or_create(operation_id);
-        let create_event = create_event::<ConfigMessage>(
-            &None,
-            &Some(config.clone().into()),
-            EventType::Created,
-            ModelType::Config,
-            &operation_id,
-        );
 
-        self.event_stream.send(&create_event)?;
+        if affected_count > 0 {
+            let create_event = create_event::<ConfigMessage>(
+                &None,
+                &Some(config.clone().into()),
+                EventType::Created,
+                ModelType::Config,
+                &operation_id,
+            );
+
+            self.event_stream.send(&create_event).await?;
+        }
 
         tracing::info!("config created: {:?}", config);
 
@@ -42,22 +44,22 @@ impl ConfigService {
     }
 
     #[tracing::instrument(name = "service::config::get_by_id")]
-    pub fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
-        self.persistence.get_by_id(config_id)
+    pub async fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
+        self.persistence.get_by_id(config_id).await
     }
 
     #[tracing::instrument(name = "service::config::d&elete")]
-    pub fn delete(
+    pub async fn delete(
         &self,
         config_id: &str,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<OperationId> {
-        let config = match self.get_by_id(config_id)? {
+        let config = match self.get_by_id(config_id).await? {
             Some(config) => config,
             None => return Err(anyhow::anyhow!("Config id {config_id} not found")),
         };
 
-        let deleted_count = self.persistence.delete(config_id)?;
+        let deleted_count = self.persistence.delete(config_id).await?;
 
         if deleted_count == 0 {
             return Err(anyhow::anyhow!("Config id {config_id} not found"));
@@ -73,7 +75,7 @@ impl ConfigService {
             &operation_id,
         );
 
-        self.event_stream.send(&delete_event)?;
+        self.event_stream.send(&delete_event).await?;
 
         tracing::info!("config deleted: {:?}", config);
 
@@ -81,7 +83,7 @@ impl ConfigService {
     }
 
     #[tracing::instrument(name = "service::config::query")]
-    pub fn query(&self, query: &QueryConfigRequest) -> anyhow::Result<Vec<Config>> {
+    pub async fn query(&self, query: &QueryConfigRequest) -> anyhow::Result<Vec<Config>> {
         let model_name = query.model_name.as_str();
         let mut config_set = HashMap::new();
 
@@ -91,9 +93,7 @@ impl ConfigService {
 
         match model_name {
             "deployment" => {
-                println!("deployment");
-
-                let deployment = match self.deployment_service.get_by_id(&query.model_id)? {
+                let deployment = match self.deployment_service.get_by_id(&query.model_id).await? {
                     Some(deployment) => deployment,
                     None => {
                         return Err(anyhow::anyhow!(
@@ -103,11 +103,16 @@ impl ConfigService {
                     }
                 };
 
-                println!("deployment: {:#?}", deployment);
+                deployment_config = self
+                    .persistence
+                    .get_by_deployment_id(&deployment.id)
+                    .await?;
 
-                deployment_config = self.persistence.get_by_deployment_id(&deployment.id)?;
-
-                let workload = match self.workload_service.get_by_id(&deployment.workload_id)? {
+                let workload = match self
+                    .workload_service
+                    .get_by_id(&deployment.workload_id)
+                    .await?
+                {
                     Some(workload) => workload,
                     None => {
                         return Err(anyhow::anyhow!(
@@ -117,25 +122,23 @@ impl ConfigService {
                     }
                 };
 
-                println!("deployment_config: {:#?}", deployment_config);
-
                 if let Some(template_id) = deployment.template_id {
-                    template_config = self.persistence.get_by_template_id(&template_id)?;
+                    template_config = self.persistence.get_by_template_id(&template_id).await?;
                 } else {
-                    template_config = self.persistence.get_by_template_id(&workload.template_id)?;
+                    template_config = self
+                        .persistence
+                        .get_by_template_id(&workload.template_id)
+                        .await?;
                 }
-
-                println!("template_config: {:#?}", template_config);
 
                 workload_config = self
                     .persistence
-                    .get_by_workload_id(&deployment.workload_id)?;
-
-                println!("workload_config: {:#?}", workload_config);
+                    .get_by_workload_id(&deployment.workload_id)
+                    .await?;
             }
 
             "workload" => {
-                let workload = match self.workload_service.get_by_id(&query.model_id)? {
+                let workload = match self.workload_service.get_by_id(&query.model_id).await? {
                     Some(deployment) => deployment,
                     None => {
                         return Err(anyhow::anyhow!(
@@ -145,12 +148,15 @@ impl ConfigService {
                     }
                 };
 
-                workload_config = self.persistence.get_by_workload_id(&query.model_id)?;
-                template_config = self.persistence.get_by_template_id(&workload.template_id)?;
+                workload_config = self.persistence.get_by_workload_id(&query.model_id).await?;
+                template_config = self
+                    .persistence
+                    .get_by_template_id(&workload.template_id)
+                    .await?;
             }
 
             "template" => {
-                template_config = self.persistence.get_by_template_id(&query.model_id)?;
+                template_config = self.persistence.get_by_template_id(&query.model_id).await?;
             }
             _ => return Err(anyhow::anyhow!("Model type not supported")),
         }
@@ -174,13 +180,13 @@ impl ConfigService {
     }
 
     #[tracing::instrument(name = "service::config::get_by_deployment_id")]
-    pub fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
-        self.persistence.get_by_deployment_id(deployment_id)
+    pub async fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
+        self.persistence.get_by_deployment_id(deployment_id).await
     }
 
     #[tracing::instrument(name = "service::config::get_by_workload_id")]
-    pub fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
-        self.persistence.get_by_workload_id(workload_id)
+    pub async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
+        self.persistence.get_by_workload_id(workload_id).await
     }
 }
 
@@ -188,40 +194,68 @@ impl ConfigService {
 mod tests {
     use super::*;
     use crate::{
-        models::{Deployment, Workload},
+        models::{Deployment, Target, Template, Workload},
         persistence::memory::{
-            ConfigMemoryPersistence, DeploymentMemoryPersistence, WorkloadMemoryPersistence,
+            ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
+            WorkloadMemoryPersistence,
         },
+        services::{TargetService, TemplateService},
     };
     use akira_core::test::{
-        get_deployment_fixture, get_string_config_fixture, get_workload_fixture,
+        get_deployment_fixture, get_string_config_fixture, get_target_fixture,
+        get_template_fixture, get_workload_fixture,
     };
     use akira_memory_stream::MemoryEventStream;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let config_persistence = ConfigMemoryPersistence::default();
-        let event_stream = Arc::new(MemoryEventStream::new().unwrap());
+        let event_stream: Arc<dyn EventStream> = Arc::new(MemoryEventStream::new().unwrap());
+
+        let template_persistence = MemoryPersistence::<Template>::default();
+        let template_service = Arc::new(TemplateService {
+            persistence: Box::new(template_persistence),
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let template: Template = get_template_fixture(Some("template-fixture")).into();
+        let operation_id = template_service.upsert(&template, None).await.unwrap();
 
         let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
         let workload_service = Arc::new(WorkloadService {
             event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
             persistence: workload_persistence,
+
+            template_service,
         });
 
         let workload: Workload = get_workload_fixture(None).into();
-        workload_service.create(&workload, None).unwrap();
+        workload_service
+            .upsert(&workload, Some(operation_id))
+            .await
+            .unwrap();
+
+        let target_persistence = MemoryPersistence::<Target>::default();
+        let target_service = Arc::new(TargetService {
+            persistence: Box::new(target_persistence),
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let target: Target = get_target_fixture(None).into();
+        target_service.upsert(&target, &None).await.unwrap();
 
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
         let deployment_service = Arc::new(DeploymentService {
             event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
             persistence: deployment_persistence,
+
+            target_service,
         });
 
         let deployment: Deployment = get_deployment_fixture(None).into();
-        deployment_service.create(&deployment, &None).unwrap();
+        deployment_service.upsert(&deployment, &None).await.unwrap();
 
         let config_service = ConfigService {
             persistence: Box::new(config_persistence),
@@ -234,14 +268,18 @@ mod tests {
         let config: Config = get_string_config_fixture().into();
 
         let config_created_operation_id = config_service
-            .create(&config, &Some(OperationId::create()))
+            .upsert(&config, &Some(OperationId::create()))
+            .await
             .unwrap();
         assert_eq!(config_created_operation_id.id.len(), 36);
 
-        let fetched_config = config_service.get_by_id(&config.id).unwrap().unwrap();
+        let fetched_config = config_service.get_by_id(&config.id).await.unwrap().unwrap();
         assert_eq!(fetched_config.id, config.id);
 
-        let configs_by_workload = config_service.get_by_workload_id(&workload.id).unwrap();
+        let configs_by_workload = config_service
+            .get_by_workload_id(&workload.id)
+            .await
+            .unwrap();
         assert_eq!(configs_by_workload.len(), 1);
 
         let query = QueryConfigRequest {
@@ -249,10 +287,10 @@ mod tests {
             model_id: deployment.id,
         };
 
-        let config_for_deployment = config_service.query(&query).unwrap();
+        let config_for_deployment = config_service.query(&query).await.unwrap();
         assert_eq!(config_for_deployment.len(), 1);
 
-        let deleted_operation_id = config_service.delete(&config.id, &None).unwrap();
+        let deleted_operation_id = config_service.delete(&config.id, &None).await.unwrap();
         assert_eq!(deleted_operation_id.id.len(), 36);
     }
 }

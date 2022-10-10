@@ -1,9 +1,9 @@
-CREATE TABLE event_queue (
+CREATE TABLE events (
   id                         TEXT      PRIMARY KEY,
   event_timestamp            TIMESTAMP NOT NULL,
   consumer_id                TEXT      NOT NULL,
 
-  operation_id               TEXT,
+  operation_id               TEXT      NOT NULL,
   model_type                 INTEGER   NOT NULL,
 
   serialized_current_model   BYTEA,
@@ -11,5 +11,3 @@ CREATE TABLE event_queue (
 
   event_type                 INTEGER   NOT NULL
 );
-
--- CREATE INDEX event_queue_event_timestamp_idx ON event_queue(event_timestamp);

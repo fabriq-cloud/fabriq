@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, MutexGuard},
@@ -5,7 +6,7 @@ use std::{
 
 use crate::{
     models::{Host, Target},
-    persistence::{HostPersistence, PersistableModel, Persistence},
+    persistence::{HostPersistence, Persistable, Persistence},
 };
 
 #[derive(Debug)]
@@ -13,8 +14,9 @@ pub struct HostMemoryPersistence {
     models: Arc<Mutex<HashMap<String, Host>>>,
 }
 
+#[async_trait]
 impl Persistence<Host> for HostMemoryPersistence {
-    fn create(&self, host: &Host) -> anyhow::Result<usize> {
+    async fn upsert(&self, host: &Host) -> anyhow::Result<u64> {
         let mut locked_hosts = self.get_models_locked()?;
 
         locked_hosts.insert(host.get_id(), host.clone());
@@ -22,15 +24,7 @@ impl Persistence<Host> for HostMemoryPersistence {
         Ok(1)
     }
 
-    fn create_many(&self, hosts: &[Host]) -> anyhow::Result<usize> {
-        for (_, host) in hosts.iter().enumerate() {
-            self.create(host)?;
-        }
-
-        Ok(hosts.len())
-    }
-
-    fn delete(&self, host_id: &str) -> anyhow::Result<usize> {
+    async fn delete(&self, host_id: &str) -> anyhow::Result<u64> {
         let mut locked_hosts = self.get_models_locked()?;
 
         locked_hosts.remove_entry(&host_id.to_string());
@@ -38,15 +32,7 @@ impl Persistence<Host> for HostMemoryPersistence {
         Ok(1)
     }
 
-    fn delete_many(&self, host_ids: &[&str]) -> anyhow::Result<usize> {
-        for (_, host_id) in host_ids.iter().enumerate() {
-            self.delete(host_id)?;
-        }
-
-        Ok(host_ids.len())
-    }
-
-    fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
+    async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
         let locked_hosts = self.get_models_locked()?;
 
         match locked_hosts.get(host_id) {
@@ -55,7 +41,7 @@ impl Persistence<Host> for HostMemoryPersistence {
         }
     }
 
-    fn list(&self) -> anyhow::Result<Vec<Host>> {
+    async fn list(&self) -> anyhow::Result<Vec<Host>> {
         let locked_hosts = self.get_models_locked()?;
 
         let hosts = locked_hosts.values().cloned().collect();
@@ -64,8 +50,9 @@ impl Persistence<Host> for HostMemoryPersistence {
     }
 }
 
+#[async_trait]
 impl HostPersistence for HostMemoryPersistence {
-    fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
+    async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
         let locked_hosts = self.get_models_locked()?;
 
         let mut hosts_for_target = Vec::new();
@@ -109,42 +96,27 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let host_persistence = HostMemoryPersistence::default();
         let host: Host = get_host_fixture(Some("host-create")).into();
 
-        let created_count = host_persistence.create(&host).unwrap();
+        let created_count = host_persistence.upsert(&host).await.unwrap();
         assert_eq!(created_count, 1);
 
-        let fetched_host = host_persistence.get_by_id(&host.id).unwrap().unwrap();
+        let fetched_host = host_persistence.get_by_id(&host.id).await.unwrap().unwrap();
 
         assert_eq!(fetched_host.id, host.id);
 
         let target = get_target_fixture(None).into();
 
-        let hosts_for_target = host_persistence.get_matching_target(&target).unwrap();
+        let hosts_for_target = host_persistence.get_matching_target(&target).await.unwrap();
 
         assert_eq!(hosts_for_target.len(), 1);
 
-        let deleted_hosts = host_persistence.delete(&host.id).unwrap();
-        assert_eq!(deleted_hosts, 1);
-    }
-
-    #[test]
-    fn test_create_get_delete_many() {
-        dotenv::from_filename(".env.test").ok();
-
-        let host: Host = get_host_fixture(Some("host-create-many")).into();
-
-        let host_persistence = HostMemoryPersistence::default();
-
-        let created_count = host_persistence.create_many(&[host.clone()]).unwrap();
-        assert_eq!(created_count, 1);
-
-        let deleted_hosts = host_persistence.delete_many(&[&host.id]).unwrap();
+        let deleted_hosts = host_persistence.delete(&host.id).await.unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }

@@ -1,0 +1,106 @@
+{
+  "db": "PostgreSQL",
+  "3693fb99e546bf805eb679a5d58fd649300eeea8c20eb69d59498aac3dee0302": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Timestamp",
+          "Text",
+          "Text",
+          "Int4",
+          "Bytea",
+          "Bytea",
+          "Int4"
+        ]
+      }
+    },
+    "query": "\n                INSERT INTO events\n                    (id,\n\n                     event_timestamp,\n                     consumer_id,\n                     operation_id,\n                     model_type,\n\n                     serialized_current_model,\n                     serialized_previous_model,\n\n                     event_type)\n                VALUES\n                    ($1, $2, $3, $4, $5, $6, $7, $8)\n                ON CONFLICT (id) DO NOTHING\n                "
+  },
+  "43142a2e75227dd96efaef90ca072f1d3492fe0e314cf68fbe5924f66e99febe": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                DELETE FROM events\n            "
+  },
+  "4bc4f05d3b321af65018d62dbdd65e5dce769c9837fc3ca46817585b64f6ab78": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                DELETE FROM events WHERE id = $1\n            "
+  },
+  "86c1a763e37e9060359a8e880722463dc25541ce6d3d517070ffabab8e508f6c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "event_timestamp",
+          "ordinal": 1,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "consumer_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "operation_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "model_type",
+          "ordinal": 4,
+          "type_info": "Int4"
+        },
+        {
+          "name": "serialized_current_model",
+          "ordinal": 5,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "serialized_previous_model",
+          "ordinal": 6,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "event_type",
+          "ordinal": 7,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                SELECT * FROM events WHERE consumer_id = $1\n            "
+  }
+}

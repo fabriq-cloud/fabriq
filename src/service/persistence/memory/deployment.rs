@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, MutexGuard},
@@ -5,7 +6,7 @@ use std::{
 
 use crate::{
     models::Deployment,
-    persistence::{DeploymentPersistence, PersistableModel, Persistence},
+    persistence::{DeploymentPersistence, Persistable, Persistence},
 };
 
 #[derive(Debug)]
@@ -13,8 +14,9 @@ pub struct DeploymentMemoryPersistence {
     models: Arc<Mutex<HashMap<String, Deployment>>>,
 }
 
+#[async_trait]
 impl Persistence<Deployment> for DeploymentMemoryPersistence {
-    fn create(&self, deployment: &Deployment) -> anyhow::Result<usize> {
+    async fn upsert(&self, deployment: &Deployment) -> anyhow::Result<u64> {
         let mut locked_deployments = self.get_models_locked()?;
 
         locked_deployments.insert(deployment.get_id(), deployment.clone());
@@ -22,15 +24,7 @@ impl Persistence<Deployment> for DeploymentMemoryPersistence {
         Ok(1)
     }
 
-    fn create_many(&self, deployments: &[Deployment]) -> anyhow::Result<usize> {
-        for (_, deployment) in deployments.iter().enumerate() {
-            self.create(deployment)?;
-        }
-
-        Ok(deployments.len())
-    }
-
-    fn delete(&self, deployment_id: &str) -> anyhow::Result<usize> {
+    async fn delete(&self, deployment_id: &str) -> anyhow::Result<u64> {
         let mut locked_deployments = self.get_models_locked()?;
 
         locked_deployments.remove_entry(&deployment_id.to_string());
@@ -38,15 +32,7 @@ impl Persistence<Deployment> for DeploymentMemoryPersistence {
         Ok(1)
     }
 
-    fn delete_many(&self, deployment_ids: &[&str]) -> anyhow::Result<usize> {
-        for (_, deployment_id) in deployment_ids.iter().enumerate() {
-            self.delete(deployment_id)?;
-        }
-
-        Ok(deployment_ids.len())
-    }
-
-    fn get_by_id(&self, deployment_id: &str) -> anyhow::Result<Option<Deployment>> {
+    async fn get_by_id(&self, deployment_id: &str) -> anyhow::Result<Option<Deployment>> {
         let locked_deployments = self.get_models_locked()?;
 
         match locked_deployments.get(deployment_id) {
@@ -55,7 +41,7 @@ impl Persistence<Deployment> for DeploymentMemoryPersistence {
         }
     }
 
-    fn list(&self) -> anyhow::Result<Vec<Deployment>> {
+    async fn list(&self) -> anyhow::Result<Vec<Deployment>> {
         let locked_deployments = self.get_models_locked()?;
 
         let deployments = locked_deployments.values().cloned().collect();
@@ -64,8 +50,9 @@ impl Persistence<Deployment> for DeploymentMemoryPersistence {
     }
 }
 
+#[async_trait]
 impl DeploymentPersistence for DeploymentMemoryPersistence {
-    fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>> {
+    async fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let locked_deployments = self.get_models_locked()?;
 
         let mut deployments_for_target = Vec::new();
@@ -78,7 +65,7 @@ impl DeploymentPersistence for DeploymentMemoryPersistence {
         Ok(deployments_for_target)
     }
 
-    fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
+    async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let locked_deployments = self.get_models_locked()?;
 
         let mut deployments_for_template = Vec::new();
@@ -91,7 +78,7 @@ impl DeploymentPersistence for DeploymentMemoryPersistence {
         Ok(deployments_for_template)
     }
 
-    fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
+    async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let locked_deployments = self.get_models_locked()?;
 
         let mut deployments_for_workload = Vec::new();
@@ -128,18 +115,19 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let deployment_persistence = DeploymentMemoryPersistence::default();
         let deployment = get_deployment_fixture(None).into();
 
-        let created_count = deployment_persistence.create(&deployment).unwrap();
+        let created_count = deployment_persistence.upsert(&deployment).await.unwrap();
         assert_eq!(created_count, 1);
 
         let fetched_deployment = deployment_persistence
             .get_by_id(&deployment.id)
+            .await
             .unwrap()
             .unwrap();
 
@@ -147,30 +135,12 @@ mod tests {
 
         let deployments_for_target = deployment_persistence
             .get_by_target_id(&deployment.target_id)
+            .await
             .unwrap();
 
         assert_eq!(deployments_for_target.len(), 1);
 
-        let deleted_deployments = deployment_persistence.delete(&deployment.id).unwrap();
+        let deleted_deployments = deployment_persistence.delete(&deployment.id).await.unwrap();
         assert_eq!(deleted_deployments, 1);
-    }
-
-    #[test]
-    fn test_create_get_delete_many() {
-        dotenv::from_filename(".env.test").ok();
-
-        let deployment: Deployment = get_deployment_fixture(None).into();
-
-        let deployment_persistence = DeploymentMemoryPersistence::default();
-
-        let created_count = deployment_persistence
-            .create_many(&[deployment.clone()])
-            .unwrap();
-        assert_eq!(created_count, 1);
-
-        let deleted_hosts = deployment_persistence
-            .delete_many(&[&deployment.id])
-            .unwrap();
-        assert_eq!(deleted_hosts, 1);
     }
 }

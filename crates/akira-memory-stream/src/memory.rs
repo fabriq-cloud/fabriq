@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::sync::Arc;
 use std::{collections::VecDeque, sync::Mutex};
 
@@ -18,18 +19,19 @@ impl MemoryEventStream {
     }
 }
 
+#[async_trait]
 impl EventStream for MemoryEventStream {
-    fn delete(&self, event: &Event, _: &str) -> anyhow::Result<usize> {
+    async fn delete(&self, event: &Event, _: &str) -> anyhow::Result<u64> {
         let mut events = self.events.lock().unwrap();
 
         let starting_len = events.len();
         events.retain(|e| e.operation_id != event.operation_id);
         let deleted_count = starting_len - events.len();
 
-        Ok(deleted_count)
+        Ok(deleted_count as u64)
     }
 
-    fn send(&self, event: &Event) -> anyhow::Result<()> {
+    async fn send(&self, event: &Event) -> anyhow::Result<()> {
         let mut events = self.events.lock().unwrap();
 
         events.push_back(event.clone());
@@ -37,15 +39,15 @@ impl EventStream for MemoryEventStream {
         Ok(())
     }
 
-    fn send_many(&self, events: &[Event]) -> anyhow::Result<()> {
+    async fn send_many(&self, events: &[Event]) -> anyhow::Result<()> {
         for event in events.iter() {
-            self.send(event)?;
+            self.send(event).await?;
         }
 
         Ok(())
     }
 
-    fn receive(&self, _: &str) -> anyhow::Result<Vec<Event>> {
+    async fn receive(&self, _: &str) -> anyhow::Result<Vec<Event>> {
         let events = self.events.lock().unwrap();
 
         Ok(events.clone().iter().cloned().collect())
@@ -54,17 +56,15 @@ impl EventStream for MemoryEventStream {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
-
-    use prost::Message;
-
     use akira_core::{Event, EventType, HostMessage, ModelType, OperationId};
+    use prost::Message;
     use prost_types::Timestamp;
+    use std::time::SystemTime;
 
     use super::*;
 
-    #[test]
-    fn test_send_create_host_event() {
+    #[tokio::test]
+    async fn test_send_create_host_event() {
         let host = HostMessage {
             id: "azure-eastus2-1".to_owned(),
             labels: vec!["location:eastus2".to_string(), "cloud:azure".to_string()],
@@ -90,9 +90,9 @@ mod tests {
             timestamp: Some(timestamp),
         };
 
-        host_stream.send(&create_host_event).unwrap();
+        host_stream.send(&create_host_event).await.unwrap();
 
-        let received_events = host_stream.receive("").unwrap();
+        let received_events = host_stream.receive("").await.unwrap();
 
         assert_eq!(received_events.len(), 1);
 

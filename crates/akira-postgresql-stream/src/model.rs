@@ -1,19 +1,13 @@
-use std::time::SystemTime;
-
-use crate::schema::event_queue;
 use akira_core::{Event, OperationId};
-use diesel::{Associations, Identifiable, Insertable, Queryable, QueryableByName};
+use sqlx::types::chrono::NaiveDateTime;
 
-#[derive(
-    Associations, Clone, Debug, Eq, Identifiable, Insertable, PartialEq, Queryable, QueryableByName,
-)]
-#[table_name = "event_queue"]
-pub struct EventModel {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PostgreSQLEvent {
     pub id: String,
-    pub event_timestamp: SystemTime,
+    pub event_timestamp: NaiveDateTime,
     pub consumer_id: String,
 
-    pub operation_id: Option<String>,
+    pub operation_id: String,
     pub model_type: i32,
 
     pub serialized_current_model: Option<Vec<u8>>,
@@ -22,20 +16,25 @@ pub struct EventModel {
     pub event_type: i32,
 }
 
-impl EventModel {
+impl PostgreSQLEvent {
     pub fn make_id(operation_id: &str, consumer_id: &str) -> String {
         format!("{}-{}", operation_id, consumer_id)
     }
 }
 
-impl From<EventModel> for Event {
-    fn from(model: EventModel) -> Self {
+impl From<PostgreSQLEvent> for Event {
+    fn from(model: PostgreSQLEvent) -> Self {
         let operation_id = OperationId {
-            id: model.operation_id.unwrap(),
+            id: model.operation_id,
+        };
+
+        let prost_timestamp = prost_types::Timestamp {
+            seconds: model.event_timestamp.timestamp(),
+            nanos: model.event_timestamp.timestamp_subsec_nanos() as i32,
         };
 
         Self {
-            timestamp: Some(model.event_timestamp.into()),
+            timestamp: Some(prost_timestamp),
             operation_id: Some(operation_id),
             model_type: model.model_type,
             serialized_current_model: model.serialized_current_model,

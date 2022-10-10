@@ -151,7 +151,7 @@ pub async fn handlers(
                 value_type,
             });
 
-            client.create(request).await?;
+            client.upsert(request).await?;
 
             tracing::info!("config '{id}' created");
 

@@ -1,15 +1,14 @@
 use akira_core::HostMessage;
 
-use crate::{persistence::PersistableModel, schema::hosts};
+use crate::persistence::Persistable;
 
-#[derive(Clone, Debug, Default, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
-#[table_name = "hosts"]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Host {
     pub id: String,
     pub labels: Vec<String>,
 }
 
-impl PersistableModel<Host> for Host {
+impl Persistable<Host> for Host {
     fn get_id(&self) -> String {
         self.id.clone()
     }

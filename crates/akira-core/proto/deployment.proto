@@ -4,7 +4,7 @@ package akira.deployment;
 import "common.proto";
 
 service Deployment {
-    rpc Create(DeploymentMessage) returns (akira.common.OperationId);
+    rpc Upsert(DeploymentMessage) returns (akira.common.OperationId);
     rpc Delete(akira.common.DeploymentIdRequest) returns (akira.common.OperationId);
     rpc GetById(akira.common.DeploymentIdRequest) returns (DeploymentMessage);
     rpc GetByTemplateId(akira.common.TemplateIdRequest) returns (ListDeploymentsResponse);

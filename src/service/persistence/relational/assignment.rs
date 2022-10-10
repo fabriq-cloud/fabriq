@@ -1,87 +1,103 @@
-use diesel::prelude::*;
+use async_trait::async_trait;
+use sqlx::PgPool;
+use std::sync::Arc;
 
+use crate::models::Assignment;
 use crate::persistence::{AssignmentPersistence, Persistence};
-use crate::schema::assignments::table;
-use crate::{models::Assignment, schema::assignments, schema::assignments::dsl::*};
 
-#[derive(Default, Debug)]
-pub struct AssignmentRelationalPersistence {}
+#[derive(Debug)]
+pub struct AssignmentRelationalPersistence {
+    pub db: Arc<PgPool>,
+}
 
+#[async_trait]
 impl Persistence<Assignment> for AssignmentRelationalPersistence {
     #[tracing::instrument(name = "relational::assignment::create")]
-    fn create(&self, assignment: &Assignment) -> anyhow::Result<usize> {
-        let connection = crate::db::get_connection()?;
+    async fn upsert(&self, assignment: &Assignment) -> anyhow::Result<u64> {
+        let result = sqlx::query!(
+            r#"
+            INSERT INTO assignments
+               (id, deployment_id, host_id)
+            VALUES
+               ($1, $2, $3)
+            ON CONFLICT (id) DO UPDATE SET
+               deployment_id = $2,
+               host_id = $3
+            "#,
+            assignment.id,
+            assignment.deployment_id,
+            assignment.host_id
+        )
+        .execute(&*self.db)
+        .await?;
 
-        let changed = diesel::insert_into(table)
-            .values(assignment)
-            .on_conflict(id)
-            .do_nothing()
-            .execute(&connection)?;
-
-        Ok(changed)
-    }
-
-    #[tracing::instrument(name = "relational::assignment::create_many")]
-    fn create_many(&self, models: &[Assignment]) -> anyhow::Result<usize> {
-        let connection = crate::db::get_connection()?;
-
-        let results = diesel::insert_into(table)
-            .values(models)
-            .returning(assignments::id)
-            .on_conflict_do_nothing()
-            .execute(&connection)?;
-
-        Ok(results)
+        Ok(result.rows_affected())
     }
 
     #[tracing::instrument(name = "relational::assignment::delete")]
-    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
-        let connection = crate::db::get_connection()?;
+    async fn delete(&self, id: &str) -> anyhow::Result<u64> {
+        let result = sqlx::query!(
+            // language=PostgreSQL
+            r#"
+                DELETE FROM assignments WHERE id = $1
+            "#,
+            id
+        )
+        .bind(id)
+        .execute(&*self.db)
+        .await?;
 
-        Ok(diesel::delete(assignments.filter(id.eq(model_id))).execute(&connection)?)
-    }
-
-    #[tracing::instrument(name = "relational::assignment::delete_many")]
-    fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
-        for (_, model_id) in model_ids.iter().enumerate() {
-            self.delete(model_id)?;
-        }
-
-        Ok(model_ids.len())
+        Ok(result.rows_affected())
     }
 
     #[tracing::instrument(name = "relational::assignment::get_by_id")]
-    fn get_by_id(&self, assignment_id: &str) -> anyhow::Result<Option<Assignment>> {
-        let connection = crate::db::get_connection()?;
+    async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Assignment>> {
+        let supply = sqlx::query_as!(Assignment, "SELECT * FROM assignments WHERE id = $1", id)
+            .fetch_optional(&*self.db)
+            .await?;
 
-        let results = assignments
-            .filter(id.eq(assignment_id))
-            .load::<Assignment>(&connection)?;
-
-        let cloned_result = results.first().cloned();
-
-        Ok(cloned_result)
+        Ok(supply)
     }
 
     #[tracing::instrument(name = "relational::assignment::list")]
-    fn list(&self) -> anyhow::Result<Vec<Assignment>> {
-        let connection = crate::db::get_connection()?;
+    async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
+        let rows = sqlx::query_as!(
+            Assignment,
+            r#"
+                SELECT * FROM assignments
+            "#,
+        )
+        .fetch_all(&*self.db)
+        .await?;
 
-        let results = assignments.load::<Assignment>(&connection)?;
+        let models = rows
+            .into_iter()
+            .map(Assignment::from)
+            .collect::<Vec<Assignment>>();
 
-        Ok(results)
+        Ok(models)
     }
 }
 
+#[async_trait]
 impl AssignmentPersistence for AssignmentRelationalPersistence {
-    fn get_by_deployment_id(&self, deploy_id: &str) -> anyhow::Result<Vec<Assignment>> {
-        let connection = crate::db::get_connection()?;
+    async fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
+        let rows = sqlx::query_as!(
+            Assignment,
+            r#"
+                SELECT * FROM assignments WHERE deployment_id = $1
+            "#,
+            deployment_id
+        )
+        .fetch_all(&*self.db)
+        .await?;
 
-        let results = assignments
-            .filter(deployment_id.eq(deploy_id))
-            .load::<Assignment>(&connection)?;
+        let models = rows
+            .into_iter()
+            .map(Assignment::from)
+            .collect::<Vec<Assignment>>();
 
-        Ok(results)
+        Ok(models)
     }
 }
 #[cfg(test)]
@@ -90,54 +106,37 @@ mod tests {
 
     use super::*;
     use crate::models::Assignment;
+    use crate::persistence::relational::tests::ensure_fixtures;
 
-    #[test]
-    fn test_assignment_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
-        crate::persistence::relational::ensure_fixtures();
+    #[tokio::test]
+    async fn test_assignment_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
+        let db = ensure_fixtures().await;
 
-        let assignment_persistence = AssignmentRelationalPersistence::default();
+        let assignment_persistence = AssignmentRelationalPersistence { db };
         let assignment: Assignment = get_assignment_fixture(Some("assignment-create")).into();
 
         // delete assignment if it exists
-        assignment_persistence.delete(&assignment.id).unwrap();
+        assignment_persistence.delete(&assignment.id).await.unwrap();
 
-        let created_count = assignment_persistence.create(&assignment).unwrap();
+        let created_count = assignment_persistence.upsert(&assignment).await.unwrap();
         assert_eq!(created_count, 1);
 
         let fetched_assignment = assignment_persistence
             .get_by_id(&assignment.id)
+            .await
             .unwrap()
             .unwrap();
         assert_eq!(fetched_assignment.id, assignment.id);
 
         let deployment_assignments = assignment_persistence
             .get_by_deployment_id(&assignment.deployment_id)
+            .await
             .unwrap();
 
         assert!(!deployment_assignments.is_empty());
 
-        let deleted_assignments = assignment_persistence.delete(&assignment.id).unwrap();
+        let deleted_assignments = assignment_persistence.delete(&assignment.id).await.unwrap();
         assert_eq!(deleted_assignments, 1);
-    }
-
-    #[test]
-    fn test_assigment_create_get_delete_many() {
-        dotenv::from_filename(".env.test").ok();
-        crate::persistence::relational::ensure_fixtures();
-
-        let assignment_persistence = AssignmentRelationalPersistence::default();
-        let new_assignment: Assignment =
-            get_assignment_fixture(Some("assignment-create-many")).into();
-
-        let created_count = assignment_persistence
-            .create_many(&[new_assignment.clone()])
-            .unwrap();
-        assert_eq!(created_count, 1);
-
-        let deleted_count = assignment_persistence
-            .delete_many(&[&new_assignment.id])
-            .unwrap();
-        assert_eq!(deleted_count, 1);
     }
 }

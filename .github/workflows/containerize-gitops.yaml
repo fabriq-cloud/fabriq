@@ -8,6 +8,8 @@ on:
     branches:
       - main
     paths:
+      - "src/**"
+      - "proto/**"
       - "Dockerfile-gitops"
       - ".github/workflows/containerize-gitops.yaml"
 

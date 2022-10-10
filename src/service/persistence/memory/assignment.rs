@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, MutexGuard},
@@ -5,7 +6,7 @@ use std::{
 
 use crate::{
     models::Assignment,
-    persistence::{AssignmentPersistence, PersistableModel, Persistence},
+    persistence::{AssignmentPersistence, Persistable, Persistence},
 };
 
 #[derive(Debug)]
@@ -13,8 +14,9 @@ pub struct AssignmentMemoryPersistence {
     models: Arc<Mutex<HashMap<String, Assignment>>>,
 }
 
+#[async_trait]
 impl Persistence<Assignment> for AssignmentMemoryPersistence {
-    fn create(&self, assignment: &Assignment) -> anyhow::Result<usize> {
+    async fn upsert(&self, assignment: &Assignment) -> anyhow::Result<u64> {
         let mut locked_assignments = self.get_models_locked()?;
 
         locked_assignments.insert(assignment.get_id(), assignment.clone());
@@ -22,15 +24,7 @@ impl Persistence<Assignment> for AssignmentMemoryPersistence {
         Ok(1)
     }
 
-    fn create_many(&self, assignments: &[Assignment]) -> anyhow::Result<usize> {
-        for (_, assignment) in assignments.iter().enumerate() {
-            self.create(assignment)?;
-        }
-
-        Ok(assignments.len())
-    }
-
-    fn delete(&self, assignment_id: &str) -> anyhow::Result<usize> {
+    async fn delete(&self, assignment_id: &str) -> anyhow::Result<u64> {
         let mut locked_assignments = self.get_models_locked()?;
 
         locked_assignments.remove_entry(&assignment_id.to_string());
@@ -38,15 +32,7 @@ impl Persistence<Assignment> for AssignmentMemoryPersistence {
         Ok(1)
     }
 
-    fn delete_many(&self, assignment_ids: &[&str]) -> anyhow::Result<usize> {
-        for (_, assignment_id) in assignment_ids.iter().enumerate() {
-            self.delete(assignment_id)?;
-        }
-
-        Ok(assignment_ids.len())
-    }
-
-    fn get_by_id(&self, assignment_id: &str) -> anyhow::Result<Option<Assignment>> {
+    async fn get_by_id(&self, assignment_id: &str) -> anyhow::Result<Option<Assignment>> {
         let locked_assignments = self.get_models_locked()?;
 
         match locked_assignments.get(assignment_id) {
@@ -55,7 +41,7 @@ impl Persistence<Assignment> for AssignmentMemoryPersistence {
         }
     }
 
-    fn list(&self) -> anyhow::Result<Vec<Assignment>> {
+    async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
         let locked_assignments = self.get_models_locked()?;
 
         let assignments = locked_assignments.values().cloned().collect();
@@ -64,8 +50,9 @@ impl Persistence<Assignment> for AssignmentMemoryPersistence {
     }
 }
 
+#[async_trait]
 impl AssignmentPersistence for AssignmentMemoryPersistence {
-    fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
+    async fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Assignment>> {
         let locked_assignments = self.get_models_locked()?;
 
         let mut assignments_for_deployment = Vec::new();
@@ -102,18 +89,19 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let assignment_persistence = AssignmentMemoryPersistence::default();
         let assignment: Assignment = get_assignment_fixture(None).into();
 
-        let inserted_count = assignment_persistence.create(&assignment).unwrap();
+        let inserted_count = assignment_persistence.upsert(&assignment).await.unwrap();
         assert_eq!(inserted_count, 1);
 
         let fetched_assignment = assignment_persistence
             .get_by_id(&assignment.id)
+            .await
             .unwrap()
             .unwrap();
 
@@ -121,29 +109,12 @@ mod tests {
 
         let deployment_assignments = assignment_persistence
             .get_by_deployment_id(&assignment.deployment_id)
+            .await
             .unwrap();
 
         assert_eq!(deployment_assignments.len(), 1);
 
-        let deleted_assignments = assignment_persistence.delete(&assignment.id).unwrap();
+        let deleted_assignments = assignment_persistence.delete(&assignment.id).await.unwrap();
         assert_eq!(deleted_assignments, 1);
-    }
-
-    #[test]
-    fn test_create_get_delete_many() {
-        dotenv::from_filename(".env.test").ok();
-
-        let assignment_persistence = AssignmentMemoryPersistence::default();
-        let assignment: Assignment = get_assignment_fixture(None).into();
-
-        let created_count = assignment_persistence
-            .create_many(&[assignment.clone()])
-            .unwrap();
-        assert_eq!(created_count, 1);
-
-        let deleted_hosts = assignment_persistence
-            .delete_many(&[&assignment.id])
-            .unwrap();
-        assert_eq!(deleted_hosts, 1);
     }
 }

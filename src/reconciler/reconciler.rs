@@ -31,28 +31,30 @@ pub struct Reconciler {
 
 impl Reconciler {
     #[tracing::instrument]
-    pub fn process(&self, event: &Event) -> anyhow::Result<()> {
+    pub async fn process(&self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
 
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
-                self.process_assignment_event(event)
+                self.process_assignment_event(event).await
             }
             model_type if model_type == ModelType::Config as i32 => {
-                self.process_config_event(event)
+                self.process_config_event(event).await
             }
             model_type if model_type == ModelType::Deployment as i32 => {
-                self.process_deployment_event(event)
+                self.process_deployment_event(event).await
             }
-            model_type if model_type == ModelType::Host as i32 => self.process_host_event(event),
+            model_type if model_type == ModelType::Host as i32 => {
+                self.process_host_event(event).await
+            }
             model_type if model_type == ModelType::Target as i32 => {
-                self.process_target_event(event)
+                self.process_target_event(event).await
             }
             model_type if model_type == ModelType::Template as i32 => {
-                self.process_template_event(event)
+                self.process_template_event(event).await
             }
             model_type if model_type == ModelType::Workload as i32 => {
-                self.process_workload_event(event)
+                self.process_workload_event(event).await
             }
             _ => {
                 let msg = format!("unhandled model type: {}", model_type);
@@ -64,37 +66,36 @@ impl Reconciler {
     }
 
     #[tracing::instrument]
-    fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
         Ok(())
     }
 
     #[tracing::instrument]
-    fn process_config_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_config_event(&self, event: &Event) -> anyhow::Result<()> {
         Ok(())
     }
 
     #[tracing::instrument]
-    fn process_workspace_event(&self, event: &Event) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    #[tracing::instrument]
-    fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
         let workload = Self::get_current_or_previous_model::<WorkloadMessage, Workload>(event)?;
-        let deployments = self.deployment_service.get_by_workload_id(&workload.id)?;
+        let deployments = self
+            .deployment_service
+            .get_by_workload_id(&workload.id)
+            .await?;
         for deployment in deployments {
             self.process_deployment_event_impl(
                 &deployment,
                 deployment.host_count as usize,
                 &event.operation_id,
-            )?;
+            )
+            .await?;
         }
 
         Ok(())
     }
 
     #[tracing::instrument]
-    fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
         let deployment =
             Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
 
@@ -105,15 +106,16 @@ impl Reconciler {
         };
 
         self.process_deployment_event_impl(&deployment, desired_host_count, &event.operation_id)
+            .await
     }
 
-    pub fn process_deployment_event_impl(
+    pub async fn process_deployment_event_impl(
         &self,
         deployment: &Deployment,
         desired_host_count: usize,
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<()> {
-        let target = self.target_service.get_by_id(&deployment.target_id)?;
+        let target = self.target_service.get_by_id(&deployment.target_id).await?;
         let target = match target {
             Some(target) => target,
             None => {
@@ -124,11 +126,12 @@ impl Reconciler {
             }
         };
 
-        let target_matching_hosts = self.host_service.get_matching_target(&target)?;
+        let target_matching_hosts = self.host_service.get_matching_target(&target).await?;
 
         let existing_assignments = self
             .assignment_service
-            .get_by_deployment_id(&deployment.id)?;
+            .get_by_deployment_id(&deployment.id)
+            .await?;
 
         // compute assigments to create and delete
 
@@ -142,21 +145,26 @@ impl Reconciler {
         // persist changes
 
         self.assignment_service
-            .create_many(&assignments_to_create, operation_id)?;
+            .upsert_many(&assignments_to_create, operation_id)
+            .await?;
 
         self.assignment_service
-            .delete_many(&assignments_to_delete, operation_id)?;
+            .delete_many(&assignments_to_delete, operation_id)
+            .await?;
 
         Ok(())
     }
 
     #[tracing::instrument]
-    fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
         let mut spanning_target_set: HashMap<String, Target> = HashMap::new();
 
         if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
             let previous_host = HostMessage::decode(&*serialized_previous_model)?.into();
-            let previous_targets = self.target_service.get_matching_host(&previous_host)?;
+            let previous_targets = self
+                .target_service
+                .get_matching_host(&previous_host)
+                .await?;
 
             for target in previous_targets {
                 spanning_target_set.insert(target.id.clone(), target);
@@ -165,7 +173,7 @@ impl Reconciler {
 
         if let Some(serialized_current_model) = event.serialized_current_model.clone() {
             let current_host = HostMessage::decode(&*serialized_current_model)?.into();
-            let current_targets = self.target_service.get_matching_host(&current_host)?;
+            let current_targets = self.target_service.get_matching_host(&current_host).await?;
 
             for target in current_targets {
                 spanning_target_set.insert(target.id.clone(), target);
@@ -174,25 +182,27 @@ impl Reconciler {
 
         let spanning_targets = spanning_target_set.values().cloned().collect::<Vec<_>>();
 
-        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)?;
+        self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
+            .await?;
 
         Ok(())
     }
 
-    fn update_deployments_for_targets(
+    async fn update_deployments_for_targets(
         &self,
         targets: &[Target],
         operation_id: &Option<OperationId>,
     ) -> anyhow::Result<()> {
         for target in targets {
-            let deployments = self.deployment_service.get_by_target_id(&target.id)?;
+            let deployments = self.deployment_service.get_by_target_id(&target.id).await?;
 
             for deployment in deployments {
                 self.process_deployment_event_impl(
                     &deployment,
                     deployment.host_count as usize,
                     operation_id,
-                )?;
+                )
+                .await?;
             }
         }
 
@@ -218,13 +228,19 @@ impl Reconciler {
     }
 
     #[tracing::instrument]
-    fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
         let template = Self::get_current_or_previous_model::<TemplateMessage, Template>(event)?;
         let mut spanning_deployments_set: HashMap<String, Deployment> = HashMap::new();
 
-        let workloads = self.workload_service.get_by_template_id(&template.id)?;
+        let workloads = self
+            .workload_service
+            .get_by_template_id(&template.id)
+            .await?;
         for workload in workloads {
-            let deployments = self.deployment_service.get_by_workload_id(&workload.id)?;
+            let deployments = self
+                .deployment_service
+                .get_by_workload_id(&workload.id)
+                .await?;
             for deployment in deployments {
                 // we will pull in deployments with this template_id as an override below
                 if deployment.template_id.is_none() {
@@ -233,7 +249,10 @@ impl Reconciler {
             }
         }
 
-        let deployments = self.deployment_service.get_by_template_id(&template.id)?;
+        let deployments = self
+            .deployment_service
+            .get_by_template_id(&template.id)
+            .await?;
 
         for deployment in deployments {
             spanning_deployments_set.insert(deployment.id.clone(), deployment);
@@ -249,7 +268,8 @@ impl Reconciler {
                 &deployment,
                 deployment.host_count as usize,
                 &event.operation_id,
-            )?;
+            )
+            .await?;
         }
 
         Ok(())
@@ -258,7 +278,7 @@ impl Reconciler {
     }
 
     #[tracing::instrument]
-    fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
+    async fn process_target_event(&self, event: &Event) -> anyhow::Result<()> {
         let mut spanning_targets: Vec<Target> = Vec::new();
 
         if let Some(serialized_previous_model) = event.serialized_previous_model.clone() {
@@ -272,6 +292,7 @@ impl Reconciler {
         }
 
         self.update_deployments_for_targets(&spanning_targets, &event.operation_id)
+            .await
     }
 
     pub fn compute_assignment_changes(
@@ -372,7 +393,7 @@ mod tests {
 
     use super::*;
 
-    fn create_reconciler_fixture() -> anyhow::Result<Reconciler> {
+    async fn create_reconciler_fixture() -> anyhow::Result<Reconciler> {
         let event_stream: Arc<dyn EventStream> = Arc::new(MemoryEventStream::new()?);
 
         let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
@@ -381,21 +402,26 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
         });
 
+        let target_persistence = Box::new(MemoryPersistence::<Target>::default());
+        let target_service = Arc::new(TargetService {
+            persistence: target_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let target: Target = get_target_fixture(Some("target-fixture")).into();
+        target_service.upsert(&target, &None).await.unwrap();
+
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
         let deployment_service = Arc::new(DeploymentService {
             persistence: deployment_persistence,
             event_stream: Arc::clone(&event_stream),
+
+            target_service: Arc::clone(&target_service),
         });
 
         let host_persistence = Box::new(HostMemoryPersistence::default());
         let host_service = Arc::new(HostService {
             persistence: host_persistence,
-            event_stream: Arc::clone(&event_stream),
-        });
-
-        let target_persistence = Box::new(MemoryPersistence::<Target>::default());
-        let target_service = Arc::new(TargetService {
-            persistence: target_persistence,
             event_stream: Arc::clone(&event_stream),
         });
 
@@ -409,6 +435,8 @@ mod tests {
         let workload_service = Arc::new(WorkloadService {
             persistence: workload_persistence,
             event_stream: Arc::clone(&event_stream),
+
+            template_service: Arc::clone(&template_service),
         });
 
         let reconciler = Reconciler {
@@ -421,35 +449,44 @@ mod tests {
         };
 
         let host1 = get_host_fixture(Some("host1-id")).into();
-        reconciler.host_service.create(&host1, &None).unwrap();
+        reconciler.host_service.upsert(&host1, &None).await.unwrap();
 
         let host2 = Host {
             id: "host2-id".to_owned(),
             labels: vec!["region:westus2".to_owned(), "cloud:azure".to_owned()],
         };
-        reconciler.host_service.create(&host2, &None).unwrap();
+        reconciler.host_service.upsert(&host2, &None).await.unwrap();
 
         let host3 = get_host_fixture(Some("host3-id")).into();
-        reconciler.host_service.create(&host3, &None).unwrap();
+        reconciler.host_service.upsert(&host3, &None).await.unwrap();
 
         let deployment = get_deployment_fixture(None).into();
         reconciler
             .deployment_service
-            .create(&deployment, &None)
+            .upsert(&deployment, &None)
+            .await
             .unwrap();
 
         let target = get_target_fixture(None).into();
-        reconciler.target_service.create(&target, &None).unwrap();
+        reconciler
+            .target_service
+            .upsert(&target, &None)
+            .await
+            .unwrap();
 
         let template = get_template_fixture(None).into();
-        reconciler.template_service.create(&template, None).unwrap();
+        reconciler
+            .template_service
+            .upsert(&template, None)
+            .await
+            .unwrap();
 
         Ok(reconciler)
     }
 
-    #[test]
-    fn test_process_deployment_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
+    #[tokio::test]
+    async fn test_process_deployment_event() {
+        let reconciler = create_reconciler_fixture().await.unwrap();
 
         let operation_id = OperationId::create();
 
@@ -463,16 +500,16 @@ mod tests {
             &operation_id,
         );
 
-        reconciler.process(&event).unwrap();
+        reconciler.process(&event).await.unwrap();
 
-        let assignments = reconciler.assignment_service.list().unwrap();
+        let assignments = reconciler.assignment_service.list().await.unwrap();
 
         assert_eq!(assignments.len(), 2);
     }
 
-    #[test]
-    fn test_process_host_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
+    #[tokio::test]
+    async fn test_process_host_event() {
+        let reconciler = create_reconciler_fixture().await.unwrap();
 
         let host4 = Host {
             id: "host4-id".to_owned(),
@@ -489,9 +526,9 @@ mod tests {
             &operation_id,
         );
 
-        reconciler.process(&event).unwrap();
+        reconciler.process(&event).await.unwrap();
 
-        let assignments = reconciler.assignment_service.list().unwrap();
+        let assignments = reconciler.assignment_service.list().await.unwrap();
 
         assert_eq!(assignments.len(), 0);
 
@@ -508,9 +545,9 @@ mod tests {
             &operation_id,
         );
 
-        reconciler.process(&event).unwrap();
+        reconciler.process(&event).await.unwrap();
 
-        let assignments = reconciler.assignment_service.list().unwrap();
+        let assignments = reconciler.assignment_service.list().await.unwrap();
 
         assert_eq!(assignments.len(), 2);
 
@@ -519,35 +556,39 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_process_target_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
+    #[tokio::test]
+    async fn test_process_target_event() {
+        let reconciler = create_reconciler_fixture().await.unwrap();
 
-        let target = get_target_fixture(None);
+        let target_message = get_target_fixture(None);
 
         let operation_id = OperationId::create();
 
         let event = create_event::<TargetMessage>(
             &None,
-            &Some(target),
+            &Some(target_message),
             EventType::Created,
             ModelType::Target,
             &operation_id,
         );
 
-        reconciler.process(&event).unwrap();
+        reconciler.process(&event).await.unwrap();
 
-        let assignments = reconciler.assignment_service.list().unwrap();
+        let assignments = reconciler.assignment_service.list().await.unwrap();
 
         assert_eq!(assignments.len(), 2);
     }
 
-    #[test]
-    fn test_process_workload_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
+    #[tokio::test]
+    async fn test_process_workload_event() {
+        let reconciler = create_reconciler_fixture().await.unwrap();
 
         let workload = get_workload_fixture(None).into();
-        reconciler.workload_service.create(&workload, None).unwrap();
+        reconciler
+            .workload_service
+            .upsert(&workload, None)
+            .await
+            .unwrap();
 
         let operation_id = OperationId::create();
 
@@ -559,16 +600,16 @@ mod tests {
             &operation_id,
         );
 
-        reconciler.process(&event).unwrap();
+        reconciler.process(&event).await.unwrap();
 
-        let assignments = reconciler.assignment_service.list().unwrap();
+        let assignments = reconciler.assignment_service.list().await.unwrap();
 
         assert_eq!(assignments.len(), 2);
     }
 
-    #[test]
-    fn test_process_template_event() {
-        let reconciler = create_reconciler_fixture().unwrap();
+    #[tokio::test]
+    async fn test_process_template_event() {
+        let reconciler = create_reconciler_fixture().await.unwrap();
 
         let operation_id = OperationId::create();
 
@@ -582,9 +623,9 @@ mod tests {
             &operation_id,
         );
 
-        reconciler.process(&event).unwrap();
+        reconciler.process(&event).await.unwrap();
 
-        let assignments = reconciler.assignment_service.list().unwrap();
+        let assignments = reconciler.assignment_service.list().await.unwrap();
 
         assert_eq!(assignments.len(), 2);
     }

@@ -486,7 +486,7 @@ impl GitOpsProcessor {
     }
 
     #[tracing::instrument]
-    async fn fetch_template_repo(
+    async fn _fetch_template_repo(
         &self,
         template: &TemplateMessage,
     ) -> anyhow::Result<impl GitRepo> {

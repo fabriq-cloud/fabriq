@@ -67,7 +67,7 @@ pub async fn handlers(
                 labels,
             });
 
-            client.create(request).await?;
+            client.upsert(request).await?;
 
             tracing::info!("host '{id}' created");
 

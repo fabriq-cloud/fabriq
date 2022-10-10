@@ -1,20 +1,8 @@
 use akira_core::ConfigMessage;
 
-use crate::{persistence::PersistableModel, schema::configs};
+use crate::persistence::Persistable;
 
-#[derive(
-    Associations,
-    Clone,
-    Debug,
-    Default,
-    Eq,
-    Identifiable,
-    Insertable,
-    PartialEq,
-    Queryable,
-    QueryableByName,
-)]
-#[table_name = "configs"]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub id: String,
 
@@ -26,7 +14,7 @@ pub struct Config {
     pub value_type: i32,
 }
 
-impl PersistableModel<Config> for Config {
+impl Persistable<Config> for Config {
     fn get_id(&self) -> String {
         self.id.clone()
     }

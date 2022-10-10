@@ -4,7 +4,7 @@ package akira.target;
 import "common.proto";
 
 service Target {
-    rpc Create(TargetMessage) returns (akira.common.OperationId);
+    rpc Upsert(TargetMessage) returns (akira.common.OperationId);
     rpc Delete(akira.common.TargetIdRequest) returns (akira.common.OperationId);
     rpc GetById(akira.common.TargetIdRequest) returns (TargetMessage);
     rpc List(ListTargetsRequest) returns (ListTargetsResponse);

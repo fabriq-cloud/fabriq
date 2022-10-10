@@ -4,7 +4,7 @@ package akira.host;
 import "common.proto";
 
 service Host {
-    rpc Create(HostMessage) returns (akira.common.OperationId);
+    rpc Upsert(HostMessage) returns (akira.common.OperationId);
     rpc Delete(DeleteHostRequest) returns (akira.common.OperationId);
     rpc List(ListHostsRequest) returns (ListHostsResponse);
 }

@@ -17,7 +17,7 @@ pub fn args() -> Command<'static> {
                 .about("Create workload")
                 .arg(
                     Arg::new("team")
-                        .short('w')
+                        .short('m')
                         .long("team")
                         .help("team this workload belongs to")
                         .takes_value(true)
@@ -92,7 +92,7 @@ pub async fn handlers(
                 template_id,
             });
 
-            client.create(request).await?;
+            client.upsert(request).await?;
 
             tracing::info!("workload '{workload_name}' created");
 
@@ -180,17 +180,17 @@ pub async fn handlers(
                 .set_align(Align::Left);
 
             ascii_table
-                .column(0)
+                .column(1)
                 .set_header("NAME")
                 .set_align(Align::Left);
 
             ascii_table
-                .column(1)
+                .column(2)
                 .set_header("TEAM ID")
                 .set_align(Align::Left);
 
             ascii_table
-                .column(2)
+                .column(3)
                 .set_header("TEMPLATE ID")
                 .set_align(Align::Left);
 

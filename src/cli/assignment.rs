@@ -74,7 +74,7 @@ pub async fn handlers(
                 host_id,
             });
 
-            client.create(request).await?;
+            client.upsert(request).await?;
 
             tracing::info!("assignment '{id}' created");
 

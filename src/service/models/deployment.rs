@@ -1,36 +1,18 @@
 use akira_core::DeploymentMessage;
-use diesel::sql_types::Integer;
 
-use super::{Target, Workload};
-use crate::{persistence::PersistableModel, schema::deployments};
+use crate::persistence::Persistable;
 
-#[derive(
-    Associations,
-    Clone,
-    Debug,
-    Default,
-    Eq,
-    Identifiable,
-    Insertable,
-    PartialEq,
-    Queryable,
-    QueryableByName,
-)]
-#[table_name = "deployments"]
-#[belongs_to(Workload)]
-#[belongs_to(Target)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Deployment {
     pub id: String,
     pub name: String,
     pub workload_id: String,
     pub target_id: String,
     pub template_id: Option<String>,
-
-    #[sql_type = "Integer"]
     pub host_count: i32,
 }
 
-impl PersistableModel<Deployment> for Deployment {
+impl Persistable<Deployment> for Deployment {
     fn get_id(&self) -> String {
         self.id.clone()
     }

@@ -29,18 +29,5 @@ jobs:
           components: clippy, rustfmt
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v1
-      - run: cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes -A clippy::derive_partial_eq_without_eq
+      - run: SQLX_OFFLINE=true cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes -A clippy::derive_partial_eq_without_eq
       - run: cargo fmt --all -- --check
-      - name: Run doctest only
-        # we run doctests here as cargo tarpaulin (our test runner)
-        # requires nightly toolchain to do so
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace --doc
-      - name: Run cargo doc
-        # This step is required to detect possible errors in docs that are not doctests.
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --workspace --no-deps # Warnings are treated as errors due to our .cargo/config file.

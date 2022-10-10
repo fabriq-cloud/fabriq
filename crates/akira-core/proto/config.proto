@@ -4,7 +4,7 @@ package akira.config;
 import "common.proto";
 
 service Config {
-    rpc Create(ConfigMessage) returns (akira.common.OperationId);
+    rpc Upsert(ConfigMessage) returns (akira.common.OperationId);
     rpc Delete(ConfigIdRequest) returns (akira.common.OperationId);
     rpc Query(QueryConfigRequest) returns (QueryConfigResponse);
 }

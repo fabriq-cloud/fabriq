@@ -213,7 +213,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_clone_repo() {
-        dotenv::from_filename(".env.test").ok();
+        dotenvy::from_filename(".env.test").ok();
 
         let branch = "main";
         let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");

@@ -1,23 +1,26 @@
+use async_trait::async_trait;
 use std::{
     collections::HashMap,
     fmt::Debug,
     sync::{Arc, Mutex, MutexGuard},
 };
 
-use crate::persistence::{PersistableModel, Persistence};
+use crate::persistence::{Persistable, Persistence};
 
 #[derive(Debug)]
 pub struct MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model>,
+    Model: Persistable<Model>,
 {
     models: Arc<Mutex<HashMap<String, Model>>>,
 }
+
+#[async_trait]
 impl<Model> Persistence<Model> for MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model>,
+    Model: Persistable<Model>,
 {
-    fn create(&self, model: &Model) -> anyhow::Result<usize> {
+    async fn upsert(&self, model: &Model) -> anyhow::Result<u64> {
         let mut locked_models = self.get_models_locked()?;
 
         locked_models.insert(model.get_id(), model.clone());
@@ -25,15 +28,7 @@ where
         Ok(1)
     }
 
-    fn create_many(&self, models: &[Model]) -> anyhow::Result<usize> {
-        for model in models.iter() {
-            self.create(model)?;
-        }
-
-        Ok(models.len())
-    }
-
-    fn delete(&self, model_id: &str) -> anyhow::Result<usize> {
+    async fn delete(&self, model_id: &str) -> anyhow::Result<u64> {
         let mut locked_models = self.get_models_locked()?;
 
         locked_models.remove_entry(&model_id.to_string());
@@ -41,15 +36,7 @@ where
         Ok(1)
     }
 
-    fn delete_many(&self, model_ids: &[&str]) -> anyhow::Result<usize> {
-        for (_, model_id) in model_ids.iter().enumerate() {
-            self.delete(model_id)?;
-        }
-
-        Ok(model_ids.len())
-    }
-
-    fn list(&self) -> anyhow::Result<Vec<Model>> {
+    async fn list(&self) -> anyhow::Result<Vec<Model>> {
         let locked_models = self.get_models_locked()?;
 
         let models = locked_models.values().cloned().collect();
@@ -57,7 +44,7 @@ where
         Ok(models)
     }
 
-    fn get_by_id(&self, model_id: &str) -> anyhow::Result<Option<Model>> {
+    async fn get_by_id(&self, model_id: &str) -> anyhow::Result<Option<Model>> {
         let locked_models = self.get_models_locked()?;
 
         match locked_models.get(model_id) {
@@ -69,7 +56,7 @@ where
 
 impl<Model> Default for MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model>,
+    Model: Persistable<Model>,
 {
     fn default() -> Self {
         Self {
@@ -80,7 +67,7 @@ where
 
 impl<Model> MemoryPersistence<Model>
 where
-    Model: PersistableModel<Model>,
+    Model: Persistable<Model>,
 {
     fn get_models_locked(&self) -> anyhow::Result<MutexGuard<HashMap<String, Model>>> {
         match self.models.lock() {
@@ -98,34 +85,21 @@ mod tests {
 
     use crate::models::Host;
 
-    #[test]
-    fn test_create_get_delete() {
-        dotenv::from_filename(".env.test").ok();
+    #[tokio::test]
+    async fn test_create_get_delete() {
+        dotenvy::from_filename(".env.test").ok();
 
         let host_persistence = MemoryPersistence::<Host>::default();
         let host: Host = get_host_fixture(None).into();
 
-        host_persistence.create(&host).unwrap();
+        host_persistence.upsert(&host).await.unwrap();
 
-        let fetched_host = host_persistence.get_by_id(&host.id).unwrap().unwrap();
+        let fetched_host = host_persistence.get_by_id(&host.id).await.unwrap().unwrap();
 
         assert_eq!(fetched_host.id, host.id);
         assert_eq!(fetched_host.labels.len(), 2);
 
-        let deleted_hosts = host_persistence.delete(&host.id).unwrap();
-        assert_eq!(deleted_hosts, 1);
-    }
-
-    #[test]
-    fn test_create_get_delete_many() {
-        dotenv::from_filename(".env.test").ok();
-
-        let host_persistence = MemoryPersistence::<Host>::default();
-        let host: Host = get_host_fixture(None).into();
-
-        host_persistence.create_many(&[host.clone()]).unwrap();
-
-        let deleted_hosts = host_persistence.delete_many(&[&host.id]).unwrap();
+        let deleted_hosts = host_persistence.delete(&host.id).await.unwrap();
         assert_eq!(deleted_hosts, 1);
     }
 }

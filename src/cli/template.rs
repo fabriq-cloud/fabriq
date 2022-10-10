@@ -82,7 +82,7 @@ pub async fn handlers(
                 path,
             });
 
-            client.create(request).await?;
+            client.upsert(request).await?;
 
             tracing::info!("template '{id}' created");
 

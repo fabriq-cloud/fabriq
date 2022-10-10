@@ -10,7 +10,7 @@ pub struct MockWorkloadClient {}
 
 #[tonic::async_trait]
 impl WorkloadTrait for MockWorkloadClient {
-    async fn create(
+    async fn upsert(
         &self,
         _request: Request<WorkloadMessage>,
     ) -> Result<Response<OperationId>, Status> {

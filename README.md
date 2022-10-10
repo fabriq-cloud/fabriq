@@ -12,12 +12,12 @@ $ curl http://.... | bash
 
 ## Login
 
+Next we login with a Github personal access token for our account. This enables Fabriq to
+fetch our team memberships so all of the systems my team is working on are available to me.
+
 ```
 $ akira login PAT
 ```
-
-Uses PAT to fetch user details
-Saves user details and PAT locally
 
 ## Seed sample node.js service
 

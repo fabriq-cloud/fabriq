@@ -20,14 +20,14 @@ impl GrpcTemplateService {
 
 #[tonic::async_trait]
 impl TemplateTrait for GrpcTemplateService {
-    #[tracing::instrument(name = "grpc::template::create")]
-    async fn create(
+    #[tracing::instrument(name = "grpc::template::upsert")]
+    async fn upsert(
         &self,
         request: Request<TemplateMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let new_template: Template = request.into_inner().into();
 
-        let operation_id = match self.service.create(&new_template, None) {
+        let operation_id = match self.service.upsert(&new_template, None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -48,7 +48,11 @@ impl TemplateTrait for GrpcTemplateService {
         // TODO: Check that no workloads are currently still using template
         // Query workload service for workloads by template_id
 
-        let operation_id = match self.service.delete(&request.into_inner().template_id, None) {
+        let operation_id = match self
+            .service
+            .delete(&request.into_inner().template_id, None)
+            .await
+        {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -67,7 +71,7 @@ impl TemplateTrait for GrpcTemplateService {
         request: Request<TemplateIdRequest>,
     ) -> Result<Response<TemplateMessage>, Status> {
         let template_id = request.into_inner().template_id;
-        let template = match self.service.get_by_id(&template_id) {
+        let template = match self.service.get_by_id(&template_id).await {
             Ok(template) => template,
             Err(err) => {
                 tracing::error!("get target with id {}: failed: {}", template_id, err);
@@ -98,9 +102,7 @@ impl TemplateTrait for GrpcTemplateService {
         &self,
         _request: Request<ListTemplatesRequest>,
     ) -> Result<Response<ListTemplatesResponse>, Status> {
-        let list_result = self.service.list();
-
-        let templates = match list_result {
+        let templates = match self.service.list().await {
             Ok(templates) => templates,
             Err(err) => {
                 return Err(Status::new(
@@ -160,7 +162,7 @@ mod tests {
         let request = Request::new(template.clone());
 
         let create_response = template_grpc_service
-            .create(request)
+            .upsert(request)
             .await
             .unwrap()
             .into_inner();

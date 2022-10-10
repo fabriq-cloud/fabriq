@@ -22,14 +22,14 @@ impl GrpcAssignmentService {
 
 #[tonic::async_trait]
 impl AssignmentTrait for GrpcAssignmentService {
-    #[tracing::instrument(name = "grpc::assignment::create")]
-    async fn create(
+    #[tracing::instrument(name = "grpc::assignment::upsert")]
+    async fn upsert(
         &self,
         request: Request<AssignmentMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let new_assignment: Assignment = request.into_inner().into();
 
-        let operation_id = match self.service.create(&new_assignment, &None) {
+        let operation_id = match self.service.upsert(&new_assignment, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -53,6 +53,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         let operation_id = match self
             .service
             .delete(&request.into_inner().assignment_id, &None)
+            .await
         {
             Ok(operation_id) => operation_id,
             Err(err) => {
@@ -72,7 +73,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         request: Request<DeploymentIdRequest>,
     ) -> Result<Response<ListAssignmentsResponse>, Status> {
         let deployment_id = request.into_inner().deployment_id;
-        let assignments = match self.service.get_by_deployment_id(&deployment_id) {
+        let assignments = match self.service.get_by_deployment_id(&deployment_id).await {
             Ok(assignments) => assignments,
             Err(err) => {
                 tracing::error!(
@@ -103,7 +104,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         &self,
         _request: Request<ListAssignmentsRequest>,
     ) -> Result<Response<ListAssignmentsResponse>, Status> {
-        let assignments = match self.service.list() {
+        let assignments = match self.service.list().await {
             Ok(assignments) => assignments,
             Err(err) => {
                 return Err(Status::new(
@@ -160,7 +161,7 @@ mod tests {
         let request = Request::new(assignment.clone());
 
         let response = assignment_grpc_service
-            .create(request)
+            .upsert(request)
             .await
             .unwrap()
             .into_inner();

@@ -29,12 +29,12 @@ impl WrappedTemplateClient {
 
 #[tonic::async_trait]
 impl TemplateTrait for WrappedTemplateClient {
-    async fn create(
+    async fn upsert(
         &self,
         request: Request<TemplateMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let mut inner = self.inner.lock().await;
-        inner.create(request).await
+        inner.upsert(request).await
     }
 
     async fn delete(

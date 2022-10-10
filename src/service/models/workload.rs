@@ -1,23 +1,7 @@
+use crate::persistence::Persistable;
 use akira_core::WorkloadMessage;
 
-use crate::models::Template;
-use crate::persistence::PersistableModel;
-use crate::schema::workloads;
-
-#[derive(
-    Associations,
-    Clone,
-    Debug,
-    Default,
-    Eq,
-    Identifiable,
-    Insertable,
-    PartialEq,
-    Queryable,
-    QueryableByName,
-)]
-#[table_name = "workloads"]
-#[belongs_to(Template)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Workload {
     pub id: String,
     pub name: String,
@@ -25,7 +9,7 @@ pub struct Workload {
     pub template_id: String,
 }
 
-impl PersistableModel<Workload> for Workload {
+impl Persistable<Workload> for Workload {
     fn get_id(&self) -> String {
         self.id.clone()
     }

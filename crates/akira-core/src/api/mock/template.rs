@@ -9,7 +9,7 @@ pub struct MockTemplateClient {}
 
 #[tonic::async_trait]
 impl TemplateTrait for MockTemplateClient {
-    async fn create(
+    async fn upsert(
         &self,
         _request: Request<TemplateMessage>,
     ) -> Result<Response<OperationId>, Status> {

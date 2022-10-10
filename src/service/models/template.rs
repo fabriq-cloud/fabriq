@@ -1,9 +1,8 @@
 use akira_core::TemplateMessage;
 
-use crate::{persistence::PersistableModel, schema::templates};
+use crate::persistence::Persistable;
 
-#[derive(Clone, Debug, Default, Insertable, Eq, PartialEq, Queryable, QueryableByName)]
-#[table_name = "templates"]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Template {
     pub id: String, // external-service
     pub repository: String,
@@ -11,7 +10,7 @@ pub struct Template {
     pub path: String,
 }
 
-impl PersistableModel<Template> for Template {
+impl Persistable<Template> for Template {
     fn get_id(&self) -> String {
         self.id.clone()
     }

@@ -20,14 +20,14 @@ impl GrpcTargetService {
 
 #[tonic::async_trait]
 impl TargetTrait for GrpcTargetService {
-    #[tracing::instrument(name = "grpc::target::create")]
-    async fn create(
+    #[tracing::instrument(name = "grpc::target::upsert")]
+    async fn upsert(
         &self,
         request: Request<TargetMessage>,
     ) -> Result<Response<OperationId>, Status> {
         let new_target: Target = request.into_inner().into();
 
-        let operation_id = match self.service.create(&new_target, &None) {
+        let operation_id = match self.service.upsert(&new_target, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -48,7 +48,11 @@ impl TargetTrait for GrpcTargetService {
         // TODO: check that no workloads are currently still using target
         // Query workload service for workloads by target_id, error if any exist
 
-        let operation_id = match self.service.delete(&request.into_inner().target_id, None) {
+        let operation_id = match self
+            .service
+            .delete(&request.into_inner().target_id, None)
+            .await
+        {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -67,7 +71,7 @@ impl TargetTrait for GrpcTargetService {
         request: Request<TargetIdRequest>,
     ) -> Result<Response<TargetMessage>, Status> {
         let target_id = request.into_inner().target_id;
-        let target = match self.service.get_by_id(&target_id) {
+        let target = match self.service.get_by_id(&target_id).await {
             Ok(target) => target,
             Err(err) => {
                 tracing::error!("get target with id {}: failed: {}", target_id, err);
@@ -98,7 +102,7 @@ impl TargetTrait for GrpcTargetService {
         &self,
         _request: Request<ListTargetsRequest>,
     ) -> Result<Response<ListTargetsResponse>, Status> {
-        let targets = match self.service.list() {
+        let targets = match self.service.list().await {
             Ok(targets) => targets,
             Err(err) => {
                 return Err(Status::new(
@@ -155,7 +159,7 @@ mod tests {
         let request = Request::new(target.clone());
 
         let response = target_grpc_service
-            .create(request)
+            .upsert(request)
             .await
             .unwrap()
             .into_inner();

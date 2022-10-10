@@ -31,7 +31,7 @@ impl MockDeploymentClient {
 
 #[tonic::async_trait]
 impl DeploymentTrait for MockDeploymentClient {
-    async fn create(
+    async fn upsert(
         &self,
         _request: Request<DeploymentMessage>,
     ) -> Result<Response<OperationId>, Status> {
