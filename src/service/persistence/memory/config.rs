@@ -114,7 +114,7 @@ impl Default for ConfigMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::{get_string_config_fixture, get_workload_fixture};
+    use fabriq_core::test::{get_string_config_fixture, get_workload_fixture};
 
     use super::*;
 

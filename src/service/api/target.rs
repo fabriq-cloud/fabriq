@@ -1,4 +1,4 @@
-use akira_core::{
+use fabriq_core::{
     ListTargetsRequest, ListTargetsResponse, OperationId, TargetIdRequest, TargetMessage,
     TargetTrait,
 };
@@ -130,9 +130,10 @@ impl TargetTrait for GrpcTargetService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_target_fixture;
-    use akira_core::{EventStream, ListTargetsRequest, TargetIdRequest, TargetTrait};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::{
+        test::get_target_fixture, EventStream, ListTargetsRequest, TargetIdRequest, TargetTrait,
+    };
+    use fabriq_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 

@@ -1,4 +1,4 @@
-use akira_core::DeploymentMessage;
+use fabriq_core::DeploymentMessage;
 
 use crate::persistence::Persistable;
 

@@ -1,4 +1,4 @@
-use akira_core::{Health, HealthRequest, HealthResponse};
+use fabriq_core::{Health, HealthRequest, HealthResponse};
 use tonic::{Request, Response, Status};
 
 #[derive(Default, Debug)]
@@ -19,7 +19,7 @@ impl Health for GrpcHealthService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::{Health, HealthRequest};
+    use fabriq_core::{Health, HealthRequest};
     use tonic::Request;
 
     use super::GrpcHealthService;

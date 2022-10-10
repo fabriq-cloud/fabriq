@@ -4,7 +4,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Assignment;
 use crate::services::AssignmentService;
 
-use akira_core::{
+use fabriq_core::{
     common::AssignmentIdRequest, AssignmentMessage, AssignmentTrait, DeploymentIdRequest,
     ListAssignmentsRequest, ListAssignmentsResponse, OperationId,
 };
@@ -133,13 +133,14 @@ impl AssignmentTrait for GrpcAssignmentService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::common::AssignmentIdRequest;
-    use akira_core::test::get_assignment_fixture;
     use std::sync::Arc;
     use tonic::Request;
 
-    use akira_core::{AssignmentTrait, EventStream, ListAssignmentsRequest};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::{
+        common::AssignmentIdRequest, test::get_assignment_fixture, AssignmentTrait, EventStream,
+        ListAssignmentsRequest,
+    };
+    use fabriq_memory_stream::MemoryEventStream;
 
     use crate::api::GrpcAssignmentService;
     use crate::persistence::memory::AssignmentMemoryPersistence;

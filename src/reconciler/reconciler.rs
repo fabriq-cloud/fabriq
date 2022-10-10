@@ -4,20 +4,20 @@
 // It does not handle the work that is specific to a specific workflow, for example truing up a GitOps repo.
 // These processor specific workflows are implemented using external processors.
 
+use prost::Message;
 use std::{collections::HashMap, sync::Arc};
 
-use akira::{
+use fabriq::{
     models::{Assignment, Deployment, Host, Target, Template, Workload},
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
         WorkloadService,
     },
 };
-use akira_core::{
+use fabriq_core::{
     AssignmentMessage, DeploymentMessage, Event, EventType, HostMessage, ModelType, OperationId,
     TargetMessage, TemplateMessage, WorkloadMessage,
 };
-use prost::Message;
 
 #[derive(Debug)]
 pub struct Reconciler {
@@ -379,17 +379,22 @@ impl Reconciler {
 
 #[cfg(test)]
 mod tests {
-    use akira::models::Template;
-    use akira::persistence::memory::{
-        AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
-        MemoryPersistence, WorkloadMemoryPersistence,
+    use fabriq::{
+        models::Template,
+        persistence::memory::{
+            AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
+            MemoryPersistence, WorkloadMemoryPersistence,
+        },
     };
-    use akira_core::test::{
-        get_deployment_fixture, get_host_fixture, get_target_fixture, get_template_fixture,
-        get_workload_fixture,
+    use fabriq_core::{
+        create_event,
+        test::{
+            get_deployment_fixture, get_host_fixture, get_target_fixture, get_template_fixture,
+            get_workload_fixture,
+        },
+        EventStream,
     };
-    use akira_core::{create_event, EventStream};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_memory_stream::MemoryEventStream;
 
     use super::*;
 

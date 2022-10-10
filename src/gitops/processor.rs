@@ -7,13 +7,14 @@ use std::path::Path;
 use std::sync::Arc;
 use tonic::Request;
 
-use akira_core::common::TemplateIdRequest;
-use akira_core::git::{GitRepo, GitRepoFactory, RemoteGitRepo};
-use akira_core::{
-    get_current_or_previous_model, AssignmentMessage, ConfigMessage, ConfigTrait, ConfigValueType,
-    DeploymentIdRequest, DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage,
-    ModelType, QueryConfigRequest, TargetMessage, TemplateMessage, TemplateTrait,
-    WorkloadIdRequest, WorkloadMessage, WorkloadTrait,
+use fabriq_core::{
+    common::TemplateIdRequest,
+    get_current_or_previous_model,
+    git::{GitRepo, GitRepoFactory, RemoteGitRepo},
+    AssignmentMessage, ConfigMessage, ConfigTrait, ConfigValueType, DeploymentIdRequest,
+    DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage, ModelType,
+    QueryConfigRequest, TargetMessage, TemplateMessage, TemplateTrait, WorkloadIdRequest,
+    WorkloadMessage, WorkloadTrait,
 };
 
 pub struct GitOpsProcessor {
@@ -626,7 +627,7 @@ impl GitOpsProcessor {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::{
+    use fabriq_core::{
         create_event,
         git::{GitRepo, GitRepoFactory, MemoryGitRepo},
         test::{
@@ -699,7 +700,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 6461699303385233265);
+        assert_eq!(assignment_hash, 16868760048877290495);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
@@ -713,7 +714,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 6461699303385233265);
+        assert_eq!(assignment_hash, 16868760048877290495);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -723,7 +724,7 @@ mod tests {
     #[tokio::test]
     async fn test_process_config_events() {
         let deployment_path =
-            "deployments/akira-network/service/workload-fixture/deployment-fixture";
+            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -765,7 +766,7 @@ mod tests {
     #[tokio::test]
     async fn test_process_deployment_events() {
         let deployment_path =
-            "deployments/akira-network/service/workload-fixture/deployment-fixture";
+            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -781,7 +782,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 16869808730898710072);
+        assert_eq!(deployment_hash, 3259457315578900542);
 
         gitops_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -799,7 +800,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 16869808730898710072);
+        assert_eq!(deployment_hash, 3259457315578900542);
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -809,7 +810,7 @@ mod tests {
     #[tokio::test]
     async fn test_process_template_events() {
         let deployment_path =
-            "deployments/akira-network/service/workload-fixture/deployment-fixture";
+            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -826,7 +827,7 @@ mod tests {
     #[tokio::test]
     async fn test_process_workload_events() {
         let deployment_path =
-            "deployments/akira-network/service/workload-fixture/deployment-fixture";
+            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new());
 
@@ -841,7 +842,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 16869808730898710072);
+        assert_eq!(deployment_hash, 3259457315578900542);
 
         gitops_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -859,7 +860,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 16869808730898710072);
+        assert_eq!(deployment_hash, 3259457315578900542);
 
         create_and_process_workload_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -871,10 +872,10 @@ mod tests {
     ) -> anyhow::Result<GitOpsProcessor> {
         let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
 
-        let config_client = Arc::new(akira_core::api::mock::MockConfigClient {});
-        let deployment_client = Arc::new(akira_core::api::mock::MockDeploymentClient {});
-        let template_client = Arc::new(akira_core::api::mock::MockTemplateClient {});
-        let workload_client = Arc::new(akira_core::api::mock::MockWorkloadClient {});
+        let config_client = Arc::new(fabriq_core::api::mock::MockConfigClient {});
+        let deployment_client = Arc::new(fabriq_core::api::mock::MockDeploymentClient {});
+        let template_client = Arc::new(fabriq_core::api::mock::MockTemplateClient {});
+        let workload_client = Arc::new(fabriq_core::api::mock::MockWorkloadClient {});
 
         Ok(GitOpsProcessor {
             gitops_repo,

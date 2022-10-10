@@ -1,5 +1,5 @@
 use crate::persistence::Persistable;
-use akira_core::WorkloadMessage;
+use fabriq_core::WorkloadMessage;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Workload {

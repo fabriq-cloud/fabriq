@@ -1,4 +1,4 @@
-use akira_core::{
+use fabriq_core::{
     create_event, ConfigMessage, EventStream, EventType, ModelType, OperationId, QueryConfigRequest,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -201,11 +201,11 @@ mod tests {
         },
         services::{TargetService, TemplateService},
     };
-    use akira_core::test::{
+    use fabriq_core::test::{
         get_deployment_fixture, get_string_config_fixture, get_target_fixture,
         get_template_fixture, get_workload_fixture,
     };
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_memory_stream::MemoryEventStream;
 
     #[tokio::test]
     async fn test_create_get_delete() {

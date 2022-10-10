@@ -102,7 +102,7 @@ impl AssignmentPersistence for AssignmentRelationalPersistence {
 }
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_assignment_fixture;
+    use fabriq_core::test::get_assignment_fixture;
 
     use super::*;
     use crate::models::Assignment;
@@ -118,6 +118,8 @@ mod tests {
 
         // delete assignment if it exists
         assignment_persistence.delete(&assignment.id).await.unwrap();
+
+        println!("{:?}", assignment);
 
         let created_count = assignment_persistence.upsert(&assignment).await.unwrap();
         assert_eq!(created_count, 1);

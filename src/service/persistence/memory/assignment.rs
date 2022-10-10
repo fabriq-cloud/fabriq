@@ -85,7 +85,7 @@ impl Default for AssignmentMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_assignment_fixture;
+    use fabriq_core::test::get_assignment_fixture;
 
     use super::*;
 

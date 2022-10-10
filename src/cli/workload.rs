@@ -1,7 +1,9 @@
-use akira_core::workload::workload_client::WorkloadClient;
-use akira_core::{ListWorkloadsRequest, WorkloadIdRequest, WorkloadMessage};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
+use fabriq_core::{
+    workload::workload_client::WorkloadClient, ListWorkloadsRequest, WorkloadIdRequest,
+    WorkloadMessage,
+};
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;

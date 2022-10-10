@@ -1,4 +1,4 @@
-use akira_core::{
+use fabriq_core::{
     ConfigIdRequest, ConfigMessage, ConfigTrait, OperationId, QueryConfigRequest,
     QueryConfigResponse,
 };
@@ -95,12 +95,14 @@ impl ConfigTrait for GrpcConfigService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::{
-        get_deployment_fixture, get_string_config_fixture, get_target_fixture,
-        get_template_fixture, get_workload_fixture,
+    use fabriq_core::{
+        test::{
+            get_deployment_fixture, get_string_config_fixture, get_target_fixture,
+            get_template_fixture, get_workload_fixture,
+        },
+        ConfigIdRequest, ConfigTrait, EventStream, QueryConfigRequest,
     };
-    use akira_core::{ConfigIdRequest, ConfigTrait, EventStream, QueryConfigRequest};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 

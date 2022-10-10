@@ -83,7 +83,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_template_fixture;
+    use fabriq_core::test::get_template_fixture;
 
     use super::*;
     use crate::models::Template;

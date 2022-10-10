@@ -38,7 +38,7 @@ pub mod tests {
 
     #[cfg(test)]
     pub async fn ensure_fixtures() -> Arc<Pool<Postgres>> {
-        use akira_core::test::{
+        use fabriq_core::test::{
             get_deployment_fixture, get_host_fixture, get_target_fixture, get_template_fixture,
             get_workload_fixture,
         };
@@ -124,6 +124,8 @@ pub mod tests {
 
         if workload.is_none() {
             let workload_fixture: Workload = get_workload_fixture(None).into();
+
+            println!("workload_fixture: {:?}", workload_fixture);
             workload_persistence
                 .upsert(&workload_fixture)
                 .await
@@ -141,6 +143,8 @@ pub mod tests {
 
         if deployment.is_none() {
             let deployment_fixture: Deployment = get_deployment_fixture(None).into();
+            println!("deployment_fixture: {:?}", deployment_fixture);
+
             deployment_persistence
                 .upsert(&deployment_fixture)
                 .await

@@ -1,7 +1,9 @@
-use akira_core::config::config_client::ConfigClient;
-use akira_core::{ConfigIdRequest, ConfigMessage, ConfigValueType, QueryConfigRequest};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
+use fabriq_core::{
+    config::config_client::ConfigClient, ConfigIdRequest, ConfigMessage, ConfigValueType,
+    QueryConfigRequest,
+};
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;

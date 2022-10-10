@@ -1,0 +1,23 @@
+syntax = "proto3";
+package fabriq.assignment;
+
+import "common.proto";
+
+service Assignment {
+    rpc Upsert(AssignmentMessage) returns (fabriq.common.OperationId);
+    rpc Delete(fabriq.common.AssignmentIdRequest) returns (fabriq.common.OperationId);
+    rpc GetByDeploymentId(fabriq.common.DeploymentIdRequest) returns (ListAssignmentsResponse);
+    rpc List(ListAssignmentsRequest) returns (ListAssignmentsResponse);
+}
+
+message ListAssignmentsRequest {}
+
+message ListAssignmentsResponse {
+    repeated AssignmentMessage assignments = 1;
+}
+
+message AssignmentMessage {
+    string id = 1;
+    string host_id = 2;
+    string deployment_id = 3;
+}

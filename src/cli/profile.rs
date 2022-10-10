@@ -21,7 +21,7 @@ impl Profile {
     fn build_config_path() -> anyhow::Result<std::path::PathBuf> {
         let mut path = dirs::home_dir().unwrap();
 
-        path.push(".akira");
+        path.push(".fabriq");
 
         fs::create_dir_all(&path).unwrap();
 

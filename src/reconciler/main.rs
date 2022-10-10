@@ -1,4 +1,5 @@
-use akira::{
+use dotenvy::dotenv;
+use fabriq::{
     persistence::relational::{
         AssignmentRelationalPersistence, DeploymentRelationalPersistence,
         HostRelationalPersistence, TargetRelationalPersistence, TemplateRelationalPersistence,
@@ -9,9 +10,8 @@ use akira::{
         WorkloadService,
     },
 };
-use akira_core::EventStream;
-use akira_postgresql_stream::PostgresqlEventStream;
-use dotenvy::dotenv;
+use fabriq_core::EventStream;
+use fabriq_postgresql_stream::PostgresqlEventStream;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;

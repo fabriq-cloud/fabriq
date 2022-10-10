@@ -15,7 +15,7 @@ RUN adduser \
     --uid "${SERVICE_UID}" \
     service
 
-WORKDIR /akira
+WORKDIR /fabriq
 
 COPY ./ .
 
@@ -33,13 +33,13 @@ FROM alpine:latest
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
-WORKDIR /akira
+WORKDIR /fabriq
 
 # Install glibc and libgcc
 RUN apk upgrade --no-cache && apk add --no-cache gcompat libgcc
 
 # Copy our build
-COPY --from=builder /akira/target/release/gitops /akira/gitops
+COPY --from=builder /fabriq/target/release/gitops /fabriq/gitops
 
 # Use the unprivileged service user during execution.
 USER service::service

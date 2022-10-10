@@ -1,7 +1,9 @@
-use akira_core::deployment::deployment_client::DeploymentClient;
-use akira_core::{DeploymentIdRequest, DeploymentMessage, ListDeploymentsRequest};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
+use fabriq_core::{
+    deployment::deployment_client::DeploymentClient, DeploymentIdRequest, DeploymentMessage,
+    ListDeploymentsRequest,
+};
 use tonic::metadata::{Ascii, MetadataValue};
 use tonic::transport::Channel;
 use tonic::Request;

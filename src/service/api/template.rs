@@ -1,4 +1,4 @@
-use akira_core::{
+use fabriq_core::{
     common::TemplateIdRequest, ListTemplatesRequest, ListTemplatesResponse, OperationId,
     TemplateMessage, TemplateTrait,
 };
@@ -132,10 +132,11 @@ impl TemplateTrait for GrpcTemplateService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::common::TemplateIdRequest;
-    use akira_core::test::get_template_fixture;
-    use akira_core::{EventStream, ListTemplatesRequest, TemplateTrait};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::{
+        common::TemplateIdRequest, test::get_template_fixture, EventStream, ListTemplatesRequest,
+        TemplateTrait,
+    };
+    use fabriq_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 

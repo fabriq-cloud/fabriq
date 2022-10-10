@@ -150,7 +150,7 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::{get_deployment_fixture, get_target_fixture, get_template_fixture};
+    use fabriq_core::test::{get_deployment_fixture, get_target_fixture, get_template_fixture};
 
     use super::*;
     use crate::models::Deployment;

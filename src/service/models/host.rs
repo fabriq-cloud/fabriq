@@ -1,4 +1,4 @@
-use akira_core::HostMessage;
+use fabriq_core::HostMessage;
 
 use crate::persistence::Persistable;
 

@@ -9,28 +9,27 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use akira::acl;
-use akira::api::{
-    GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
-    GrpcHostService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
+use fabriq::{
+    acl,
+    api::{
+        GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
+        GrpcHostService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
+    },
+    persistence::relational::{
+        AssignmentRelationalPersistence, ConfigRelationalPersistence,
+        DeploymentRelationalPersistence, HostRelationalPersistence, TargetRelationalPersistence,
+    },
+    persistence::relational::{TemplateRelationalPersistence, WorkloadRelationalPersistence},
+    services::{
+        AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
+        TemplateService, WorkloadService,
+    },
 };
-use akira::persistence::relational::{
-    AssignmentRelationalPersistence, ConfigRelationalPersistence, DeploymentRelationalPersistence,
-    HostRelationalPersistence, TargetRelationalPersistence,
+use fabriq_core::{
+    AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
+    TargetServer, TemplateServer, WorkloadServer,
 };
-use akira::persistence::relational::{
-    TemplateRelationalPersistence, WorkloadRelationalPersistence,
-};
-use akira::services::{
-    AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
-    TemplateService, WorkloadService,
-};
-use akira_core::{
-    AssignmentServer, DeploymentServer, HealthServer, HostServer, TargetServer, TemplateServer,
-    WorkloadServer,
-};
-use akira_core::{ConfigServer, EventStream};
-use akira_postgresql_stream::PostgresqlEventStream;
+use fabriq_postgresql_stream::PostgresqlEventStream;
 
 const DEFAULT_SERVICE_CONSUMER_ID: &str = "service";
 

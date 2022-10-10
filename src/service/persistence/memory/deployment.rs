@@ -111,7 +111,7 @@ impl Default for DeploymentMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_deployment_fixture;
+    use fabriq_core::test::get_deployment_fixture;
 
     use super::*;
 

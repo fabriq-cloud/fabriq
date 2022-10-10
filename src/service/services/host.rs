@@ -1,4 +1,4 @@
-use akira_core::{create_event, EventStream, EventType, HostMessage, ModelType, OperationId};
+use fabriq_core::{create_event, EventStream, EventType, HostMessage, ModelType, OperationId};
 use std::sync::Arc;
 
 use crate::{
@@ -94,8 +94,8 @@ impl HostService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_host_fixture;
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::test::get_host_fixture;
+    use fabriq_memory_stream::MemoryEventStream;
 
     use crate::persistence::memory::HostMemoryPersistence;
 

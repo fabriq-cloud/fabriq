@@ -15,8 +15,8 @@ mod workload;
 use context::Context;
 
 fn cli() -> Command<'static> {
-    Command::new("akira")
-        .about("scaled declarative deployments")
+    Command::new("fabriq")
+        .about("deployments made simple")
         .version("0.1.0")
         .subcommand_required(true)
         .arg_required_else_help(true)

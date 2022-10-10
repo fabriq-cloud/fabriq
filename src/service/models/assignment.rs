@@ -1,4 +1,4 @@
-use akira_core::AssignmentMessage;
+use fabriq_core::AssignmentMessage;
 
 use crate::persistence::Persistable;
 

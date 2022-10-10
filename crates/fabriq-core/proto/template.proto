@@ -1,0 +1,24 @@
+syntax = "proto3";
+package fabriq.template;
+
+import "common.proto";
+
+service Template {
+    rpc Upsert(TemplateMessage) returns (fabriq.common.OperationId);
+    rpc Delete(fabriq.common.TemplateIdRequest) returns (fabriq.common.OperationId);
+    rpc GetById(fabriq.common.TemplateIdRequest) returns (TemplateMessage);
+    rpc List(ListTemplatesRequest) returns (ListTemplatesResponse);
+}
+
+message ListTemplatesRequest {}
+
+message ListTemplatesResponse {
+    repeated TemplateMessage templates = 1;
+}
+
+message TemplateMessage {
+    string id = 1;
+    string repository = 2;
+    string git_ref = 3;
+    string path = 4;
+}

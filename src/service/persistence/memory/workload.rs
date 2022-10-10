@@ -85,7 +85,7 @@ impl Default for WorkloadMemoryPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_workload_fixture;
+    use fabriq_core::test::get_workload_fixture;
 
     use super::*;
 

@@ -98,7 +98,7 @@ impl TargetPersistence for TargetRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_target_fixture;
+    use fabriq_core::test::get_target_fixture;
 
     use super::*;
     use crate::models::Target;

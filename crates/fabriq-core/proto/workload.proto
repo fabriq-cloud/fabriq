@@ -1,0 +1,25 @@
+syntax = "proto3";
+package fabriq.workload;
+
+import "common.proto";
+
+service Workload {
+    rpc Upsert(WorkloadMessage) returns (fabriq.common.OperationId);
+    rpc Delete(fabriq.common.WorkloadIdRequest) returns (fabriq.common.OperationId);
+    rpc GetById(fabriq.common.WorkloadIdRequest) returns (WorkloadMessage);
+    rpc GetByTemplateId(fabriq.common.TemplateIdRequest) returns (ListWorkloadsResponse);
+    rpc List(ListWorkloadsRequest) returns (ListWorkloadsResponse);
+}
+
+message ListWorkloadsRequest {}
+
+message ListWorkloadsResponse {
+    repeated WorkloadMessage workloads = 1;
+}
+
+message WorkloadMessage {
+    string id = 1;
+    string name = 2;
+    string team_id = 3;
+    string template_id = 4;
+}

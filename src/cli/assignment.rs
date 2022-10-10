@@ -1,8 +1,9 @@
-use akira_core::assignment::assignment_client::AssignmentClient;
-use akira_core::common::AssignmentIdRequest;
-use akira_core::{AssignmentMessage, ListAssignmentsRequest};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
+use fabriq_core::{
+    assignment::assignment_client::AssignmentClient, common::AssignmentIdRequest,
+    AssignmentMessage, ListAssignmentsRequest,
+};
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;

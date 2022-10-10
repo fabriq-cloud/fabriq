@@ -1,10 +1,10 @@
-use akira_core::{
+use context::Context;
+use dotenvy::dotenv;
+use fabriq_core::{
     git::{remote::RemoteGitRepoFactory, RemoteGitRepo},
     EventStream,
 };
-use akira_postgresql_stream::PostgresqlEventStream;
-use context::Context;
-use dotenvy::dotenv;
+use fabriq_postgresql_stream::PostgresqlEventStream;
 use processor::GitOpsProcessor;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, fs, sync::Arc};
@@ -72,22 +72,22 @@ async fn main() -> anyhow::Result<()> {
     let channel = Channel::from_static(context.endpoint).connect().await?;
     let token: MetadataValue<Ascii> = context.token.parse()?;
 
-    let config_client = Arc::new(akira_core::api::client::WrappedConfigClient::new(
+    let config_client = Arc::new(fabriq_core::api::client::WrappedConfigClient::new(
         channel.clone(),
         token.clone(),
     ));
 
-    let deployment_client = Arc::new(akira_core::api::client::WrappedDeploymentClient::new(
+    let deployment_client = Arc::new(fabriq_core::api::client::WrappedDeploymentClient::new(
         channel.clone(),
         token.clone(),
     ));
 
-    let template_client = Arc::new(akira_core::api::client::WrappedTemplateClient::new(
+    let template_client = Arc::new(fabriq_core::api::client::WrappedTemplateClient::new(
         channel.clone(),
         token.clone(),
     ));
 
-    let workload_client = Arc::new(akira_core::api::client::WrappedWorkloadClient::new(
+    let workload_client = Arc::new(fabriq_core::api::client::WrappedWorkloadClient::new(
         channel, token,
     ));
 

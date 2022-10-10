@@ -1,0 +1,28 @@
+syntax = "proto3";
+package fabriq.deployment;
+
+import "common.proto";
+
+service Deployment {
+    rpc Upsert(DeploymentMessage) returns (fabriq.common.OperationId);
+    rpc Delete(fabriq.common.DeploymentIdRequest) returns (fabriq.common.OperationId);
+    rpc GetById(fabriq.common.DeploymentIdRequest) returns (DeploymentMessage);
+    rpc GetByTemplateId(fabriq.common.TemplateIdRequest) returns (ListDeploymentsResponse);
+    rpc GetByWorkloadId(fabriq.common.WorkloadIdRequest) returns (ListDeploymentsResponse);
+    rpc List(ListDeploymentsRequest) returns (ListDeploymentsResponse);
+}
+
+message ListDeploymentsRequest {}
+
+message ListDeploymentsResponse {
+    repeated DeploymentMessage deployments = 1;
+}
+
+message DeploymentMessage {
+    string          id = 1;
+    string          name = 2;
+    string          target_id = 3;
+    string          workload_id = 4;
+    int32           host_count = 5;
+    optional string template_id = 6;
+}

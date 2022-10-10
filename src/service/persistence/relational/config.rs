@@ -1,5 +1,5 @@
-use akira_core::ConfigMessage;
 use async_trait::async_trait;
+use fabriq_core::ConfigMessage;
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -127,7 +127,7 @@ impl ConfigPersistence for ConfigRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::{get_string_config_fixture, get_workload_fixture};
+    use fabriq_core::test::{get_string_config_fixture, get_workload_fixture};
 
     use super::*;
     use crate::{models::Config, persistence::relational::tests::ensure_fixtures};

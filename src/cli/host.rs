@@ -1,7 +1,8 @@
-use akira_core::host::host_client::HostClient;
-use akira_core::{DeleteHostRequest, HostMessage, ListHostsRequest};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
+use fabriq_core::{
+    host::host_client::HostClient, DeleteHostRequest, HostMessage, ListHostsRequest,
+};
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;

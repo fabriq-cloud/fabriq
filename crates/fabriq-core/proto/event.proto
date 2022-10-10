@@ -1,0 +1,35 @@
+syntax = "proto3";
+package fabriq.event;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+// NOTE: If you update the ordinal values here you must also update the From trait implementation
+// in protobufs.rs.
+enum EventType {
+    Created = 0;
+    Updated = 1;
+    Deleted = 2;
+};
+
+// NOTE: If you update the ordinal values here you must also update the From trait implementation
+// in protobufs.rs.
+enum ModelType {
+    Assignment = 0;
+    Deployment = 1;
+    Host = 2;
+    Target = 3;
+    Template = 4;
+    Workload = 5;
+    Workspace = 6;
+    Config = 7;
+};
+
+message Event {
+    google.protobuf.Timestamp timestamp = 1;
+    fabriq.common.OperationId operation_id = 2;
+    EventType event_type = 3;
+    ModelType model_type = 4;
+    optional bytes serialized_previous_model = 5;
+    optional bytes serialized_current_model = 6;
+}

@@ -1,4 +1,4 @@
-use akira_core::{
+use fabriq_core::{
     DeleteHostRequest, HostMessage, HostTrait, ListHostsRequest, ListHostsResponse, OperationId,
 };
 use std::sync::Arc;
@@ -91,9 +91,10 @@ impl HostTrait for GrpcHostService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_host_fixture;
-    use akira_core::{DeleteHostRequest, EventStream, HostTrait, ListHostsRequest};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::{
+        test::get_host_fixture, DeleteHostRequest, EventStream, HostTrait, ListHostsRequest,
+    };
+    use fabriq_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 

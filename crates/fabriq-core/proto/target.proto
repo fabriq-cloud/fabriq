@@ -1,0 +1,22 @@
+syntax = "proto3";
+package fabriq.target;
+
+import "common.proto";
+
+service Target {
+    rpc Upsert(TargetMessage) returns (fabriq.common.OperationId);
+    rpc Delete(fabriq.common.TargetIdRequest) returns (fabriq.common.OperationId);
+    rpc GetById(fabriq.common.TargetIdRequest) returns (TargetMessage);
+    rpc List(ListTargetsRequest) returns (ListTargetsResponse);
+}
+
+message ListTargetsRequest {}
+
+message ListTargetsResponse {
+    repeated TargetMessage targets = 1;
+}
+
+message TargetMessage {
+    string id = 1;
+    repeated string labels = 2;
+}

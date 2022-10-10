@@ -100,7 +100,7 @@ impl HostPersistence for HostRelationalPersistence {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::{get_host_fixture, get_target_fixture};
+    use fabriq_core::test::{get_host_fixture, get_target_fixture};
 
     use super::*;
     use crate::persistence::relational::tests::ensure_fixtures;

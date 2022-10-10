@@ -1,7 +1,6 @@
-use akira_core::common::TemplateIdRequest;
-use akira_core::{
-    ListWorkloadsRequest, ListWorkloadsResponse, OperationId, WorkloadIdRequest, WorkloadMessage,
-    WorkloadTrait,
+use fabriq_core::{
+    common::TemplateIdRequest, ListWorkloadsRequest, ListWorkloadsResponse, OperationId,
+    WorkloadIdRequest, WorkloadMessage, WorkloadTrait,
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
@@ -159,10 +158,12 @@ impl WorkloadTrait for GrpcWorkloadService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::common::TemplateIdRequest;
-    use akira_core::test::{get_template_fixture, get_workload_fixture};
-    use akira_core::{EventStream, ListWorkloadsRequest, WorkloadIdRequest, WorkloadTrait};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::{
+        common::TemplateIdRequest,
+        test::{get_template_fixture, get_workload_fixture},
+        EventStream, ListWorkloadsRequest, WorkloadIdRequest, WorkloadTrait,
+    };
+    use fabriq_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 

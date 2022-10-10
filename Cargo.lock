@@ -29,91 +29,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "akira"
-version = "0.1.0"
-dependencies = [
- "akira-core",
- "akira-memory-stream",
- "akira-postgresql-stream",
- "anyhow",
- "ascii_table",
- "async-trait",
- "clap",
- "dirs",
- "dotenvy",
- "handlebars",
- "hyper",
- "lazy_static",
- "octocrab",
- "opentelemetry",
- "opentelemetry-jaeger",
- "prost",
- "prost-types",
- "reqwest",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tonic",
- "tonic-web",
- "tower",
- "tower-http",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "akira-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "dotenvy",
- "git2",
- "prost",
- "prost-types",
- "serde",
- "tempfile",
- "tokio",
- "tonic",
- "tonic-build",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "akira-memory-stream"
-version = "0.1.0"
-dependencies = [
- "akira-core",
- "anyhow",
- "async-trait",
- "bytes",
- "prost",
- "prost-types",
- "tokio",
-]
-
-[[package]]
-name = "akira-postgresql-stream"
-version = "0.1.0"
-dependencies = [
- "akira-core",
- "anyhow",
- "async-trait",
- "bytes",
- "chrono",
- "dotenvy",
- "lazy_static",
- "prost",
- "prost-types",
- "sqlx",
- "tokio",
-]
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -581,6 +496,91 @@ name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
+
+[[package]]
+name = "fabriq"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ascii_table",
+ "async-trait",
+ "clap",
+ "dirs",
+ "dotenvy",
+ "fabriq-core",
+ "fabriq-memory-stream",
+ "fabriq-postgresql-stream",
+ "handlebars",
+ "hyper",
+ "lazy_static",
+ "octocrab",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "prost",
+ "prost-types",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tonic",
+ "tonic-web",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "fabriq-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "dotenvy",
+ "git2",
+ "prost",
+ "prost-types",
+ "serde",
+ "tempfile",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "fabriq-memory-stream"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "fabriq-core",
+ "prost",
+ "prost-types",
+ "tokio",
+]
+
+[[package]]
+name = "fabriq-postgresql-stream"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "chrono",
+ "dotenvy",
+ "fabriq-core",
+ "lazy_static",
+ "prost",
+ "prost-types",
+ "sqlx",
+ "tokio",
+]
 
 [[package]]
 name = "fastrand"

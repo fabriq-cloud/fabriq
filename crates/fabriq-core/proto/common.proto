@@ -1,0 +1,26 @@
+syntax = "proto3";
+package fabriq.common;
+
+message AssignmentIdRequest {
+    string assignment_id = 1;
+}
+
+message DeploymentIdRequest {
+    string deployment_id = 1;
+}
+
+message OperationId {
+    string id = 1;
+}
+
+message TargetIdRequest {
+    string target_id = 1;
+}
+
+message TemplateIdRequest {
+    string template_id = 1;
+}
+
+message WorkloadIdRequest {
+    string workload_id = 1;
+}

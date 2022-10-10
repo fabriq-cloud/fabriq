@@ -1,7 +1,8 @@
-use akira_core::target::target_client::TargetClient;
-use akira_core::{ListTargetsRequest, TargetIdRequest, TargetMessage};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
+use fabriq_core::{
+    target::target_client::TargetClient, ListTargetsRequest, TargetIdRequest, TargetMessage,
+};
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;

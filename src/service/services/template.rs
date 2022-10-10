@@ -1,4 +1,4 @@
-use akira_core::{create_event, EventStream, EventType, ModelType, OperationId, TemplateMessage};
+use fabriq_core::{create_event, EventStream, EventType, ModelType, OperationId, TemplateMessage};
 use std::sync::Arc;
 
 use crate::{models::Template, persistence::Persistence};
@@ -85,8 +85,8 @@ impl TemplateService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_template_fixture;
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::test::get_template_fixture;
+    use fabriq_memory_stream::MemoryEventStream;
 
     use super::*;
     use crate::persistence::memory::MemoryPersistence;

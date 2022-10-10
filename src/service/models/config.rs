@@ -1,4 +1,4 @@
-use akira_core::ConfigMessage;
+use fabriq_core::ConfigMessage;
 
 use crate::persistence::Persistable;
 

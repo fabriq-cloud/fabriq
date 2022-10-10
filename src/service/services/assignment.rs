@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use crate::{models::Assignment, persistence::AssignmentPersistence};
-use akira_core::{create_event, AssignmentMessage, EventStream, EventType, ModelType, OperationId};
+use fabriq_core::{
+    create_event, AssignmentMessage, EventStream, EventType, ModelType, OperationId,
+};
 use std::fmt::Debug;
 
 #[derive(Debug)]
@@ -128,8 +130,8 @@ impl AssignmentService {
 mod tests {
     use super::*;
     use crate::persistence::memory::AssignmentMemoryPersistence;
-    use akira_core::test::get_assignment_fixture;
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::test::get_assignment_fixture;
+    use fabriq_memory_stream::MemoryEventStream;
 
     #[tokio::test]
     async fn test_create_get_delete() {

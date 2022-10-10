@@ -79,7 +79,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use akira_core::test::get_host_fixture;
+    use fabriq_core::test::get_host_fixture;
 
     use super::*;
 

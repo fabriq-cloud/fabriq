@@ -1,0 +1,25 @@
+syntax = "proto3";
+package fabriq.host;
+
+import "common.proto";
+
+service Host {
+    rpc Upsert(HostMessage) returns (fabriq.common.OperationId);
+    rpc Delete(DeleteHostRequest) returns (fabriq.common.OperationId);
+    rpc List(ListHostsRequest) returns (ListHostsResponse);
+}
+
+message DeleteHostRequest {
+    string id = 1;
+}
+
+message ListHostsRequest {}
+
+message ListHostsResponse {
+    repeated HostMessage hosts = 1;
+}
+
+message HostMessage {
+    string          id = 1;
+    repeated string labels = 2;
+}

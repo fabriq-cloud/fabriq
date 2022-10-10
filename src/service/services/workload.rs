@@ -1,4 +1,4 @@
-use akira_core::{create_event, EventStream, EventType, ModelType, OperationId, WorkloadMessage};
+use fabriq_core::{create_event, EventStream, EventType, ModelType, OperationId, WorkloadMessage};
 use std::sync::Arc;
 
 use crate::{models::Workload, persistence::WorkloadPersistence};
@@ -121,8 +121,8 @@ mod tests {
         models::Template,
         persistence::memory::{MemoryPersistence, WorkloadMemoryPersistence},
     };
-    use akira_core::test::{get_template_fixture, get_workload_fixture};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::test::{get_template_fixture, get_workload_fixture};
+    use fabriq_memory_stream::MemoryEventStream;
 
     #[tokio::test]
     async fn test_create_get_delete() {

@@ -1,4 +1,4 @@
-use akira_core::{create_event, EventStream, EventType, ModelType, OperationId, TargetMessage};
+use fabriq_core::{create_event, EventStream, EventType, ModelType, OperationId, TargetMessage};
 use std::sync::Arc;
 
 use crate::{
@@ -111,8 +111,8 @@ impl TargetService {
 mod tests {
     use super::*;
     use crate::persistence::memory::MemoryPersistence;
-    use akira_core::test::{get_host_fixture, get_target_fixture};
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_core::test::{get_host_fixture, get_target_fixture};
+    use fabriq_memory_stream::MemoryEventStream;
 
     #[tokio::test]
     async fn test_create_get_delete() {

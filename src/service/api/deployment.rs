@@ -1,7 +1,6 @@
-use akira_core::common::TemplateIdRequest;
-use akira_core::{
-    DeploymentIdRequest, DeploymentMessage, DeploymentTrait, ListDeploymentsRequest,
-    ListDeploymentsResponse, OperationId, WorkloadIdRequest,
+use fabriq_core::{
+    common::TemplateIdRequest, DeploymentIdRequest, DeploymentMessage, DeploymentTrait,
+    ListDeploymentsRequest, ListDeploymentsResponse, OperationId, WorkloadIdRequest,
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
@@ -191,13 +190,13 @@ impl DeploymentTrait for GrpcDeploymentService {
 
 #[cfg(test)]
 mod tests {
-    use akira_core::common::TemplateIdRequest;
-    use akira_core::test::{get_deployment_fixture, get_target_fixture};
-    use akira_core::{
+    use fabriq_core::{
+        common::TemplateIdRequest,
+        test::{get_deployment_fixture, get_target_fixture},
         DeploymentIdRequest, DeploymentTrait, EventStream, ListDeploymentsRequest,
         WorkloadIdRequest,
     };
-    use akira_memory_stream::MemoryEventStream;
+    use fabriq_memory_stream::MemoryEventStream;
     use std::sync::Arc;
     use tonic::Request;
 

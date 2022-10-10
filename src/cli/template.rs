@@ -1,7 +1,9 @@
-use akira_core::template::template_client::TemplateClient;
-use akira_core::{common::TemplateIdRequest, ListTemplatesRequest, TemplateMessage};
 use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, Command};
+use fabriq_core::{
+    common::TemplateIdRequest, template::template_client::TemplateClient, ListTemplatesRequest,
+    TemplateMessage,
+};
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;
