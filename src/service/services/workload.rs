@@ -38,7 +38,8 @@ impl WorkloadService {
             != 2
         {
             return Err(anyhow::anyhow!(
-                "invalid team id, expected format <org>/<team>, found {}",
+                "invalid team id, expected format <org>{}<team>, found {}",
+                WorkloadMessage::TEAM_ID_SEPARATOR,
                 workload.team_id
             ));
         }

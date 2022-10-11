@@ -38,8 +38,6 @@ impl ConfigService {
             self.event_stream.send(&create_event).await?;
         }
 
-        tracing::info!("config created: {:?}", config);
-
         Ok(operation_id)
     }
 

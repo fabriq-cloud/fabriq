@@ -1,10 +1,11 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{Arg, Command};
+use clap::{AppSettings, Arg, Command};
 
 use crate::context::Context;
 
 pub fn args() -> Command<'static> {
     Command::new("team")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .long_flag("team")
         .about("View teams")
         .subcommand(

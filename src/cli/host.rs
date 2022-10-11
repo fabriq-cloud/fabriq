@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, Arg, Command};
+use clap::{arg, AppSettings, Arg, Command};
 use fabriq_core::{
     host::host_client::HostClient, DeleteHostRequest, HostMessage, ListHostsRequest,
 };
@@ -10,6 +10,7 @@ use crate::context::Context;
 
 pub fn args() -> Command<'static> {
     Command::new("host")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .long_flag("host")
         .about("manage hosts")
         .subcommand(

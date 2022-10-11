@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, Arg, Command};
+use clap::{arg, AppSettings, Arg, Command};
 use fabriq_core::{
     config::config_client::ConfigClient, ConfigIdRequest, ConfigMessage, ConfigValueType,
     QueryConfigRequest,
@@ -11,6 +11,7 @@ use crate::context::Context;
 
 pub fn args() -> Command<'static> {
     Command::new("config")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .long_flag("config")
         .about("manage configs")
         .subcommand(
@@ -26,7 +27,6 @@ pub fn args() -> Command<'static> {
                 )
                 .arg(
                     Arg::new("template")
-                        .short('t')
                         .long("template")
                         .help("owning template id")
                         .takes_value(true)
@@ -34,9 +34,15 @@ pub fn args() -> Command<'static> {
                 )
                 .arg(
                     Arg::new("workload")
-                        .short('w')
                         .long("workload")
                         .help("owning workload id")
+                        .takes_value(true)
+                        .multiple_values(false),
+                )
+                .arg(
+                    Arg::new("team")
+                        .long("team")
+                        .help("owning team")
                         .takes_value(true)
                         .multiple_values(false),
                 )
@@ -104,16 +110,18 @@ pub async fn handlers(
         Some(("create", create_match)) => {
             let key = create_match
                 .value_of("KEY")
-                .expect("Config key expected")
-                .to_string();
-            let value = create_match
-                .value_of("VALUE")
-                .expect("Config value expected")
+                .expect("config key expected")
                 .to_string();
 
+            let value = create_match
+                .value_of("VALUE")
+                .expect("config value expected")
+                .to_string();
+
+            let team_id = create_match.value_of("team");
             let template_id = create_match.value_of("template");
-            let workload_id = create_match.value_of("workload");
-            let deployment_id = create_match.value_of("deployment");
+            let workload_name = create_match.value_of("workload");
+            let deployment_name = create_match.value_of("deployment");
             let value_type_option = create_match.value_of("type");
 
             let value_type = match value_type_option {
@@ -123,11 +131,20 @@ pub async fn handlers(
                 _ => return Err(anyhow::anyhow!("Invalid value type")),
             };
 
-            let owning_model = match workload_id {
-                Some(workload_id) => ConfigMessage::make_owning_model("workload", workload_id)?,
-                None => match deployment_id {
-                    Some(deployment_id) => {
-                        ConfigMessage::make_owning_model("deployment", deployment_id)?
+            let owning_model = match deployment_name {
+                Some(deployment_name) => {
+                    let deployment_id = format!(
+                        "{}:{}:{}",
+                        team_id.unwrap(),
+                        workload_name.unwrap(),
+                        deployment_name
+                    );
+                    ConfigMessage::make_owning_model("deployment", &deployment_id)?
+                }
+                None => match workload_name {
+                    Some(workload_name) => {
+                        let workload_id = format!("{}:{}", team_id.unwrap(), workload_name);
+                        ConfigMessage::make_owning_model("workload", &workload_id)?
                     }
                     None => match template_id {
                         Some(template_id) => {
