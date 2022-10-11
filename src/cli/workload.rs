@@ -65,7 +65,7 @@ pub async fn handlers(
 ) -> anyhow::Result<()> {
     let channel = Channel::from_static(context.endpoint).connect().await?;
 
-    let token: MetadataValue<_> = context.profile.pat.parse()?;
+    let token = context.make_token()?;
 
     let mut client = WorkloadClient::with_interceptor(channel, move |mut req: Request<()>| {
         req.metadata_mut().insert("authorization", token.clone());
@@ -118,8 +118,14 @@ pub async fn handlers(
                 ));
             }
 
+            let pat = context
+                .profile
+                .pat
+                .as_ref()
+                .expect("No user PAT - use `login` command to login first.");
+
             let octocrab = octocrab::OctocrabBuilder::new()
-                .personal_token(context.profile.pat.clone())
+                .personal_token(pat.clone())
                 .build()?;
 
             let user = octocrab.current().user().await?;

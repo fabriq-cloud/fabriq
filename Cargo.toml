@@ -64,5 +64,5 @@ name = "gitops"
 path = "src/gitops/main.rs"
 
 [[bin]]
-name = "service"
+name = "api"
 path = "src/service/main.rs"

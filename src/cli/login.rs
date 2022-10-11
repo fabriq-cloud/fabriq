@@ -24,13 +24,16 @@ pub async fn handlers(
     let github_user = octocrab.current().user().await?;
 
     let profile = Profile {
-        pat,
-        login: github_user.login,
+        pat: Some(pat),
+        login: Some(github_user.login),
     };
 
     profile.save()?;
 
-    tracing::info!("Logged in as {}", profile.login);
+    tracing::info!(
+        "logged in - saving Github user context as {:?}",
+        profile.login.unwrap()
+    );
 
     Ok(())
 }
