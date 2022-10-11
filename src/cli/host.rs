@@ -3,7 +3,6 @@ use clap::{arg, Arg, Command};
 use fabriq_core::{
     host::host_client::HostClient, DeleteHostRequest, HostMessage, ListHostsRequest,
 };
-use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;
 
@@ -43,7 +42,7 @@ pub async fn handlers(
     // TODO: Can this be made generic?
     let channel = Channel::from_static(context.endpoint).connect().await?;
 
-    let token: MetadataValue<_> = context.profile.pat.parse()?;
+    let token = context.make_token()?;
 
     let mut client = HostClient::with_interceptor(channel, move |mut req: Request<()>| {
         req.metadata_mut().insert("authorization", token.clone());

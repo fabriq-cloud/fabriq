@@ -4,7 +4,6 @@ use fabriq_core::{
     assignment::assignment_client::AssignmentClient, common::AssignmentIdRequest,
     AssignmentMessage, ListAssignmentsRequest,
 };
-use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;
 
@@ -48,7 +47,7 @@ pub async fn handlers(
 ) -> anyhow::Result<()> {
     let channel = Channel::from_static(context.endpoint).connect().await?;
 
-    let token: MetadataValue<_> = context.profile.pat.parse()?;
+    let token = context.make_token()?;
 
     let mut client = AssignmentClient::with_interceptor(channel, move |mut req: Request<()>| {
         req.metadata_mut().insert("authorization", token.clone());

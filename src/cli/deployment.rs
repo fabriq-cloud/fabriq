@@ -4,7 +4,6 @@ use fabriq_core::{
     deployment::deployment_client::DeploymentClient, DeploymentIdRequest, DeploymentMessage,
     ListDeploymentsRequest,
 };
-use tonic::metadata::{Ascii, MetadataValue};
 use tonic::transport::Channel;
 use tonic::Request;
 
@@ -70,7 +69,7 @@ pub async fn handlers(
 ) -> anyhow::Result<()> {
     let channel = Channel::from_static(context.endpoint).connect().await?;
 
-    let token: MetadataValue<Ascii> = context.profile.pat.parse()?;
+    let token = context.make_token()?;
 
     let mut client = DeploymentClient::with_interceptor(channel, move |mut req: Request<()>| {
         req.metadata_mut().insert("authorization", token.clone());

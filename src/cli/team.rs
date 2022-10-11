@@ -30,8 +30,10 @@ pub async fn handlers(
                 .expect("organization id expected")
                 .to_string();
 
+            let pat = context.get_pat();
+
             let octocrab = octocrab::OctocrabBuilder::new()
-                .personal_token(context.profile.pat.clone())
+                .personal_token(pat.clone())
                 .build()?;
 
             let teams = octocrab

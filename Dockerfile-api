@@ -40,9 +40,9 @@ WORKDIR /fabriq
 RUN apk upgrade --no-cache && apk add --no-cache gcompat libgcc
 
 # Copy our build
-COPY --from=builder /fabriq/target/release/service /fabriq/service
+COPY --from=builder /fabriq/target/release/api /fabriq/api
 
 # Use the unprivileged service user during execution.
 USER service::service
 
-CMD ["./service"]
+CMD ["./api"]
