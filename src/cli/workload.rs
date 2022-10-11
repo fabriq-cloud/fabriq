@@ -4,7 +4,6 @@ use fabriq_core::{
     workload::workload_client::WorkloadClient, ListWorkloadsRequest, WorkloadIdRequest,
     WorkloadMessage,
 };
-use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::Request;
 
