@@ -1,4 +1,4 @@
-name: Containerize Service
+name: Containerize API
 
 on:
   push:
@@ -10,8 +10,8 @@ on:
     paths:
       - "src/**"
       - "proto/**"
-      - "Dockerfile-service"
-      - ".github/workflows/containerize-service.yaml"
+      - "Dockerfile-api"
+      - ".github/workflows/containerize-api.yaml"
 
 env:
   REGISTRY: ghcr.io
@@ -39,14 +39,14 @@ jobs:
         id: meta
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-service
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
           tags: |
             type=sha,prefix=,format=long
       - name: Build and Push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           context: .
-          file: Dockerfile-service
+          file: Dockerfile-api
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
