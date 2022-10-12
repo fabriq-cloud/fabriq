@@ -1,9 +1,10 @@
-use clap::{arg, Command};
+use clap::{arg, AppSettings, Command};
 
 use crate::{context::Context, profile::Profile};
 
 pub fn args() -> Command<'static> {
     Command::new("login")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .long_flag("login")
         .arg(arg!(<PAT> "GitHub Personal Access Token"))
 }

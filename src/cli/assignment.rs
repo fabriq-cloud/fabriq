@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, Arg, Command};
+use clap::{arg, AppSettings, Arg, Command};
 use fabriq_core::{
     assignment::assignment_client::AssignmentClient, common::AssignmentIdRequest,
     AssignmentMessage, ListAssignmentsRequest,
@@ -11,6 +11,7 @@ use crate::context::Context;
 
 pub fn args() -> Command<'static> {
     Command::new("assignment")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .long_flag("assignment")
         .about("manage assignments")
         .subcommand(

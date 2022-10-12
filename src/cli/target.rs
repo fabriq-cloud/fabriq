@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, Arg, Command};
+use clap::{arg, AppSettings, Arg, Command};
 use fabriq_core::{
     target::target_client::TargetClient, ListTargetsRequest, TargetIdRequest, TargetMessage,
 };
@@ -10,6 +10,7 @@ use crate::context::Context;
 
 pub fn args() -> Command<'static> {
     Command::new("target")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .long_flag("target")
         .about("Manage targets")
         .subcommand(
