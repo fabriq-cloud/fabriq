@@ -37,7 +37,7 @@ const DEFAULT_SERVICE_CONSUMER_ID: &str = "service";
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    let tracer = opentelemetry_jaeger::new_pipeline()
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
         .with_service_name(DEFAULT_SERVICE_CONSUMER_ID)
         .install_simple()
         .expect("failed to instantiate opentelemetry tracing");

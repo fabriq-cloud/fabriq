@@ -27,7 +27,7 @@ const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
-    let tracer = opentelemetry_jaeger::new_pipeline()
+    let tracer = opentelemetry_jaeger::new_agent_pipeline()
         .with_service_name(DEFAULT_RECONCILER_CONSUMER_ID)
         .install_simple()
         .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
