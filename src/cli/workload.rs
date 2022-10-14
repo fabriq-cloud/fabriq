@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, Arg, Command};
+use clap::{arg, Arg, ArgAction, Command};
 use fabriq_core::{
     workload::workload_client::WorkloadClient, ListWorkloadsRequest, WorkloadIdRequest,
     WorkloadMessage,
@@ -21,16 +21,14 @@ pub fn args() -> Command {
                         .short('m')
                         .long("team")
                         .help("team this workload belongs to")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("template")
                         .short('t')
                         .long("template")
                         .help("template this workload should use")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(arg!(<NAME> "workload name"))
                 .arg_required_else_help(true),
@@ -49,8 +47,7 @@ pub fn args() -> Command {
                         .short('s')
                         .long("seed")
                         .help("Seed this workload should be initialized from")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(arg!(<ID> "Workload ID"))
                 .arg_required_else_help(true),
@@ -74,15 +71,15 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("create", add_match)) => {
             let workload_name = add_match
-                .value_of("NAME")
+                .get_one::<String>("NAME")
                 .expect("workload name expected")
                 .to_string();
             let team_id = add_match
-                .value_of("team")
+                .get_one::<String>("team")
                 .expect("team id expected")
                 .to_string();
             let template_id = add_match
-                .value_of("template")
+                .get_one::<String>("template")
                 .expect("template id expected")
                 .to_string();
 
@@ -101,11 +98,11 @@ pub async fn handlers(
         }
         Some(("init", init_match)) => {
             let id = init_match
-                .value_of("ID")
+                .get_one::<String>("ID")
                 .expect("Workload name expected")
                 .to_string();
             let seed = init_match
-                .value_of("seed")
+                .get_one::<String>("seed")
                 .expect("Seed expected")
                 .to_string();
 
@@ -143,7 +140,9 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", delete_match)) => {
-            let id = delete_match.value_of("ID").expect("workload id expected");
+            let id = delete_match
+                .get_one::<String>("ID")
+                .expect("workload id expected");
             let request = tonic::Request::new(WorkloadIdRequest {
                 workload_id: id.to_string(),
             });

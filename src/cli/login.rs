@@ -13,7 +13,7 @@ pub async fn handlers(
     _context: &Context<'static>,
 ) -> anyhow::Result<()> {
     let pat = model_match
-        .value_of("PAT")
+        .get_one::<String>("PAT")
         .expect("GitHub Personal Access Token expected")
         .to_string();
 

@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 
 use crate::context::Context;
 
@@ -13,8 +13,7 @@ pub fn args() -> Command {
                     .short('o')
                     .long("organization")
                     .help("organization to query")
-                    .takes_value(true)
-                    .multiple_values(false),
+                    .action(ArgAction::Set),
             ),
         )
 }
@@ -26,7 +25,7 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("list", list_match)) => {
             let organization_id = list_match
-                .value_of("organization")
+                .get_one::<String>("organization")
                 .expect("organization id expected")
                 .to_string();
 

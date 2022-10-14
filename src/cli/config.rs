@@ -66,24 +66,21 @@ pub fn args() -> Command {
                         .short('d')
                         .long("deployment")
                         .help("Deployment to query config for")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("template")
                         .short('t')
                         .long("template")
                         .help("Template to query config for")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("workload")
                         .short('w')
                         .long("workload")
                         .help("Workload to query config for")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 ),
         )
 }
@@ -104,26 +101,31 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("create", create_match)) => {
             let key = create_match
-                .value_of("KEY")
+                .get_one::<String>("KEY")
                 .expect("config key expected")
                 .to_string();
 
             let value = create_match
-                .value_of("VALUE")
+                .get_one::<String>("VALUE")
                 .expect("config value expected")
                 .to_string();
 
-            let team_id = create_match.value_of("team");
-            let template_id = create_match.value_of("template");
-            let workload_name = create_match.value_of("workload");
-            let deployment_name = create_match.value_of("deployment");
-            let value_type_option = create_match.value_of("type");
+            let team_id = create_match.get_one::<String>("team");
+            let template_id = create_match.get_one::<String>("template");
+            let workload_name = create_match.get_one::<String>("workload");
+            let deployment_name = create_match.get_one::<String>("deployment");
+            let value_type_option = create_match.get_one::<String>("type");
 
-            let value_type = match value_type_option {
-                Some("keyvalue") => ConfigValueType::KeyValueType as i32,
-                Some("string") => ConfigValueType::StringType as i32,
-                None => ConfigValueType::StringType as i32,
-                _ => return Err(anyhow::anyhow!("Invalid value type")),
+            let value_type = if let Some(value_type) = value_type_option {
+                if value_type == "keyvalue" {
+                    ConfigValueType::KeyValueType as i32
+                } else if value_type == "string" {
+                    ConfigValueType::StringType as i32
+                } else {
+                    return Err(anyhow::anyhow!("Invalid config value type"));
+                }
+            } else {
+                ConfigValueType::StringType as i32
             };
 
             let owning_model = match deployment_name {
@@ -171,7 +173,9 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("Config id expected");
+            let id = create_match
+                .get_one::<String>("ID")
+                .expect("Config id expected");
 
             let request = tonic::Request::new(ConfigIdRequest {
                 config_id: id.to_string(),
@@ -184,9 +188,9 @@ pub async fn handlers(
             Ok(())
         }
         Some(("query", list_match)) => {
-            let deployment_id = list_match.value_of("deployment");
-            let template_id = list_match.value_of("template");
-            let workload_id = list_match.value_of("workload");
+            let deployment_id = list_match.get_one::<String>("deployment");
+            let template_id = list_match.get_one::<String>("template");
+            let workload_id = list_match.get_one::<String>("workload");
 
             let request = if let Some(deployment_id) = deployment_id {
                 tonic::Request::new(QueryConfigRequest {

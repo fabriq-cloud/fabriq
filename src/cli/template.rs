@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, Arg, Command};
+use clap::{arg, Arg, ArgAction, Command};
 use fabriq_core::{
     common::TemplateIdRequest, template::template_client::TemplateClient, ListTemplatesRequest,
     TemplateMessage,
@@ -20,23 +20,20 @@ pub fn args() -> Command {
                     Arg::new("repo")
                         .long("repo")
                         .help("Git repository that contains template")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("ref")
                         .long("ref")
                         .help("Git ref that contains template")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("path")
                         .short('p')
                         .long("path")
                         .help("Template git repo path to template")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(arg!(<ID> "Template ID"))
                 .arg_required_else_help(true),
@@ -66,15 +63,21 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("create", add_match)) => {
             let id = add_match
-                .value_of("ID")
+                .get_one::<String>("ID")
                 .expect("Template name expected")
                 .to_string();
             let repository = add_match
-                .value_of("repo")
+                .get_one::<String>("repo")
                 .expect("Repo URL expected")
                 .to_string();
-            let git_ref = add_match.value_of("ref").unwrap_or("main").to_string();
-            let path = add_match.value_of("path").unwrap_or("./").to_string();
+            let git_ref = add_match
+                .get_one::<String>("ref")
+                .unwrap_or(&String::from("main"))
+                .to_string();
+            let path = add_match
+                .get_one::<String>("path")
+                .unwrap_or(&String::from("./"))
+                .to_string();
 
             let request = tonic::Request::new(TemplateMessage {
                 id: id.clone(),
@@ -90,7 +93,9 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("Template id expected");
+            let id = create_match
+                .get_one::<String>("ID")
+                .expect("Template id expected");
             let request = tonic::Request::new(TemplateIdRequest {
                 template_id: id.to_string(),
             });
