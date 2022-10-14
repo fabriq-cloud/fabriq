@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, AppSettings, Arg, Command};
+use clap::{arg, Arg, Command};
 use fabriq_core::{
     common::TemplateIdRequest, template::template_client::TemplateClient, ListTemplatesRequest,
     TemplateMessage,
@@ -9,10 +9,9 @@ use tonic::Request;
 
 use crate::context::Context;
 
-pub fn args() -> Command<'static> {
+pub fn args() -> Command {
     Command::new("template")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .long_flag("template")
+        .arg_required_else_help(true)
         .about("Manage templates")
         .subcommand(
             Command::new("create")

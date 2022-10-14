@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, AppSettings, Arg, Command};
+use clap::{arg, Arg, Command};
 use fabriq_core::{
     deployment::deployment_client::DeploymentClient, DeploymentIdRequest, DeploymentMessage,
     ListDeploymentsRequest,
@@ -9,9 +9,9 @@ use tonic::Request;
 
 use crate::context::Context;
 
-pub fn args() -> Command<'static> {
+pub fn args() -> Command {
     Command::new("deployment")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .long_flag("deployment")
         .about("manage deployments")
         .subcommand(

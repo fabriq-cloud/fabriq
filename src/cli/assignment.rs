@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, AppSettings, Arg, Command};
+use clap::{arg, Arg, ArgAction, Command};
 use fabriq_core::{
     assignment::assignment_client::AssignmentClient, common::AssignmentIdRequest,
     AssignmentMessage, ListAssignmentsRequest,
@@ -9,10 +9,9 @@ use tonic::Request;
 
 use crate::context::Context;
 
-pub fn args() -> Command<'static> {
+pub fn args() -> Command {
     Command::new("assignment")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .long_flag("assignment")
+        .arg_required_else_help(true)
         .about("manage assignments")
         .subcommand(
             Command::new("create")
@@ -21,15 +20,13 @@ pub fn args() -> Command<'static> {
                     Arg::new("deployment")
                         .long("deployment")
                         .help("deployment id for assignment")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("host")
                         .long("host")
                         .help("host id for assignment")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg_required_else_help(true),
         )
@@ -58,12 +55,12 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("create", add_match)) => {
             let deployment_id = add_match
-                .value_of("deployment")
+                .get_one::<String>("deployment")
                 .expect("deployment id expected")
                 .to_string();
 
             let host_id = add_match
-                .value_of("host")
+                .get_one::<String>("host")
                 .expect("host id expected")
                 .to_string();
 
@@ -82,7 +79,9 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", delete_match)) => {
-            let id = delete_match.value_of("ID").expect("assignment id expected");
+            let id = delete_match
+                .get_one::<String>("ID")
+                .expect("assignment id expected");
 
             let request = tonic::Request::new(AssignmentIdRequest {
                 assignment_id: id.to_string(),

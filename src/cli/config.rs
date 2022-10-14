@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, AppSettings, Arg, Command};
+use clap::{arg, Arg, ArgAction, Command};
 use fabriq_core::{
     config::config_client::ConfigClient, ConfigIdRequest, ConfigMessage, ConfigValueType,
     QueryConfigRequest,
@@ -9,9 +9,9 @@ use tonic::Request;
 
 use crate::context::Context;
 
-pub fn args() -> Command<'static> {
+pub fn args() -> Command {
     Command::new("config")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .long_flag("config")
         .about("manage configs")
         .subcommand(
@@ -22,36 +22,31 @@ pub fn args() -> Command<'static> {
                         .short('d')
                         .long("deployment")
                         .help("owning deployment id")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("template")
                         .long("template")
                         .help("owning template id")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("workload")
                         .long("workload")
                         .help("owning workload id")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("team")
                         .long("team")
                         .help("owning team")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("type")
                         .long("type")
                         .help("value of type (default 'string')")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(arg!(<KEY> "Config key"))
                 .arg(arg!(<VALUE> "Config value"))
