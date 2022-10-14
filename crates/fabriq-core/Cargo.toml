@@ -7,12 +7,12 @@ edition = "2021"
 async-trait = "0.1"
 anyhow = "1.0"
 git2 = "0.15"
-prost = "0.10"
-prost-types = "0.10"
+prost = "0.11"
+prost-types = "0.11"
 serde = { version = "1.0", features = ["derive"] }
 tempfile = "3.3"
 tokio = { version = "1.14", features = ["macros", "rt", "rt-multi-thread"] }
-tonic = "0.7"
+tonic = "0.8"
 tracing = "0.1"
 uuid = { version = "1.1", features = ["v4"] }
 
@@ -20,4 +20,4 @@ uuid = { version = "1.1", features = ["v4"] }
 dotenvy = "0.15"
 
 [build-dependencies]
-tonic-build = "0.7"
+tonic-build = "0.8"
