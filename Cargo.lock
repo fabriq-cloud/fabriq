@@ -563,6 +563,7 @@ dependencies = [
  "prost",
  "prost-types",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -580,6 +581,7 @@ dependencies = [
  "prost-types",
  "sqlx",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

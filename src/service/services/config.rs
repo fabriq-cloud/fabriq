@@ -46,7 +46,7 @@ impl ConfigService {
         self.persistence.get_by_id(config_id).await
     }
 
-    #[tracing::instrument(name = "service::config::d&elete")]
+    #[tracing::instrument(name = "service::config::delete")]
     pub async fn delete(
         &self,
         config_id: &str,

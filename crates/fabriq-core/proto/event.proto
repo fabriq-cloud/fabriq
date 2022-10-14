@@ -26,10 +26,11 @@ enum ModelType {
 };
 
 message Event {
-    google.protobuf.Timestamp timestamp = 1;
-    fabriq.common.OperationId operation_id = 2;
-    EventType event_type = 3;
-    ModelType model_type = 4;
-    optional bytes serialized_previous_model = 5;
-    optional bytes serialized_current_model = 6;
+    string id = 1;
+    google.protobuf.Timestamp timestamp = 2;
+    fabriq.common.OperationId operation_id = 3;
+    EventType event_type = 4;
+    ModelType model_type = 5;
+    optional bytes serialized_previous_model = 6;
+    optional bytes serialized_current_model = 7;
 }
