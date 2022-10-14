@@ -314,7 +314,7 @@ impl GitOpsProcessor {
             .await?;
         } else {
             let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
-            let assignment_path = GitOpsProcessor::make_assignment_path(
+            let assignment_path = GitOpsProcessor::make_assignment_directory(
                 &assignment.host_id,
                 &organization_name,
                 &team_name,
@@ -353,25 +353,26 @@ impl GitOpsProcessor {
             .await?
             .into_inner();
 
-        let config_request = Request::new(QueryConfigRequest {
-            model_name: "deployment".to_string(),
-            model_id: deployment.id.clone(),
-        });
-
-        let response = self.config_client.query(config_request).await?.into_inner();
-        let configs = response.configs;
-
         let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
+
         let deployment_repo_path = Self::make_deployment_path(
             &organization_name,
             &team_name,
-            &deployment.workload_id,
-            &deployment.id,
+            &workload.name,
+            &deployment.name,
         );
 
         self.gitops_repo.remove_dir(&deployment_repo_path)?;
 
         if create {
+            let config_request = Request::new(QueryConfigRequest {
+                model_name: "deployment".to_string(),
+                model_id: deployment.id.clone(),
+            });
+
+            let response = self.config_client.query(config_request).await?.into_inner();
+            let configs = response.configs;
+
             self.render_deployment(&configs, &workload, deployment)
                 .await?;
         }
@@ -499,6 +500,19 @@ impl GitOpsProcessor {
         )
     }
 
+    fn make_assignment_directory(
+        host_id: &str,
+        organization_name: &str,
+        team_name: &str,
+        workload_name: &str,
+        deployment_name: &str,
+    ) -> String {
+        format!(
+            "hosts/{}/{}/{}/{}/{}",
+            host_id, organization_name, team_name, workload_name, deployment_name
+        )
+    }
+
     fn make_assignment_path(
         host_id: &str,
         organization_name: &str,
@@ -507,8 +521,14 @@ impl GitOpsProcessor {
         deployment_name: &str,
     ) -> String {
         format!(
-            "hosts/{}/{}/{}/{}/{}/kustomization.yaml",
-            host_id, organization_name, team_name, workload_name, deployment_name
+            "{}/kustomization.yaml",
+            Self::make_assignment_directory(
+                host_id,
+                organization_name,
+                team_name,
+                workload_name,
+                deployment_name
+            )
         )
     }
 

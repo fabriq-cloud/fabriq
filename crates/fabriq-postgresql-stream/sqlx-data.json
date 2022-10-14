@@ -102,5 +102,65 @@
       }
     },
     "query": "\n                SELECT * FROM events WHERE consumer_id = $1\n            "
+  },
+  "bfae8595335398c7fba8723090f296805360ace76edd8f8f463573c997f5ea3c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "event_timestamp",
+          "ordinal": 1,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "consumer_id",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "operation_id",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "model_type",
+          "ordinal": 4,
+          "type_info": "Int4"
+        },
+        {
+          "name": "serialized_current_model",
+          "ordinal": 5,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "serialized_previous_model",
+          "ordinal": 6,
+          "type_info": "Bytea"
+        },
+        {
+          "name": "event_type",
+          "ordinal": 7,
+          "type_info": "Int4"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT * FROM events\n            "
   }
 }

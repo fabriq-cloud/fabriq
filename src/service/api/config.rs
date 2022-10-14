@@ -78,7 +78,7 @@ impl ConfigTrait for GrpcConfigService {
             Err(err) => {
                 return Err(Status::new(
                     tonic::Code::Internal,
-                    format!("listing configs failed with {}", err),
+                    format!("config query failed with {}", err),
                 ))
             }
         };

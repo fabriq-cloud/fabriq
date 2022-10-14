@@ -60,6 +60,7 @@ mod tests {
     use prost::Message;
     use prost_types::Timestamp;
     use std::time::SystemTime;
+    use uuid::Uuid;
 
     use super::*;
 
@@ -82,6 +83,7 @@ mod tests {
         };
 
         let create_host_event = Event {
+            id: Uuid::new_v4().to_string(),
             operation_id: Some(operation_id),
             model_type: ModelType::Host as i32,
             serialized_current_model: Some(host.encode_to_vec()),

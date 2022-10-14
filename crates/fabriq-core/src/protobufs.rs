@@ -162,6 +162,7 @@ pub fn create_event<ModelMessage: prost::Message>(
     };
 
     Event {
+        id: Uuid::new_v4().to_string(),
         operation_id: Some(operation_id.clone()),
         model_type: model_type as i32,
         serialized_previous_model,

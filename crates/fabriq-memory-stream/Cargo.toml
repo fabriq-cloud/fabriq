@@ -11,3 +11,4 @@ bytes = "1.1"
 prost = "0.10"
 prost-types = "0.10"
 tokio = { version = "1.14", features = ["fs", "macros", "rt", "rt-multi-thread"] }
+uuid = { version = "1.1", features = ["v4"] }

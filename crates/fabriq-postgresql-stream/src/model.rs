@@ -16,12 +16,6 @@ pub struct PostgreSQLEvent {
     pub event_type: i32,
 }
 
-impl PostgreSQLEvent {
-    pub fn make_id(operation_id: &str, consumer_id: &str) -> String {
-        format!("{}-{}", operation_id, consumer_id)
-    }
-}
-
 impl From<PostgreSQLEvent> for Event {
     fn from(model: PostgreSQLEvent) -> Self {
         let operation_id = OperationId {
@@ -34,6 +28,7 @@ impl From<PostgreSQLEvent> for Event {
         };
 
         Self {
+            id: model.id,
             timestamp: Some(prost_timestamp),
             operation_id: Some(operation_id),
             model_type: model.model_type,

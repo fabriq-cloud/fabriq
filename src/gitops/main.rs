@@ -29,9 +29,9 @@ async fn main() -> anyhow::Result<()> {
         .install_simple()
         .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
 
-    tracing_subscriber::registry() //(1)
-        .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
-        .with(tracing_opentelemetry::layer().with_tracer(tracer)) //(3)
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_opentelemetry::layer().with_tracer(tracer))
         .with(tracing_subscriber::fmt::layer())
         .try_init()
         .expect("Failed to register tracer with registry");
@@ -51,9 +51,15 @@ async fn main() -> anyhow::Result<()> {
 
     sqlx::migrate!().run(&*db).await?;
 
+    let subscribers: Vec<String> = dotenvy::var("SUBSCRIBERS")
+        .unwrap_or_else(|_| "reconciler,gitops".to_string())
+        .split(',')
+        .map(|s| s.to_string())
+        .collect();
+
     let event_stream = PostgresqlEventStream {
         db: Arc::clone(&db),
-        subscribers: vec![],
+        subscribers,
     };
 
     let repo_url = env::var("GITOPS_REPO_URL").expect("GITOPS_REPO_URL must be set");

@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use sqlx::PgPool;
-use std::{sync::Arc, time::SystemTime};
+use std::sync::Arc;
+use uuid::Uuid;
 
 use fabriq_core::{Event, EventStream};
 
@@ -59,6 +60,19 @@ impl PostgresqlEventStream {
         Ok(total_rows_affected)
     }
 
+    async fn _list(&self) -> anyhow::Result<Vec<PostgreSQLEvent>> {
+        let rows = sqlx::query_as!(
+            PostgreSQLEvent,
+            r#"
+                SELECT * FROM events
+            "#,
+        )
+        .fetch_all(&*self.db)
+        .await?;
+
+        Ok(rows)
+    }
+
     #[allow(dead_code)]
     async fn clear(&self) -> anyhow::Result<u64> {
         let result = sqlx::query!(
@@ -74,6 +88,10 @@ impl PostgresqlEventStream {
     }
 }
 
+fn prost_to_naive_timestamp(timestamp: &prost_types::Timestamp) -> NaiveDateTime {
+    NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32)
+}
+
 #[async_trait]
 impl EventStream for PostgresqlEventStream {
     async fn send(&self, event: &Event) -> anyhow::Result<()> {
@@ -86,24 +104,23 @@ impl EventStream for PostgresqlEventStream {
         let models: Vec<PostgreSQLEvent> = self
             .subscribers
             .iter()
-            .map(|consumer_id| PostgreSQLEvent {
-                id: PostgreSQLEvent::make_id(&operation_id.id, consumer_id),
-                event_timestamp: NaiveDateTime::from_timestamp(
-                    SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs() as i64,
-                    0,
-                ),
-                consumer_id: consumer_id.to_string(),
+            .map(|consumer_id| {
+                let event_timestamp =
+                    prost_to_naive_timestamp(&event.timestamp.as_ref().unwrap().clone());
 
-                operation_id: operation_id.id.clone(),
+                PostgreSQLEvent {
+                    id: Uuid::new_v4().to_string(), // create new id for each subscriber
+                    event_timestamp,
+                    consumer_id: consumer_id.to_string(),
 
-                model_type: event.model_type,
-                event_type: event.event_type,
+                    operation_id: operation_id.id.clone(),
 
-                serialized_current_model: event.serialized_current_model.clone(),
-                serialized_previous_model: event.serialized_previous_model.clone(),
+                    model_type: event.model_type,
+                    event_type: event.event_type,
+
+                    serialized_current_model: event.serialized_current_model.clone(),
+                    serialized_previous_model: event.serialized_previous_model.clone(),
+                }
             })
             .collect();
 
@@ -120,27 +137,22 @@ impl EventStream for PostgresqlEventStream {
         Ok(())
     }
 
-    async fn delete(&self, event: &Event, consumer_id: &str) -> anyhow::Result<u64> {
+    async fn delete(&self, event: &Event, _consumer_id: &str) -> anyhow::Result<u64> {
         if event.operation_id.is_none() {
             return Err(anyhow::anyhow!("operation_id is not supported"));
         }
-
-        let operation_id = event.operation_id.as_ref().unwrap();
-
-        let event_id = PostgreSQLEvent::make_id(&operation_id.id, consumer_id);
 
         let result = sqlx::query!(
             // language=PostgreSQL
             r#"
                 DELETE FROM events WHERE id = $1
             "#,
-            event_id
+            event.id
         )
         .execute(&*self.db)
         .await?;
 
-        let test = result.rows_affected();
-        Ok(test)
+        Ok(result.rows_affected())
     }
 
     async fn receive(&self, consumer_id: &str) -> anyhow::Result<Vec<Event>> {
@@ -166,6 +178,7 @@ mod tests {
     use prost_types::Timestamp;
     use sqlx::postgres::PgPoolOptions;
     use std::time::SystemTime;
+    use uuid::Uuid;
 
     use fabriq_core::{Event, EventType, HostMessage, ModelType, OperationId};
 
@@ -214,6 +227,7 @@ mod tests {
         };
 
         let create_host_event = Event {
+            id: Uuid::new_v4().to_string(),
             operation_id: Some(operation_id),
             model_type: ModelType::Host as i32,
             serialized_current_model: Some(host.encode_to_vec()),
@@ -265,7 +279,6 @@ mod tests {
 
         // test that there is still can receive the event for the gitops consumer
 
-        println!("{:?}", received_events);
         assert_eq!(received_events.len(), 1);
 
         assert_eq!(received_event.event_type, EventType::Created as i32);
