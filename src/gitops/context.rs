@@ -3,11 +3,8 @@ pub struct Context<'a> {
     pub token: &'a str,
 }
 
-impl<'a> Default for Context<'a> {
-    fn default() -> Self {
-        Self {
-            endpoint: "http://localhost:50051",
-            token: "tim",
-        }
+impl<'a> Context<'a> {
+    pub fn new(endpoint: &'a str, token: &'a str) -> Self {
+        Self { endpoint, token }
     }
 }
