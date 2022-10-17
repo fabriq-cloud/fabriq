@@ -1,10 +1,9 @@
 use http::Request;
 use hyper::Body;
 use sqlx::postgres::PgPoolOptions;
-use std::env;
-use std::sync::Arc;
-use tonic::codegen::http;
-use tonic::transport::Server;
+use std::{env, sync::Arc};
+use tokio::time::Duration;
+use tonic::{codegen::http, transport::Server};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -20,6 +19,7 @@ use fabriq::{
         DeploymentRelationalPersistence, HostRelationalPersistence, TargetRelationalPersistence,
     },
     persistence::relational::{TemplateRelationalPersistence, WorkloadRelationalPersistence},
+    reconcilation::Reconciler,
     services::{
         AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
         TemplateService, WorkloadService,
@@ -31,14 +31,34 @@ use fabriq_core::{
 };
 use fabriq_postgresql_stream::PostgresqlEventStream;
 
-const DEFAULT_SERVICE_CONSUMER_ID: &str = "service";
+const SERVICE_NAME: &str = "api";
+const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";
+
+async fn reconcile(
+    reconciler: Reconciler,
+    event_stream: Arc<dyn EventStream>,
+    consumer_id: &str,
+) -> anyhow::Result<()> {
+    loop {
+        let events = event_stream.receive(&consumer_id).await?;
+
+        for event in events.iter() {
+            reconciler.process(event).await?;
+            event_stream.delete(event, &consumer_id).await?;
+        }
+
+        if events.is_empty() {
+            tokio::time::sleep(Duration::from_millis(5000)).await;
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_service_name(DEFAULT_SERVICE_CONSUMER_ID)
+        .with_service_name(SERVICE_NAME)
         .install_simple()
         .expect("failed to instantiate opentelemetry tracing");
 
@@ -193,7 +213,7 @@ async fn main() -> anyhow::Result<()> {
         },
     ));
 
-    Server::builder()
+    let api_future = Server::builder()
         .layer(tracing_layer)
         .add_service(tonic_web::enable(assignment_grpc_service))
         .add_service(tonic_web::enable(config_grpc_service))
@@ -203,8 +223,21 @@ async fn main() -> anyhow::Result<()> {
         .add_service(tonic_web::enable(workload_grpc_service))
         .add_service(tonic_web::enable(target_grpc_service))
         .add_service(tonic_web::enable(template_grpc_service))
-        .serve(addr)
-        .await?;
+        .serve(addr);
 
-    Ok(())
+    let reconciler = Reconciler {
+        assignment_service,
+        deployment_service,
+        host_service,
+        target_service,
+        template_service,
+        workload_service,
+    };
+
+    let reconciler_future = reconcile(reconciler, event_stream, DEFAULT_RECONCILER_CONSUMER_ID);
+
+    tokio::select! {
+        _ = api_future => Ok(()),
+        _ = reconciler_future => Ok(()),
+    }
 }

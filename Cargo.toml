@@ -56,10 +56,6 @@ name = "cli"
 path = "src/cli/main.rs"
 
 [[bin]]
-name = "reconciler"
-path = "src/reconciler/main.rs"
-
-[[bin]]
 name = "gitops"
 path = "src/gitops/main.rs"
 

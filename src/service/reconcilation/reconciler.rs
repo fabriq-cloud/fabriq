@@ -7,7 +7,7 @@
 use prost::Message;
 use std::{collections::HashMap, sync::Arc};
 
-use fabriq::{
+use crate::{
     models::{Assignment, Deployment, Host, Target, Template, Workload},
     services::{
         AssignmentService, DeploymentService, HostService, TargetService, TemplateService,
@@ -379,7 +379,7 @@ impl Reconciler {
 
 #[cfg(test)]
 mod tests {
-    use fabriq::{
+    use crate::{
         models::Template,
         persistence::memory::{
             AssignmentMemoryPersistence, DeploymentMemoryPersistence, HostMemoryPersistence,
