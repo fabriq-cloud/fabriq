@@ -10,7 +10,8 @@ on:
     paths:
       - "src/**"
       - "proto/**"
-      - "Dockerfile-api"
+      - "Cargo.lock"
+      - "Dockerfile"
       - ".github/workflows/containerize-api.yaml"
 
 env:

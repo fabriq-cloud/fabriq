@@ -14,12 +14,12 @@ mod workload;
 
 use context::Context;
 
-fn cli() -> Command<'static> {
+fn cli() -> Command {
     Command::new("fabriq")
         .about("deployments made simple")
+        .arg_required_else_help(true)
         .version("0.1.0")
         .subcommand_required(true)
-        .arg_required_else_help(true)
         .author("Tim Park")
         .subcommand(assignment::args())
         .subcommand(config::args())

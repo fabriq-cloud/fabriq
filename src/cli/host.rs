@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, AppSettings, Arg, Command};
+use clap::{arg, Arg, ArgAction, Command};
 use fabriq_core::{
     host::host_client::HostClient, DeleteHostRequest, HostMessage, ListHostsRequest,
 };
@@ -8,10 +8,9 @@ use tonic::Request;
 
 use crate::context::Context;
 
-pub fn args() -> Command<'static> {
+pub fn args() -> Command {
     Command::new("host")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .long_flag("host")
+        .arg_required_else_help(true)
         .about("manage hosts")
         .subcommand(
             Command::new("create")
@@ -21,8 +20,8 @@ pub fn args() -> Command<'static> {
                         .short('l')
                         .long("label")
                         .help("label(s) (space delimited) to apply to host")
-                        .takes_value(true)
-                        .multiple_values(true),
+                        .action(ArgAction::Set)
+                        .num_args(1..),
                 )
                 .arg(arg!(<ID> "host id"))
                 .arg_required_else_help(true),
@@ -53,12 +52,12 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("create", add_match)) => {
             let id = add_match
-                .value_of("ID")
+                .get_one::<String>("ID")
                 .expect("Host name expected")
                 .to_string();
 
             let labels = add_match
-                .values_of("label")
+                .get_many::<String>("label")
                 .expect("At least one label expected");
 
             let labels = labels.map(|s| s.to_string()).collect();
@@ -75,7 +74,9 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("Host id expected");
+            let id = create_match
+                .get_one::<String>("ID")
+                .expect("Host id expected");
             let request = tonic::Request::new(DeleteHostRequest { id: id.to_string() });
 
             client.delete(request).await?;

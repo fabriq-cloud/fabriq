@@ -1,5 +1,5 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{arg, AppSettings, Arg, Command};
+use clap::{arg, Arg, ArgAction, Command};
 use fabriq_core::{
     deployment::deployment_client::DeploymentClient, DeploymentIdRequest, DeploymentMessage,
     ListDeploymentsRequest,
@@ -9,9 +9,9 @@ use tonic::Request;
 
 use crate::context::Context;
 
-pub fn args() -> Command<'static> {
+pub fn args() -> Command {
     Command::new("deployment")
-        .setting(AppSettings::ArgRequiredElseHelp)
+        .arg_required_else_help(true)
         .long_flag("deployment")
         .about("manage deployments")
         .subcommand(
@@ -21,36 +21,31 @@ pub fn args() -> Command<'static> {
                     Arg::new("hosts")
                         .long("hosts")
                         .help("host count for deployment")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("target")
                         .long("target")
                         .help("target id for deployment")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("team")
                         .long("team")
                         .help("team name for deployment")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("template")
                         .long("template")
                         .help("template override for deployment")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(
                     Arg::new("workload")
                         .long("workload")
                         .help("workload name for deployment")
-                        .takes_value(true)
-                        .multiple_values(false),
+                        .action(ArgAction::Set),
                 )
                 .arg(arg!(<NAME> "deployment name"))
                 .arg_required_else_help(true),
@@ -80,24 +75,26 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("create", add_match)) => {
             let deployment_name = add_match
-                .value_of("NAME")
+                .get_one::<String>("NAME")
                 .expect("deployment name expected")
                 .to_string();
             let workload_name = add_match
-                .value_of("workload")
+                .get_one::<String>("workload")
                 .expect("workload name expected")
                 .to_string();
             let target_id = add_match
-                .value_of("target")
+                .get_one::<String>("target")
                 .expect("target expected")
                 .to_string();
             let team = add_match
-                .value_of("team")
+                .get_one::<String>("team")
                 .expect("team expected")
                 .to_string();
-            let template_id: Option<String> = add_match.value_of("template").map(|s| s.to_string());
+            let template_id: Option<String> = add_match
+                .get_one::<String>("template")
+                .map(|s| s.to_string());
             let host_count = add_match
-                .value_of("hosts")
+                .get_one::<String>("hosts")
                 .expect("hosts expected")
                 .parse::<i32>()?;
 
@@ -119,7 +116,9 @@ pub async fn handlers(
             Ok(())
         }
         Some(("delete", create_match)) => {
-            let id = create_match.value_of("ID").expect("deployment id expected");
+            let id = create_match
+                .get_one::<String>("ID")
+                .expect("deployment id expected");
 
             let request = tonic::Request::new(DeploymentIdRequest {
                 deployment_id: id.to_string(),
