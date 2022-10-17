@@ -40,11 +40,11 @@ async fn reconcile(
     consumer_id: &str,
 ) -> anyhow::Result<()> {
     loop {
-        let events = event_stream.receive(&consumer_id).await?;
+        let events = event_stream.receive(consumer_id).await?;
 
         for event in events.iter() {
             reconciler.process(event).await?;
-            event_stream.delete(event, &consumer_id).await?;
+            event_stream.delete(event, consumer_id).await?;
         }
 
         if events.is_empty() {
