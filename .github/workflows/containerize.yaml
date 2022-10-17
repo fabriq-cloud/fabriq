@@ -87,13 +87,6 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
           tags: |
             type=sha,prefix=,format=long
-      - name: Extract metadata and create {branch}-{sha}-reconciler tag
-        id: reconciler_meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-reconciler
-          tags: |
-            type=sha,prefix=,format=long
       - name: Extract metadata and create {branch}-{sha}-gitops tag
         id: gitops_meta
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
@@ -110,15 +103,6 @@ jobs:
           push: true
           tags: ${{ steps.api_meta.outputs.tags }}
           labels: ${{ steps.api_meta.outputs.labels }}
-      - name: Build and Push Docker Reconciler image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: .
-          file: Dockerfile
-          target: reconciler
-          push: true
-          tags: ${{ steps.reconciler_meta.outputs.tags }}
-          labels: ${{ steps.reconciler_meta.outputs.labels }}
       - name: Build and Push Docker Gitops image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
