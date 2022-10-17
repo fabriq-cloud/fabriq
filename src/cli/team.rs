@@ -1,12 +1,11 @@
 use ascii_table::{Align, AsciiTable};
-use clap::{AppSettings, Arg, Command};
+use clap::{Arg, ArgAction, Command};
 
 use crate::context::Context;
 
-pub fn args() -> Command<'static> {
+pub fn args() -> Command {
     Command::new("team")
-        .setting(AppSettings::ArgRequiredElseHelp)
-        .long_flag("team")
+        .arg_required_else_help(true)
         .about("View teams")
         .subcommand(
             Command::new("list").about("list teams").arg(
@@ -14,8 +13,7 @@ pub fn args() -> Command<'static> {
                     .short('o')
                     .long("organization")
                     .help("organization to query")
-                    .takes_value(true)
-                    .multiple_values(false),
+                    .action(ArgAction::Set),
             ),
         )
 }
@@ -27,7 +25,7 @@ pub async fn handlers(
     match model_match.subcommand() {
         Some(("list", list_match)) => {
             let organization_id = list_match
-                .value_of("organization")
+                .get_one::<String>("organization")
                 .expect("organization id expected")
                 .to_string();
 
