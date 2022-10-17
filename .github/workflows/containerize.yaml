@@ -1,4 +1,4 @@
-name: Containerize API, Reconciler, and GitOps executables
+name: Test, Static Analysis, and Containerization
 
 on:
   push:
@@ -67,7 +67,7 @@ jobs:
 
       # Static Analysis
 
-      - run: cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2021-0139
+      - run: cargo audit --ignore RUSTSEC-2020-0071
       - run: SQLX_OFFLINE=true cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes -A clippy::derive_partial_eq_without_eq
       - run: cargo fmt --all -- --check
 
