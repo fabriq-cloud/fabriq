@@ -14,7 +14,7 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
       - "Dockerfile"
-      - ".github/workflows/containerize-api.yaml"
+      - ".github/workflows/containerize.yaml"
 
 env:
   REGISTRY: ghcr.io
