@@ -21,7 +21,7 @@ COPY ./ .
 
 RUN curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip"
 RUN unzip protoc-3.20.3-linux-x86_64.zip -d $HOME/protoc
-RUN mv $HOME/protoc/bin/protoc /usr/bin/protoc
+ENV PATH="$PATH:$HOME/protoc"
 ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
