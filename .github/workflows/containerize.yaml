@@ -8,9 +8,11 @@ on:
     branches:
       - main
     paths:
+      - "crates/**"
       - "src/**"
       - "proto/**"
-      - "Cargo.lock"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
       - "Dockerfile"
       - ".github/workflows/containerize-api.yaml"
 
@@ -28,6 +30,48 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      # Tool installation
+
+      - uses: actions/checkout@v2
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+          override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: Install SQLx
+        run: cargo install sqlx-cli
+        id: sqlx-install
+
+      # Run migrations, if any
+
+      - name: Run SQLx migration
+        run: sqlx migrate run
+        id: sqlx-migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # Run Tests
+
+      - name: Test
+        run: cargo test
+        id: test
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PRIVATE_SSH_KEY: ${{ secrets.PRIVATE_SSH_KEY }}
+
+      # Static Analysis
+
+      - run: cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2021-0139
+      - run: SQLX_OFFLINE=true cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes -A clippy::derive_partial_eq_without_eq
+      - run: cargo fmt --all -- --check
+
+      # Containerize
 
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
