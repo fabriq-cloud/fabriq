@@ -8,9 +8,3 @@ impl<'a> Context<'a> {
         Self { endpoint, token }
     }
 }
-
-impl<'a> Default for Context<'a> {
-    fn default() -> Self {
-        Self::new("http://localhost:50051", "tim")
-    }
-}

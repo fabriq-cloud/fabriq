@@ -62,14 +62,15 @@ async fn main() -> anyhow::Result<()> {
         subscribers,
     };
 
-    let access_token = env::var("ACCESS_TOKEN").unwrap_or_else(|_| "test".to_owned());
+    let access_token = env::var("GITOPS_ACCESS_TOKEN").expect("GITOPS_ACCESS_TOKEN must be set");
     let access_token: &'static str = Box::leak(Box::new(access_token));
-    let api_endpoint =
-        env::var("API_ENDPOINT").unwrap_or_else(|_| "http://localhost:50051".to_owned());
+
+    let api_endpoint = env::var("FABRIQ_API_ENDPOINT").expect("FABRIQ_API_ENDPOINT must be set");
     let api_endpoint: &'static str = Box::leak(Box::new(api_endpoint));
 
     let repo_url = env::var("GITOPS_REPO_URL").expect("GITOPS_REPO_URL must be set");
     let repo_branch = env::var("GITOPS_REPO_BRANCH").unwrap_or_else(|_| "main".to_owned());
+
     let private_ssh_key_path =
         env::var("GITOPS_PRIVATE_SSH_KEY_PATH").expect("GITOPS_PRIVATE_SSH_KEY_PATH must be set");
     let private_ssh_key = fs::read_to_string(&private_ssh_key_path)?;
