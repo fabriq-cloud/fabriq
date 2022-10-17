@@ -81,7 +81,7 @@ async fn main() -> anyhow::Result<()> {
         &private_ssh_key,
     )?);
 
-    let context = Context::new(&api_endpoint, &access_token);
+    let context = Context::new(api_endpoint, access_token);
     let channel = Channel::from_static(context.endpoint).connect().await?;
     let token: MetadataValue<Ascii> = context.token.parse()?;
 
