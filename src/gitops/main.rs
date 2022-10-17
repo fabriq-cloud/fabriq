@@ -63,8 +63,11 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let access_token = env::var("ACCESS_TOKEN").unwrap_or_else(|_| "test".to_owned());
+    let access_token: &'static str = Box::leak(Box::new(access_token));
     let api_endpoint =
         env::var("API_ENDPOINT").unwrap_or_else(|_| "http://localhost:50051".to_owned());
+    let api_endpoint: &'static str = Box::leak(Box::new(api_endpoint));
+
     let repo_url = env::var("GITOPS_REPO_URL").expect("GITOPS_REPO_URL must be set");
     let repo_branch = env::var("GITOPS_REPO_BRANCH").unwrap_or_else(|_| "main".to_owned());
     let private_ssh_key_path =
