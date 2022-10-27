@@ -80,14 +80,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata and create {branch}-{sha}-api tag
+      - name: Extract metadata and create fabriq-api-{sha} tag
         id: api_meta
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
           tags: |
             type=sha,prefix=,format=long
-      - name: Extract metadata and create {branch}-{sha}-gitops tag
+      - name: Extract metadata and create fabriq-gitops-{sha} tag
         id: gitops_meta
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:

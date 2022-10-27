@@ -20,7 +20,7 @@ pub fn args() -> Command {
                 .arg(
                     Arg::new("hosts")
                         .long("hosts")
-                        .help("host count for deployment")
+                        .help("host count for deployment (or 'all' for all matching hosts)")
                         .action(ArgAction::Set),
                 )
                 .arg(
@@ -95,8 +95,12 @@ pub async fn handlers(
                 .map(|s| s.to_string());
             let host_count = add_match
                 .get_one::<String>("hosts")
-                .expect("hosts expected")
-                .parse::<i32>()?;
+                .expect("hosts expected");
+
+            let host_count = match host_count.as_str() {
+                "all" => i32::MAX,
+                _ => host_count.parse::<i32>()?,
+            };
 
             let workload_id = format!("{}:{}", team, workload_name);
 

@@ -178,12 +178,12 @@ impl ConfigService {
     }
 
     #[tracing::instrument(name = "service::config::get_by_deployment_id")]
-    pub async fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
+    pub async fn _get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         self.persistence.get_by_deployment_id(deployment_id).await
     }
 
     #[tracing::instrument(name = "service::config::get_by_workload_id")]
-    pub async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
+    pub async fn _get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         self.persistence.get_by_workload_id(workload_id).await
     }
 }
@@ -275,7 +275,7 @@ mod tests {
         assert_eq!(fetched_config.id, config.id);
 
         let configs_by_workload = config_service
-            .get_by_workload_id(&workload.id)
+            ._get_by_workload_id(&workload.id)
             .await
             .unwrap();
         assert_eq!(configs_by_workload.len(), 1);
