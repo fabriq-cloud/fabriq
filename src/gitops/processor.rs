@@ -1,10 +1,10 @@
 use handlebars::{to_json, Handlebars};
 use serde_json::value::{Map, Value as Json};
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf};
 use tonic::Request;
 
 use fabriq_core::{
@@ -544,8 +544,92 @@ impl GitOpsProcessor {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn render_template_path(
+        &self,
+        configs: &[ConfigMessage],
+        template_repo: &dyn GitRepo,
+        template_path: PathBuf,
+        deployment: &DeploymentMessage,
+        sub_template_path: &PathBuf,
+        template: &TemplateMessage,
+        workload: &WorkloadMessage,
+    ) -> anyhow::Result<()> {
+        let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
+        let deployment_repo_path = Self::make_deployment_path(
+            &organization_name,
+            &team_name,
+            &workload.name,
+            &deployment.name,
+        );
+
+        let template_paths = template_repo.list(template_path)?;
+
+        for template_path in template_paths {
+            if template_path.is_dir() {
+                let sub_path = sub_template_path.join(template_path.file_name().unwrap());
+                self.render_template_path(
+                    configs,
+                    template_repo,
+                    template_path,
+                    deployment,
+                    &sub_path,
+                    template,
+                    workload,
+                )?;
+            } else {
+                let template_bytes = template_repo.read_file(template_path.clone())?;
+                let template_string = String::from_utf8(template_bytes)?;
+
+                let mut handlebars = Handlebars::new();
+                handlebars.register_template_string(&template.id, template_string)?;
+
+                let file_name = template_path.file_name().unwrap();
+                let file_path = Path::new(&deployment_repo_path)
+                    .join(sub_template_path)
+                    .join(file_name);
+                let string_path = file_path.to_string_lossy();
+
+                let mut values: Map<String, Json> = Map::new();
+
+                for config in configs {
+                    match config.value_type {
+                        value_type if value_type == ConfigValueType::StringType as i32 => {
+                            values.insert(config.key.clone(), to_json(config.value.clone()));
+                        }
+
+                        value_type if value_type == ConfigValueType::KeyValueType as i32 => {
+                            let keyvalue_config = config.deserialize_keyvalue_pairs()?;
+                            values.insert(config.key.clone(), to_json(keyvalue_config));
+                        }
+
+                        _ => {
+                            tracing::error!("unsupported config type: {:?}", config);
+                        }
+                    }
+                }
+
+                values.insert(
+                    "organization".to_owned(),
+                    to_json(organization_name.clone()),
+                );
+                values.insert("team".to_owned(), to_json(team_name.clone()));
+                values.insert("workload".to_owned(), to_json(workload.name.clone()));
+                values.insert("deployment".to_owned(), to_json(deployment.name.clone()));
+
+                let rendered_template = handlebars.render(&template.id, &values)?;
+
+                self.gitops_repo
+                    .write_file(&string_path, rendered_template.as_bytes())?;
+                self.gitops_repo.add_path(file_path.clone())?;
+            }
+        }
+
+        Ok(())
+    }
+
     #[tracing::instrument]
-    async fn render_deployment_template(
+    fn render_deployment_template(
         &self,
         configs: &[ConfigMessage],
         deployment: &DeploymentMessage,
@@ -558,61 +642,17 @@ impl GitOpsProcessor {
             &self.private_ssh_key,
         )?;
 
-        let template_paths = template_repo.list(template.path.clone().into())?;
+        let template_root_path: PathBuf = template.path.clone().into();
 
-        let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
-
-        let deployment_repo_path = Self::make_deployment_path(
-            &organization_name,
-            &team_name,
-            &workload.name,
-            &deployment.name,
-        );
-
-        for template_path in template_paths {
-            let template_bytes = template_repo.read_file(template_path.clone())?;
-            let template_string = String::from_utf8(template_bytes)?;
-
-            let mut handlebars = Handlebars::new();
-            handlebars.register_template_string(&template.id, template_string)?;
-
-            let file_name = template_path.file_name().unwrap();
-            let file_path = Path::new(&deployment_repo_path).join(file_name);
-            let string_path = file_path.to_string_lossy();
-
-            let mut values: Map<String, Json> = Map::new();
-
-            for config in configs {
-                match config.value_type {
-                    value_type if value_type == ConfigValueType::StringType as i32 => {
-                        values.insert(config.key.clone(), to_json(config.value.clone()));
-                    }
-
-                    value_type if value_type == ConfigValueType::KeyValueType as i32 => {
-                        let keyvalue_config = config.deserialize_keyvalue_pairs()?;
-                        values.insert(config.key.clone(), to_json(keyvalue_config));
-                    }
-
-                    _ => {
-                        tracing::error!("unsupported config type: {:?}", config);
-                    }
-                }
-            }
-
-            values.insert(
-                "organization".to_owned(),
-                to_json(organization_name.clone()),
-            );
-            values.insert("team".to_owned(), to_json(team_name.clone()));
-            values.insert("workload".to_owned(), to_json(workload.name.clone()));
-            values.insert("deployment".to_owned(), to_json(deployment.name.clone()));
-
-            let rendered_template = handlebars.render(&template.id, &values)?;
-
-            self.gitops_repo
-                .write_file(&string_path, rendered_template.as_bytes())?;
-            self.gitops_repo.add_path(file_path)?;
-        }
+        self.render_template_path(
+            configs,
+            &*template_repo,
+            template_root_path,
+            deployment,
+            &PathBuf::new(),
+            template,
+            workload,
+        )?;
 
         Ok(())
     }
@@ -638,8 +678,7 @@ impl GitOpsProcessor {
             .await?
             .into_inner();
 
-        self.render_deployment_template(configs, deployment, &template, workload)
-            .await?;
+        self.render_deployment_template(configs, deployment, &template, workload)?;
 
         Ok(())
     }

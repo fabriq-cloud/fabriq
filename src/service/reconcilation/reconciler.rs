@@ -5,7 +5,7 @@
 // These processor specific workflows are implemented using external processors.
 
 use prost::Message;
-use std::{collections::HashMap, sync::Arc};
+use std::{cmp, collections::HashMap, sync::Arc};
 
 use crate::{
     models::{Assignment, Deployment, Host, Target, Template, Workload},
@@ -134,7 +134,6 @@ impl Reconciler {
             .await?;
 
         // compute assigments to create and delete
-
         let (assignments_to_create, assignments_to_delete) = Self::compute_assignment_changes(
             deployment,
             &existing_assignments,
@@ -143,7 +142,6 @@ impl Reconciler {
         )?;
 
         // persist changes
-
         self.assignment_service
             .upsert_many(&assignments_to_create, operation_id)
             .await?;
@@ -360,7 +358,10 @@ impl Reconciler {
 
             assignments_to_delete.extend(deleted_scale_down_assignments);
         } else {
-            let create_count = desired_host_count - assignments_after_host_check.len();
+            let create_count = cmp::min(
+                hosts_available.len(),
+                desired_host_count - assignments_after_host_check.len(),
+            );
 
             // remove create_count hosts from available lists and use them to create assignments
             assignments_to_create = hosts_available
@@ -695,7 +696,8 @@ mod tests {
             },
         ];
 
-        let desired_host_count = 2;
+        // test that assignment processing handles case where more hosts are desired than are available
+        let desired_host_count = usize::MAX;
 
         let (assignments_to_create, assignments_to_delete) =
             Reconciler::compute_assignment_changes(

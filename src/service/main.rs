@@ -8,28 +8,37 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use fabriq::{
-    acl,
-    api::{
-        GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
-        GrpcHostService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
-    },
-    persistence::relational::{
-        AssignmentRelationalPersistence, ConfigRelationalPersistence,
-        DeploymentRelationalPersistence, HostRelationalPersistence, TargetRelationalPersistence,
-    },
-    persistence::relational::{TemplateRelationalPersistence, WorkloadRelationalPersistence},
-    reconcilation::Reconciler,
-    services::{
-        AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
-        TemplateService, WorkloadService,
-    },
-};
 use fabriq_core::{
     AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
     TargetServer, TemplateServer, WorkloadServer,
 };
+
 use fabriq_postgresql_stream::PostgresqlEventStream;
+
+mod acl;
+mod api;
+mod models;
+mod persistence;
+mod reconcilation;
+mod services;
+
+use api::{
+    GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
+    GrpcHostService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
+};
+
+use persistence::relational::{
+    AssignmentRelationalPersistence, ConfigRelationalPersistence, DeploymentRelationalPersistence,
+    HostRelationalPersistence, TargetRelationalPersistence, TemplateRelationalPersistence,
+    WorkloadRelationalPersistence,
+};
+
+use reconcilation::Reconciler;
+
+use services::{
+    AssignmentService, ConfigService, DeploymentService, HostService, TargetService,
+    TemplateService, WorkloadService,
+};
 
 const SERVICE_NAME: &str = "api";
 const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";

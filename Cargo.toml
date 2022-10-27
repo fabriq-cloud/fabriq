@@ -47,12 +47,8 @@ fabriq-memory-stream = { path = "crates/fabriq-memory-stream" }
 [profile.release]
 lto = true
 
-[lib]
-name = "fabriq"
-path = "src/service/lib.rs"
-
 [[bin]]
-name = "cli"
+name = "fabriq"
 path = "src/cli/main.rs"
 
 [[bin]]
