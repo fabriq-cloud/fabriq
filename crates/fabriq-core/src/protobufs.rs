@@ -35,8 +35,13 @@ pub use assignment::assignment_server::{Assignment as AssignmentTrait, Assignmen
 pub use assignment::{AssignmentMessage, ListAssignmentsRequest, ListAssignmentsResponse};
 
 impl AssignmentMessage {
+    pub const ASSIGNMENT_ID_SEPARATOR: char = '-';
+
     pub fn make_id(deployment_id: &str, host_id: &str) -> String {
-        format!("{}-{}", deployment_id, host_id)
+        format!(
+            "{deployment_id}{}{host_id}",
+            AssignmentMessage::ASSIGNMENT_ID_SEPARATOR
+        )
     }
 }
 
@@ -62,8 +67,8 @@ pub struct ConfigKeyValue {
 }
 
 impl ConfigMessage {
-    pub const CONFIG_ID_SEPARATOR: char = '|';
-    pub const OWNING_MODEL_SEPARATOR: char = '/';
+    pub const CONFIG_ID_SEPARATOR: char = ':';
+    pub const OWNING_MODEL_SEPARATOR: char = ':';
 
     pub fn make_id(owning_model: &str, key: &str) -> String {
         format!("{owning_model}{}{key}", ConfigMessage::CONFIG_ID_SEPARATOR)
@@ -74,9 +79,10 @@ impl ConfigMessage {
         owning_model_id: &str,
     ) -> anyhow::Result<String> {
         match owning_model_type {
-            "workload" | "deployment" | "template" => {
-                Ok(format!("{}/{}", owning_model_type, owning_model_id))
-            }
+            "workload" | "deployment" | "template" => Ok(format!(
+                "{owning_model_type}{}{owning_model_id}",
+                ConfigMessage::OWNING_MODEL_SEPARATOR,
+            )),
             _ => Err(anyhow::anyhow!(
                 "unknown owning model type: {}",
                 owning_model_type
@@ -119,7 +125,7 @@ pub use deployment::deployment_server::{Deployment as DeploymentTrait, Deploymen
 pub use deployment::{DeploymentMessage, ListDeploymentsRequest, ListDeploymentsResponse};
 
 impl DeploymentMessage {
-    const DEPLOYMENT_ID_SEPARATOR: char = ':';
+    const DEPLOYMENT_ID_SEPARATOR: char = '/';
 
     pub fn make_id(workload_id: &str, deployment_name: &str) -> String {
         format!(
@@ -247,8 +253,8 @@ pub use workload::workload_server::{Workload as WorkloadTrait, WorkloadServer};
 pub use workload::{ListWorkloadsRequest, ListWorkloadsResponse, WorkloadMessage};
 
 impl WorkloadMessage {
-    pub const TEAM_ID_SEPARATOR: char = ':';
-    pub const WORKLOAD_ID_SEPARATOR: char = ':';
+    pub const TEAM_ID_SEPARATOR: char = '/';
+    pub const WORKLOAD_ID_SEPARATOR: char = '/';
 
     pub fn make_id(team_id: &str, workload_name: &str) -> String {
         format!(

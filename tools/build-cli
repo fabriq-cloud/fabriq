@@ -1,0 +1,2 @@
+cargo build --bin fabriq --release
+mv target/release/fabriq ~/bin

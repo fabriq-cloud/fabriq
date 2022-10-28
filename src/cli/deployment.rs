@@ -2,7 +2,7 @@ use ascii_table::{Align, AsciiTable};
 use clap::{arg, Arg, ArgAction, Command};
 use fabriq_core::{
     deployment::deployment_client::DeploymentClient, DeploymentIdRequest, DeploymentMessage,
-    ListDeploymentsRequest,
+    ListDeploymentsRequest, WorkloadMessage,
 };
 use tonic::transport::Channel;
 use tonic::Request;
@@ -102,10 +102,11 @@ pub async fn handlers(
                 _ => host_count.parse::<i32>()?,
             };
 
-            let workload_id = format!("{}:{}", team, workload_name);
+            let workload_id = WorkloadMessage::make_id(&team, &workload_name);
+            let id = DeploymentMessage::make_id(&workload_id, &deployment_name);
 
             let request = tonic::Request::new(DeploymentMessage {
-                id: DeploymentMessage::make_id(&workload_id, &deployment_name),
+                id,
                 name: deployment_name.clone(),
                 workload_id,
                 target_id,
@@ -144,6 +145,12 @@ pub async fn handlers(
                 .deployments
                 .into_iter()
                 .map(|deployment| {
+                    let host_count = if deployment.host_count == i32::MAX {
+                        "all".to_string()
+                    } else {
+                        deployment.host_count.to_string()
+                    };
+
                     vec![
                         deployment.id.to_string(),
                         deployment.name.to_string(),
@@ -152,7 +159,7 @@ pub async fn handlers(
                         deployment
                             .template_id
                             .unwrap_or_else(|| "(inherited)".to_string()),
-                        deployment.host_count.to_string(),
+                        host_count,
                     ]
                 })
                 .collect();
@@ -192,7 +199,7 @@ pub async fn handlers(
 
             ascii_table
                 .column(5)
-                .set_header("HOST COUNT")
+                .set_header("HOSTS")
                 .set_align(Align::Left);
 
             ascii_table.print(table_data);
