@@ -110,10 +110,9 @@ pub async fn handlers(
                 .expect("config value expected")
                 .to_string();
 
-            let team_id = create_match.get_one::<String>("team");
             let template_id = create_match.get_one::<String>("template");
-            let workload_name = create_match.get_one::<String>("workload");
-            let deployment_name = create_match.get_one::<String>("deployment");
+            let workload_id = create_match.get_one::<String>("workload");
+            let deployment_id = create_match.get_one::<String>("deployment");
             let value_type_option = create_match.get_one::<String>("type");
 
             let value_type = if let Some(value_type) = value_type_option {
@@ -128,21 +127,12 @@ pub async fn handlers(
                 ConfigValueType::StringType as i32
             };
 
-            let owning_model = match deployment_name {
-                Some(deployment_name) => {
-                    let deployment_id = format!(
-                        "{}:{}:{}",
-                        team_id.unwrap(),
-                        workload_name.unwrap(),
-                        deployment_name
-                    );
-                    ConfigMessage::make_owning_model("deployment", &deployment_id)?
+            let owning_model = match deployment_id {
+                Some(deployment_id) => {
+                    ConfigMessage::make_owning_model("deployment", deployment_id)?
                 }
-                None => match workload_name {
-                    Some(workload_name) => {
-                        let workload_id = format!("{}:{}", team_id.unwrap(), workload_name);
-                        ConfigMessage::make_owning_model("workload", &workload_id)?
-                    }
+                None => match workload_id {
+                    Some(workload_id) => ConfigMessage::make_owning_model("workload", workload_id)?,
                     None => match template_id {
                         Some(template_id) => {
                             ConfigMessage::make_owning_model("template", template_id)?

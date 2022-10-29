@@ -83,8 +83,10 @@ pub async fn handlers(
                 .expect("template id expected")
                 .to_string();
 
+            let id = WorkloadMessage::make_id(&team_id, &workload_name);
+
             let request = tonic::Request::new(WorkloadMessage {
-                id: WorkloadMessage::make_id(&team_id, &workload_name),
+                id,
                 name: workload_name.clone(),
                 team_id,
                 template_id,

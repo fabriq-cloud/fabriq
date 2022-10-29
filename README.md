@@ -43,8 +43,8 @@ $ fabriq template create cncf-observability-beta --ref beta --path cncf-observab
 We next want to tell `fabriq` to deploy CNCF infrastructure (Contour, Linkerd, Fluentbit) to all of the hosts added to the system that match the `infra-stable` target.
 
 ```
-$ fabriq workload create infra --team platform
-$ fabriq deployment create stable --workload cncf-infra --hosts all --target cncf-infra-stable --team fabriq-cloud:platform
+$ fabriq workload create cncf-infra --team my-org/platform --template cncf-infra-stable
+$ fabriq deployment create stable --workload cncf-infra --hosts all --target cncf-infra-stable --team fabriq-cloud/platform
 ```
 
 ## Host Setup
@@ -71,7 +71,7 @@ $ fabriq deployment create stable --workload observability --target eastus2 --ho
 Let's template out a simple service from a Github template. A platform team might maintain this seed in collaboration with service teams to help create new services that utilize engineering fundamentals appropriately.
 
 ```
-$ fabriq workload template hello-service --from fabriq-cloud/rust-service-api --to my-team/hello-service
+$ fabriq workload init hello-service --seed fabriq-cloud/rust-service-api hello-service
 ```
 
 Doing this on the CLI makes it easy to describe, but we could have just as easily have templated it from GitHub itself.
