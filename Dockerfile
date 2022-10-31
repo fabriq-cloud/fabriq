@@ -25,8 +25,7 @@ ENV PATH="${PATH}:/fabriq/protoc"
 ENV PROTOC="/fabriq/protoc/bin/protoc"
 ENV SQLX_OFFLINE=true
 
-RUN rustup target add x86_64-unknown-linux-musl
-RUN cargo build --release --target x86_64-unknown-linux-musl
+RUN cargo build --release
 
 #############################################################x#######################################
 ## Final api container image
@@ -39,8 +38,23 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /fabriq
 
+# Install glibc
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
+ENV GLIBC_REPO=https://github.com/sgerrand/alpine-pkg-glibc
+ENV GLIBC_VERSION=2.35-r0
+
+RUN set -ex && \
+    apk --update add libstdc++ curl ca-certificates && \
+    for pkg in glibc-${GLIBC_VERSION} glibc-bin-${GLIBC_VERSION}; \
+    do curl -sSL ${GLIBC_REPO}/releases/download/${GLIBC_VERSION}/${pkg}.apk -o /tmp/${pkg}.apk; done && \
+    apk add --allow-untrusted /tmp/*.apk && \
+    rm -v /tmp/*.apk && \
+    /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib
+
 # Copy our build
-COPY --from=builder /fabriq/target/x86_64-unknown-linux-musl/release/api /fabriq/api
+COPY --from=builder /fabriq/target/release/api /fabriq/api
 
 # Use the unprivileged service user during execution.
 USER service::service
@@ -58,8 +72,23 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /fabriq
 
+# Install glibc
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
+ENV GLIBC_REPO=https://github.com/sgerrand/alpine-pkg-glibc
+ENV GLIBC_VERSION=2.35-r0
+
+RUN set -ex && \
+    apk --update add libstdc++ curl ca-certificates && \
+    for pkg in glibc-${GLIBC_VERSION} glibc-bin-${GLIBC_VERSION}; \
+    do curl -sSL ${GLIBC_REPO}/releases/download/${GLIBC_VERSION}/${pkg}.apk -o /tmp/${pkg}.apk; done && \
+    apk add --allow-untrusted /tmp/*.apk && \
+    rm -v /tmp/*.apk && \
+    /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib
+
 # Copy our build
-COPY --from=builder /fabriq/target/x86_64-unknown-linux-musl/release/gitops /fabriq/gitops
+COPY --from=builder /fabriq/target/release/gitops /fabriq/gitops
 
 # Use the unprivileged service user during execution.
 USER service::service
