@@ -102,6 +102,8 @@ async fn main() -> anyhow::Result<()> {
 
     let event_stream: Arc<dyn EventStream> = Arc::new(postgresql_event_stream);
 
+    // create persistence backends and services
+
     let assignment_persistence = Box::new(AssignmentRelationalPersistence {
         db: Arc::clone(&db),
     });
@@ -165,8 +167,7 @@ async fn main() -> anyhow::Result<()> {
         workload_service: Arc::clone(&workload_service),
     });
 
-    let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "[::1]:50051".to_owned());
-    let addr = endpoint.parse()?;
+    // create all grpc api services
 
     let assignment_grpc_service = AssignmentServer::with_interceptor(
         GrpcAssignmentService::new(Arc::clone(&assignment_service)),
@@ -205,6 +206,9 @@ async fn main() -> anyhow::Result<()> {
         GrpcWorkloadService::new(Arc::clone(&workload_service)),
         acl::authorize,
     );
+
+    let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "[::1]:80".to_owned());
+    let addr = endpoint.parse()?;
 
     tracing::info!("grpc services listening on {}", addr);
 
