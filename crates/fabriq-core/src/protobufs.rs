@@ -2,6 +2,7 @@ use std::time::SystemTime;
 
 use prost_types::Timestamp;
 use serde::{Deserialize, Serialize};
+use urlencoding::decode;
 use uuid::Uuid;
 
 pub mod common {
@@ -99,19 +100,30 @@ impl ConfigMessage {
 
         let key_value_pairs = self.value.split(';').collect::<Vec<&str>>();
 
-        let messages = key_value_pairs
-            .iter()
-            .map(|key_value_pair| {
-                let key_value_pair = key_value_pair.split('=').collect::<Vec<&str>>();
+        let mut config_key_values = Vec::new();
 
-                ConfigKeyValue {
-                    key: key_value_pair[0].to_string(),
-                    value: key_value_pair[1].to_string(),
-                }
-            })
-            .collect::<Vec<ConfigKeyValue>>();
+        for key_value_pair in key_value_pairs {
+            let kv_array = key_value_pair.split('=').collect::<Vec<&str>>();
 
-        Ok(messages)
+            if kv_array.len() != 2 {
+                return Err(anyhow::anyhow!(
+                    "ConfigMessage::deserialize_subconfig: invalid key value pair: {}",
+                    key_value_pair
+                ));
+            }
+
+            let decoded_value = match decode(kv_array[1]) {
+                Ok(value) => value.to_string(),
+                Err(e) => return Err(anyhow::anyhow!(e)),
+            };
+
+            config_key_values.push(ConfigKeyValue {
+                key: kv_array[0].to_string(),
+                value: decoded_value,
+            });
+        }
+
+        Ok(config_key_values)
     }
 }
 
@@ -278,5 +290,32 @@ impl WorkloadMessage {
         }
 
         Ok((team_id_parts[0].to_string(), team_id_parts[1].to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_kv() -> anyhow::Result<()> {
+        let config = ConfigMessage {
+            id: "test".to_owned(),
+            key: "test".to_owned(),
+            owning_model: "deployment:test".to_owned(),
+            value: "A=postgres%3A%2F%2Fpostgres%3A%5Beuro4sure%5D%40fabriq.postgres.database.azure.com%2Ffabriq%3Fsslmode%3Drequire;B=postgres%3A%2F%2Fpostgres%3A%5Beuro4sure%5D%40fabriq.postgres.database.azure.com%2Ffabriq%3Fsslmode%3Drequire".to_owned(),
+            value_type: ConfigValueType::KeyValueType as i32,
+        };
+
+        let kv = config.deserialize_keyvalue_pairs()?;
+
+        println!("{:?}", kv);
+        assert_eq!(kv.len(), 2);
+        assert_eq!(kv[0].key, "A");
+        assert_eq!(kv[0].value, "postgres://postgres:[euro4sure]@fabriq.postgres.database.azure.com/fabriq?sslmode=require");
+        assert_eq!(kv[1].key, "B");
+        assert_eq!(kv[1].value, "postgres://postgres:[euro4sure]@fabriq.postgres.database.azure.com/fabriq?sslmode=require");
+
+        Ok(())
     }
 }
