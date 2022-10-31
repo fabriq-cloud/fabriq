@@ -163,15 +163,15 @@ impl ConfigService {
         // workload config overrides template config.
 
         for config in template_config {
-            config_set.insert(config.id.clone(), config);
+            config_set.insert(config.key.clone(), config);
         }
 
         for config in workload_config {
-            config_set.insert(config.id.clone(), config);
+            config_set.insert(config.key.clone(), config);
         }
 
         for config in deployment_config {
-            config_set.insert(config.id.clone(), config);
+            config_set.insert(config.key.clone(), config);
         }
 
         Ok(config_set.values().cloned().collect())
