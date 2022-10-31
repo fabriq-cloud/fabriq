@@ -24,7 +24,9 @@ RUN unzip protoc-3.20.3-linux-x86_64.zip -d /fabriq/protoc
 ENV PATH="${PATH}:/fabriq/protoc"
 ENV PROTOC="/fabriq/protoc/bin/protoc"
 ENV SQLX_OFFLINE=true
-RUN cargo build --release
+
+RUN rustup target add x86_64-unknown-linux-musl
+RUN cargo build --release --target x86_64-unknown-linux-musl
 
 #############################################################x#######################################
 ## Final api container image
@@ -37,11 +39,8 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /fabriq
 
-# Install glibc and libgcc
-RUN apk upgrade --no-cache && apk add --no-cache gcompat libgcc
-
 # Copy our build
-COPY --from=builder /fabriq/target/release/api /fabriq/api
+COPY --from=builder /fabriq/target/x86_64-unknown-linux-musl/release/api /fabriq/api
 
 # Use the unprivileged service user during execution.
 USER service::service
@@ -59,35 +58,10 @@ COPY --from=builder /etc/group /etc/group
 
 WORKDIR /fabriq
 
-# Install glibc and libgcc
-RUN apk upgrade --no-cache && apk add --no-cache gcompat libgcc
-
 # Copy our build
-COPY --from=builder /fabriq/target/release/gitops /fabriq/gitops
+COPY --from=builder /fabriq/target/x86_64-unknown-linux-musl/release/gitops /fabriq/gitops
 
 # Use the unprivileged service user during execution.
 USER service::service
 
 CMD ["./gitops"]
-
-#############################################################x#######################################
-## Final reconciler container image
-####################################################################################################
-FROM alpine:latest AS reconciler
-
-# Import service user and group from builder.
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
-
-WORKDIR /fabriq
-
-# Install glibc and libgcc
-RUN apk upgrade --no-cache && apk add --no-cache gcompat libgcc
-
-# Copy our build
-COPY --from=builder /fabriq/target/release/reconciler /fabriq/reconciler
-
-# Use the unprivileged service user during execution.
-USER service::service
-
-CMD ["./reconciler"]
