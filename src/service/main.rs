@@ -1,19 +1,33 @@
-use http::Request;
-use hyper::Body;
-use sqlx::postgres::PgPoolOptions;
-use std::{env, sync::Arc};
-use tokio::time::Duration;
-use tonic::{codegen::http, transport::Server};
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 use fabriq_core::{
     AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
     TargetServer, TemplateServer, WorkloadServer,
 };
-
 use fabriq_postgresql_stream::PostgresqlEventStream;
+use http::Request;
+use hyper::Body;
+use opentelemetry::global;
+use opentelemetry::metrics;
+use opentelemetry::runtime;
+use opentelemetry::sdk::export::metrics::aggregation::cumulative_temporality_selector;
+use opentelemetry::sdk::metrics::controllers::BasicController;
+use opentelemetry::sdk::metrics::selectors;
+use opentelemetry::sdk::trace as sdktrace;
+use opentelemetry::sdk::Resource;
+use opentelemetry::trace::TraceError;
+use opentelemetry::trace::Tracer;
+use opentelemetry::Context;
+use opentelemetry::KeyValue;
+use opentelemetry::{trace::TraceContextExt, Key};
+use opentelemetry_otlp::ExportConfig;
+use opentelemetry_otlp::WithExportConfig;
+use sqlx::postgres::PgPoolOptions;
+use std::{env, sync::Arc};
+use tokio::time::Duration;
+use tonic::metadata::MetadataMap;
+use tonic::{codegen::http, transport::Server};
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::prelude::*;
 
 mod acl;
 mod api;
@@ -40,7 +54,7 @@ use services::{
     TemplateService, WorkloadService,
 };
 
-const SERVICE_NAME: &str = "api";
+const SERVICE_NAME: &str = "fabriq-api";
 const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";
 
 async fn reconcile(
@@ -62,13 +76,90 @@ async fn reconcile(
     }
 }
 
+fn init_tracer(metadata: &MetadataMap) -> Result<sdktrace::Tracer, TraceError> {
+    opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint("http://api.honeycomb.io:4317")
+                .with_metadata(metadata.clone()),
+        )
+        .with_trace_config(
+            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
+                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                SERVICE_NAME,
+            )])),
+        )
+        .install_batch(opentelemetry::runtime::Tokio)
+}
+
+/*
+fn init_metrics(metadata: &MetadataMap) -> metrics::Result<BasicController> {
+    let export_config = ExportConfig {
+        endpoint: "https://api.honeycomb.io".to_string(),
+        ..ExportConfig::default()
+    };
+    opentelemetry_otlp::new_pipeline()
+        .metrics(
+            selectors::simple::inexpensive(),
+            cumulative_temporality_selector(),
+            runtime::Tokio,
+        )
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_export_config(export_config)
+                .with_metadata(metadata.clone()),
+        )
+        .build()
+}
+*/
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
+    // let cx = Context::new();
+
+    // By binding the result to an unused variable, the lifetime of the variable
+    // matches the containing block, reporting traces and metrics during the whole
+    // execution.
+
+    // let tracer = init_tracer(&map)?;
+    // let metrics_controller = init_metrics(&map)?;
+
+    /*
     let tracer = opentelemetry_jaeger::new_agent_pipeline()
         .with_service_name(SERVICE_NAME)
         .install_simple()
+        .expect("failed to instantiate opentelemetry tracing");
+    */
+
+    let mut metadata = MetadataMap::with_capacity(1);
+
+    metadata.insert(
+        "x-honeycomb-team",
+        "x03ah4qU6jfj9AUCNnGaOH".parse().unwrap(),
+    );
+
+    metadata.insert("x-honeycomb-dataset", "fabriq-api".parse().unwrap());
+
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint("http://api.honeycomb.io:4317")
+                .with_metadata(metadata.clone()),
+        )
+        .with_trace_config(
+            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
+                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                SERVICE_NAME,
+            )])),
+        )
+        .install_batch(opentelemetry::runtime::Tokio)
         .expect("failed to instantiate opentelemetry tracing");
 
     tracing_subscriber::registry() //(1)
@@ -246,7 +337,11 @@ async fn main() -> anyhow::Result<()> {
     let reconciler_future = reconcile(reconciler, event_stream, DEFAULT_RECONCILER_CONSUMER_ID);
 
     tokio::select! {
-        _ = api_future => Ok(()),
-        _ = reconciler_future => Ok(()),
-    }
+        _ = api_future => (),
+        _ = reconciler_future => (),
+    };
+
+    // metrics_controller.stop(&cx)?;
+
+    Ok(())
 }
