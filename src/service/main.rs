@@ -336,9 +336,13 @@ async fn main() -> anyhow::Result<()> {
 
     let reconciler_future = reconcile(reconciler, event_stream, DEFAULT_RECONCILER_CONSUMER_ID);
 
-    tokio::select! {
-        _ = api_future => (),
-        _ = reconciler_future => (),
+    let test = tokio::select! {
+        r = api_future => {
+            tracing::error!("api future failed: {:?}", r);
+        },
+        r = reconciler_future => {
+            tracing::error!("reconciler future failed: {:?}", r);
+        }
     };
 
     // metrics_controller.stop(&cx)?;
