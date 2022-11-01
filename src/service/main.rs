@@ -5,20 +5,10 @@ use fabriq_core::{
 use fabriq_postgresql_stream::PostgresqlEventStream;
 use http::Request;
 use hyper::Body;
-use opentelemetry::global;
-use opentelemetry::metrics;
-use opentelemetry::runtime;
-use opentelemetry::sdk::export::metrics::aggregation::cumulative_temporality_selector;
-use opentelemetry::sdk::metrics::controllers::BasicController;
-use opentelemetry::sdk::metrics::selectors;
 use opentelemetry::sdk::trace as sdktrace;
 use opentelemetry::sdk::Resource;
 use opentelemetry::trace::TraceError;
-use opentelemetry::trace::Tracer;
-use opentelemetry::Context;
 use opentelemetry::KeyValue;
-use opentelemetry::{trace::TraceContextExt, Key};
-use opentelemetry_otlp::ExportConfig;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
@@ -145,22 +135,7 @@ async fn main() -> anyhow::Result<()> {
 
     metadata.insert("x-honeycomb-dataset", "fabriq-api".parse().unwrap());
 
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .tonic()
-                .with_endpoint("http://api.honeycomb.io:4317")
-                .with_metadata(metadata.clone()),
-        )
-        .with_trace_config(
-            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
-                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                SERVICE_NAME,
-            )])),
-        )
-        .install_batch(opentelemetry::runtime::Tokio)
-        .expect("failed to instantiate opentelemetry tracing");
+    let tracer = init_tracer(&metadata).expect("failed to instantiate opentelemetry tracing");
 
     tracing_subscriber::registry() //(1)
         .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
@@ -336,7 +311,7 @@ async fn main() -> anyhow::Result<()> {
 
     let reconciler_future = reconcile(reconciler, event_stream, DEFAULT_RECONCILER_CONSUMER_ID);
 
-    let test = tokio::select! {
+    tokio::select! {
         r = api_future => {
             tracing::error!("api future failed: {:?}", r);
         },
