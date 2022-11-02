@@ -5,15 +5,18 @@ use fabriq_core::{
 use fabriq_postgresql_stream::PostgresqlEventStream;
 use http::Request;
 use hyper::Body;
+use opentelemetry::global;
 use opentelemetry::sdk::trace as sdktrace;
-use opentelemetry::sdk::Resource;
+use opentelemetry::trace::TraceContextExt;
 use opentelemetry::trace::TraceError;
-use opentelemetry::KeyValue;
+use opentelemetry::trace::Tracer;
+use opentelemetry::Key;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;
 use tonic::metadata::MetadataMap;
+use tonic::transport::ClientTlsConfig;
 use tonic::{codegen::http, transport::Server};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
@@ -72,14 +75,9 @@ fn init_tracer(metadata: &MetadataMap) -> Result<sdktrace::Tracer, TraceError> {
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()
-                .with_endpoint("http://api.honeycomb.io:4317")
-                .with_metadata(metadata.clone()),
-        )
-        .with_trace_config(
-            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
-                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                SERVICE_NAME,
-            )])),
+                .with_endpoint("https://api.honeycomb.io")
+                .with_metadata(metadata.clone())
+                .with_tls_config(ClientTlsConfig::new().domain_name("api.honeycomb.io")),
         )
         .install_batch(opentelemetry::runtime::Tokio)
 }
@@ -130,19 +128,40 @@ async fn main() -> anyhow::Result<()> {
 
     metadata.insert(
         "x-honeycomb-team",
-        "x03ah4qU6jfj9AUCNnGaOH".parse().unwrap(),
+        "50TofEwjx8f6pXuKNA4aKN".parse().unwrap(),
     );
 
-    metadata.insert("x-honeycomb-dataset", "fabriq-api".parse().unwrap());
+    metadata.insert("x-honeycomb-dataset", SERVICE_NAME.parse().unwrap());
 
     let tracer = init_tracer(&metadata).expect("failed to instantiate opentelemetry tracing");
 
-    tracing_subscriber::registry() //(1)
-        .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
-        .with(tracing_opentelemetry::layer().with_tracer(tracer)) //(3)
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_opentelemetry::layer().with_tracer(tracer))
         .with(tracing_subscriber::fmt::layer())
         .try_init()
         .expect("failed to register tracer with registry");
+
+    const LEMONS_KEY: Key = Key::from_static_str("lemons");
+    const ANOTHER_KEY: Key = Key::from_static_str("ex.com/another");
+
+    let tracer = global::tracer("ex.com/basic");
+
+    tracer.in_span("operation", |cx| {
+        let span = cx.span();
+        span.add_event(
+            "Nice operation!".to_string(),
+            vec![Key::new("bogons").i64(100)],
+        );
+        span.set_attribute(ANOTHER_KEY.string("yes"));
+
+        tracer.in_span("Sub operation...", |cx| {
+            let span = cx.span();
+            span.set_attribute(LEMONS_KEY.string("five"));
+
+            span.add_event("Sub span event", vec![]);
+        });
+    });
 
     let subscribers: Vec<String> = dotenvy::var("SUBSCRIBERS")
         .unwrap_or_else(|_| "reconciler,gitops".to_string())
