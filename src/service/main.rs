@@ -5,12 +5,8 @@ use fabriq_core::{
 use fabriq_postgresql_stream::PostgresqlEventStream;
 use http::Request;
 use hyper::Body;
-use opentelemetry::global;
 use opentelemetry::sdk::trace as sdktrace;
-use opentelemetry::trace::TraceContextExt;
 use opentelemetry::trace::TraceError;
-use opentelemetry::trace::Tracer;
-use opentelemetry::Key;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
@@ -46,7 +42,6 @@ use services::{
     TemplateService, WorkloadService,
 };
 
-// const SERVICE_NAME: &str = "fabriq-api";
 const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";
 
 async fn reconcile(
@@ -88,22 +83,6 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    // let cx = Context::new();
-
-    // By binding the result to an unused variable, the lifetime of the variable
-    // matches the containing block, reporting traces and metrics during the whole
-    // execution.
-
-    // let tracer = init_tracer(&map)?;
-    // let metrics_controller = init_metrics(&map)?;
-
-    /*
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_service_name(SERVICE_NAME)
-        .install_simple()
-        .expect("failed to instantiate opentelemetry tracing");
-    */
-
     let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
 
     tracing_subscriber::registry()
@@ -112,27 +91,6 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .try_init()
         .expect("failed to register tracer with registry");
-
-    const LEMONS_KEY: Key = Key::from_static_str("lemons");
-    const ANOTHER_KEY: Key = Key::from_static_str("ex.com/another");
-
-    let tracer = global::tracer("ex.com/basic");
-
-    tracer.in_span("operation", |cx| {
-        let span = cx.span();
-        span.add_event(
-            "Nice operation!".to_string(),
-            vec![Key::new("bogons").i64(100)],
-        );
-        span.set_attribute(ANOTHER_KEY.string("yes"));
-
-        tracer.in_span("Sub operation...", |cx| {
-            let span = cx.span();
-            span.set_attribute(LEMONS_KEY.string("five"));
-
-            span.add_event("Sub span event", vec![]);
-        });
-    });
 
     let subscribers: Vec<String> = dotenvy::var("SUBSCRIBERS")
         .unwrap_or_else(|_| "reconciler,gitops".to_string())
@@ -309,8 +267,6 @@ async fn main() -> anyhow::Result<()> {
             tracing::error!("reconciler future failed: {:?}", r);
         }
     };
-
-    // metrics_controller.stop(&cx)?;
 
     Ok(())
 }
