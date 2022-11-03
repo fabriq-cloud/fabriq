@@ -15,12 +15,11 @@ use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;
-use tonic::metadata::MetadataMap;
-use tonic::transport::ClientTlsConfig;
 use tonic::{codegen::http, transport::Server};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::prelude::*;
+use url::Url;
 
 mod acl;
 mod api;
@@ -47,7 +46,7 @@ use services::{
     TemplateService, WorkloadService,
 };
 
-const SERVICE_NAME: &str = "fabriq-api";
+// const SERVICE_NAME: &str = "fabriq-api";
 const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";
 
 async fn reconcile(
@@ -69,40 +68,21 @@ async fn reconcile(
     }
 }
 
-fn init_tracer(metadata: &MetadataMap) -> Result<sdktrace::Tracer, TraceError> {
+fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
+    let opentelemetry_endpoint =
+        env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".to_owned());
+    let opentelemetry_endpoint =
+        Url::parse(&opentelemetry_endpoint).expect("OTEL_ENDPOINT is not a valid url");
+
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()
-                .with_endpoint("https://api.honeycomb.io")
-                .with_metadata(metadata.clone())
-                .with_tls_config(ClientTlsConfig::new().domain_name("api.honeycomb.io")),
+                .with_endpoint(opentelemetry_endpoint.as_str()),
         )
         .install_batch(opentelemetry::runtime::Tokio)
 }
-
-/*
-fn init_metrics(metadata: &MetadataMap) -> metrics::Result<BasicController> {
-    let export_config = ExportConfig {
-        endpoint: "https://api.honeycomb.io".to_string(),
-        ..ExportConfig::default()
-    };
-    opentelemetry_otlp::new_pipeline()
-        .metrics(
-            selectors::simple::inexpensive(),
-            cumulative_temporality_selector(),
-            runtime::Tokio,
-        )
-        .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .tonic()
-                .with_export_config(export_config)
-                .with_metadata(metadata.clone()),
-        )
-        .build()
-}
-*/
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -124,16 +104,7 @@ async fn main() -> anyhow::Result<()> {
         .expect("failed to instantiate opentelemetry tracing");
     */
 
-    let mut metadata = MetadataMap::with_capacity(1);
-
-    metadata.insert(
-        "x-honeycomb-team",
-        "50TofEwjx8f6pXuKNA4aKN".parse().unwrap(),
-    );
-
-    metadata.insert("x-honeycomb-dataset", SERVICE_NAME.parse().unwrap());
-
-    let tracer = init_tracer(&metadata).expect("failed to instantiate opentelemetry tracing");
+    let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env())

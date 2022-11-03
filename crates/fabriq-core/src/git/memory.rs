@@ -41,7 +41,7 @@ impl GitRepo for MemoryGitRepo {
         let mut path_files = vec![];
 
         for (path, _) in files.iter() {
-            if path.starts_with(&repo_path.to_str().unwrap()) {
+            if path.starts_with(repo_path.to_str().unwrap()) {
                 path_files.push(PathBuf::from(path));
             }
         }
