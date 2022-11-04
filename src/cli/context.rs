@@ -31,7 +31,7 @@ impl<'a> Default for Context<'a> {
         let profile = Profile::load().unwrap();
 
         Self {
-            endpoint: "http://localhost:50051",
+            endpoint: "http://[::1]:50051",
             profile,
         }
     }

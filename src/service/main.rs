@@ -1,19 +1,21 @@
+use fabriq_core::{
+    AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
+    TargetServer, TemplateServer, WorkloadServer,
+};
+use fabriq_postgresql_stream::PostgresqlEventStream;
 use http::Request;
 use hyper::Body;
+use opentelemetry::sdk::trace as sdktrace;
+use opentelemetry::trace::TraceError;
+use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;
 use tonic::{codegen::http, transport::Server};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use fabriq_core::{
-    AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
-    TargetServer, TemplateServer, WorkloadServer,
-};
-
-use fabriq_postgresql_stream::PostgresqlEventStream;
+use tracing_subscriber::prelude::*;
+use url::Url;
 
 mod acl;
 mod api;
@@ -40,7 +42,6 @@ use services::{
     TemplateService, WorkloadService,
 };
 
-const SERVICE_NAME: &str = "api";
 const DEFAULT_RECONCILER_CONSUMER_ID: &str = "reconciler";
 
 async fn reconcile(
@@ -62,18 +63,31 @@ async fn reconcile(
     }
 }
 
+fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
+    let opentelemetry_endpoint =
+        env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".to_owned());
+    let opentelemetry_endpoint =
+        Url::parse(&opentelemetry_endpoint).expect("OTEL_ENDPOINT is not a valid url");
+
+    opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(opentelemetry_endpoint.as_str()),
+        )
+        .install_batch(opentelemetry::runtime::Tokio)
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_service_name(SERVICE_NAME)
-        .install_simple()
-        .expect("failed to instantiate opentelemetry tracing");
+    let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
 
-    tracing_subscriber::registry() //(1)
-        .with(tracing_subscriber::EnvFilter::from_default_env()) //(2)
-        .with(tracing_opentelemetry::layer().with_tracer(tracer)) //(3)
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_opentelemetry::layer().with_tracer(tracer))
         .with(tracing_subscriber::fmt::layer())
         .try_init()
         .expect("failed to register tracer with registry");
@@ -246,7 +260,13 @@ async fn main() -> anyhow::Result<()> {
     let reconciler_future = reconcile(reconciler, event_stream, DEFAULT_RECONCILER_CONSUMER_ID);
 
     tokio::select! {
-        _ = api_future => Ok(()),
-        _ = reconciler_future => Ok(()),
-    }
+        r = api_future => {
+            tracing::error!("api future failed: {:?}", r);
+        },
+        r = reconciler_future => {
+            tracing::error!("reconciler future failed: {:?}", r);
+        }
+    };
+
+    Ok(())
 }
