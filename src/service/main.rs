@@ -1,8 +1,4 @@
-use fabriq_core::{
-    AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
-    TargetServer, TemplateServer, WorkloadServer,
-};
-use fabriq_postgresql_stream::PostgresqlEventStream;
+use axum::{response::Html, routing::get, Router};
 use http::Request;
 use hyper::Body;
 use opentelemetry::sdk::trace as sdktrace;
@@ -17,12 +13,28 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::prelude::*;
 use url::Url;
 
+use fabriq_core::{
+    AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
+    TargetServer, TemplateServer, WorkloadServer,
+};
+use fabriq_postgresql_stream::PostgresqlEventStream;
+
 mod acl;
 mod api;
+mod hybrid;
 mod models;
 mod persistence;
 mod reconcilation;
 mod services;
+
+use hybrid::HybridMakeService;
+
+pub fn hybrid_service<MakeWeb, Grpc>(
+    make_web: MakeWeb,
+    grpc: Grpc,
+) -> HybridMakeService<MakeWeb, Grpc> {
+    HybridMakeService { make_web, grpc }
+}
 
 use api::{
     GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
@@ -63,6 +75,10 @@ async fn reconcile(
     }
 }
 
+async fn health() -> Html<&'static str> {
+    Html("ok")
+}
+
 fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
     let opentelemetry_endpoint =
         env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".to_owned());
@@ -82,6 +98,9 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
+
+    let http_router = Router::new().route("/health", get(health));
+    let http_services = http_router.into_make_service();
 
     let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
 
@@ -236,7 +255,7 @@ async fn main() -> anyhow::Result<()> {
         },
     ));
 
-    let api_future = Server::builder()
+    let grpc_services = Server::builder()
         .layer(tracing_layer)
         .add_service(tonic_web::enable(assignment_grpc_service))
         .add_service(tonic_web::enable(config_grpc_service))
@@ -246,7 +265,10 @@ async fn main() -> anyhow::Result<()> {
         .add_service(tonic_web::enable(workload_grpc_service))
         .add_service(tonic_web::enable(target_grpc_service))
         .add_service(tonic_web::enable(template_grpc_service))
-        .serve(addr);
+        .into_service();
+
+    let hybrid_services = hybrid_service(http_services, grpc_services);
+    let api_future = hyper::Server::bind(&addr).serve(hybrid_services);
 
     let reconciler = Reconciler {
         assignment_service,

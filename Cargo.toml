@@ -13,9 +13,11 @@ members = [
 [dependencies]
 fabriq-core = { path = "crates/fabriq-core" }
 fabriq-postgresql-stream = { path = "crates/fabriq-postgresql-stream" }
+
 anyhow = "1.0"
 ascii_table = { version = "4.0", features = ["auto_table_width"] }
 async-trait = "0.1"
+axum = { version = "0.5" }
 clap = { version = "4.0", features = ["derive"] }
 dirs = "4.0"
 dotenvy = "0.15"
@@ -28,6 +30,7 @@ opentelemetry = { version = "0.18", features = ["rt-tokio", "trace", "metrics"] 
 opentelemetry-jaeger = { version = "0.17" }
 opentelemetry-otlp = { version = "0.11", features = ["metrics", "tls", "tonic"] }
 opentelemetry-semantic-conventions = "0.10"
+pin-project = "1.0"
 prost = "0.11"
 prost-types = "0.11"
 reqwest = "0.11"
