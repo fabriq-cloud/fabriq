@@ -198,7 +198,7 @@ async fn main() -> anyhow::Result<()> {
         workload_service: Arc::clone(&workload_service),
     });
 
-    let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "[::1]:50051".to_owned());
+    let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());
     let addr = endpoint.parse()?;
 
     let assignment_grpc_service = AssignmentServer::with_interceptor(
@@ -255,8 +255,13 @@ async fn main() -> anyhow::Result<()> {
         },
     ));
 
+    let reflection = tonic_reflection::server::Builder::configure()
+        .build()
+        .unwrap();
+
     let grpc_services = Server::builder()
         .layer(tracing_layer)
+        .add_service(reflection)
         .add_service(tonic_web::enable(assignment_grpc_service))
         .add_service(tonic_web::enable(config_grpc_service))
         .add_service(tonic_web::enable(deployment_grpc_service))
