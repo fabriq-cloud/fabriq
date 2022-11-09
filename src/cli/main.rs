@@ -1,3 +1,5 @@
+use std::env;
+
 use clap::Command;
 
 mod assignment;
@@ -41,7 +43,10 @@ async fn main() -> anyhow::Result<()> {
 
     let matches = cli().get_matches();
 
-    let context = Context::default();
+    let endpoint =
+        env::var("FABRIQ_ENDPOINT").unwrap_or_else(|_| "http://main.api.fabriq.cloud".to_owned());
+
+    let context = Context::new(&endpoint);
 
     match matches.subcommand() {
         Some(("assignment", submatches)) => Ok(assignment::handlers(submatches, &context).await?),
