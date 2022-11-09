@@ -1,15 +1,14 @@
 use axum::{response::Html, routing::get, Router};
-use http::Request;
-use hyper::Body;
 use opentelemetry::sdk::trace as sdktrace;
 use opentelemetry::trace::TraceError;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;
-use tonic::{codegen::http, transport::Server};
+use tonic::transport::Server;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+use tracing::Level;
 use tracing_subscriber::prelude::*;
 use url::Url;
 
@@ -241,19 +240,11 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("grpc services listening on {}", addr);
 
-    let tracing_layer = ServiceBuilder::new().layer(TraceLayer::new_for_grpc().make_span_with(
-        |request: &Request<Body>| {
-            tracing::info_span!(
-                "gRPC",
-                http.method = %request.method(),
-                http.url = %request.uri(),
-                http.status_code = tracing::field::Empty,
-                otel.name = %format!("gRPC {}", request.method()),
-                otel.kind = "client",
-                otel.status_code = tracing::field::Empty,
-            )
-        },
-    ));
+    let tracing_layer = ServiceBuilder::new().layer(
+        TraceLayer::new_for_grpc()
+            .make_span_with(tower_http::trace::DefaultMakeSpan::new().level(Level::INFO))
+            .on_response(tower_http::trace::DefaultOnResponse::new().level(Level::INFO)),
+    );
 
     let reflection = tonic_reflection::server::Builder::configure()
         .build()
@@ -272,8 +263,8 @@ async fn main() -> anyhow::Result<()> {
         .add_service(tonic_web::enable(template_grpc_service))
         .into_service();
 
-    let hybrid_services = hybrid_service(http_services, grpc_services);
-    let api_future = hyper::Server::bind(&addr).serve(hybrid_services);
+    let combined_services = hybrid_service(http_services, grpc_services);
+    let api_future = hyper::Server::bind(&addr).serve(combined_services);
 
     let reconciler = Reconciler {
         assignment_service,
