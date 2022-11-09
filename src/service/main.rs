@@ -1,11 +1,13 @@
 use axum::{response::Html, routing::get, Router};
 use opentelemetry::sdk::trace as sdktrace;
-use opentelemetry::trace::TraceError;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;
-use tonic::transport::Server;
+use tonic::{
+    metadata::MetadataMap,
+    transport::{ClientTlsConfig, Server},
+};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::Level;
@@ -78,20 +80,47 @@ async fn health() -> Html<&'static str> {
     Html("ok")
 }
 
-fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
+fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
+    let mut metadata = MetadataMap::with_capacity(2);
+
+    metadata.insert(
+        "x-honeycomb-team",
+        env::var("HONEYCOMB_API_KEY")
+            .expect("HONEYCOMB_API_KEY not set")
+            .parse()?,
+    );
+
+    metadata.insert(
+        "x-honeycomb-dataset",
+        env::var("HONEYCOMB_DATASET")
+            .unwrap_or_else(|_| "fabriq-api".to_owned())
+            .parse()?,
+    );
+
     let opentelemetry_endpoint =
-        env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".to_owned());
+        env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "https://api.honeycomb.io".to_owned());
+
     let opentelemetry_endpoint =
         Url::parse(&opentelemetry_endpoint).expect("OTEL_ENDPOINT is not a valid url");
 
-    opentelemetry_otlp::new_pipeline()
+    let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()
-                .with_endpoint(opentelemetry_endpoint.as_str()),
+                .with_endpoint(opentelemetry_endpoint.as_str())
+                .with_metadata(metadata.clone())
+                .with_tls_config(
+                    ClientTlsConfig::new().domain_name(
+                        opentelemetry_endpoint
+                            .host_str()
+                            .expect("OTEL_ENDPOINT should have a valid host"),
+                    ),
+                ),
         )
-        .install_batch(opentelemetry::runtime::Tokio)
+        .install_batch(opentelemetry::runtime::Tokio)?;
+
+    Ok(tracer)
 }
 
 #[tokio::main]
