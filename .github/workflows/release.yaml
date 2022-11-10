@@ -29,5 +29,5 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
           files: |
-            LICENSE.txt
-            fabriq
+            LICENSE
+            target/x86_64-unknown-linux-musl/fabriq
