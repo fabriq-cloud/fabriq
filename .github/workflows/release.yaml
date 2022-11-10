@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: install pkg-config
-        run: sudo apt install pkg-config
+        run: sudo apt install pkg-config libssl-dev librust-openssl-sys-dev libudev-dev
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.0
         env:
