@@ -12,13 +12,16 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@master
-      - name: build x86_64-unknown-linux-musl
+      - name: install protoc
         run: |
           curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip"
           unzip protoc-3.20.3-linux-x86_64.zip -d ${GITHUB_WORKSPACE}/protoc
+      - name: install target
+        run: |
           rustup target add x86_64-unknown-linux-musl
-          apt update && apt install -y musl-tools musl-dev
+          sudo apt update && apt install -y musl-tools musl-dev
           update-ca-certificates
+      - name: build target
           PATH="${PATH}:${GITHUB_WORKSPACE}/protoc" PROTOC="${GITHUB_WORKSPACE}/protoc/bin/protoc" SQLX_OFFLINE=true cargo build --target x86_64-unknown-linux-musl --release
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
