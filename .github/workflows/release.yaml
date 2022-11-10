@@ -15,12 +15,11 @@ jobs:
       - name: build x86_64-unknown-linux-musl
         run: |
           curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip"
-          mkdir /fabriq
-          unzip protoc-3.20.3-linux-x86_64.zip -d /fabriq/protoc
+          unzip protoc-3.20.3-linux-x86_64.zip -d ${GITHUB_WORKSPACE}/protoc
           rustup target add x86_64-unknown-linux-musl
           apt update && apt install -y musl-tools musl-dev
           update-ca-certificates
-          PATH="${PATH}:/fabriq/protoc" PROTOC="/fabriq/protoc/bin/protoc" SQLX_OFFLINE=true cargo build --target x86_64-unknown-linux-musl --release
+          PATH="${PATH}:${GITHUB_WORKSPACE}/protoc" PROTOC="${GITHUB_WORKSPACE}/protoc/bin/protoc" SQLX_OFFLINE=true cargo build --target x86_64-unknown-linux-musl --release
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
