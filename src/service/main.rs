@@ -1,15 +1,16 @@
 use axum::{response::Html, routing::get, Router};
-use http::Request;
-use hyper::Body;
 use opentelemetry::sdk::trace as sdktrace;
-use opentelemetry::trace::TraceError;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;
-use tonic::{codegen::http, transport::Server};
+use tonic::{
+    metadata::MetadataMap,
+    transport::{ClientTlsConfig, Server},
+};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+use tracing::Level;
 use tracing_subscriber::prelude::*;
 use url::Url;
 
@@ -79,20 +80,47 @@ async fn health() -> Html<&'static str> {
     Html("ok")
 }
 
-fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
+fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
+    let mut metadata = MetadataMap::with_capacity(2);
+
+    metadata.insert(
+        "x-honeycomb-team",
+        env::var("HONEYCOMB_API_KEY")
+            .expect("HONEYCOMB_API_KEY not set")
+            .parse()?,
+    );
+
+    metadata.insert(
+        "x-honeycomb-dataset",
+        env::var("HONEYCOMB_DATASET")
+            .unwrap_or_else(|_| "fabriq-api".to_owned())
+            .parse()?,
+    );
+
     let opentelemetry_endpoint =
-        env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".to_owned());
+        env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "https://api.honeycomb.io".to_owned());
+
     let opentelemetry_endpoint =
         Url::parse(&opentelemetry_endpoint).expect("OTEL_ENDPOINT is not a valid url");
 
-    opentelemetry_otlp::new_pipeline()
+    let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
             opentelemetry_otlp::new_exporter()
                 .tonic()
-                .with_endpoint(opentelemetry_endpoint.as_str()),
+                .with_endpoint(opentelemetry_endpoint.as_str())
+                .with_metadata(metadata.clone())
+                .with_tls_config(
+                    ClientTlsConfig::new().domain_name(
+                        opentelemetry_endpoint
+                            .host_str()
+                            .expect("OTEL_ENDPOINT should have a valid host"),
+                    ),
+                ),
         )
-        .install_batch(opentelemetry::runtime::Tokio)
+        .install_batch(opentelemetry::runtime::Tokio)?;
+
+    Ok(tracer)
 }
 
 #[tokio::main]
@@ -241,19 +269,11 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("grpc services listening on {}", addr);
 
-    let tracing_layer = ServiceBuilder::new().layer(TraceLayer::new_for_grpc().make_span_with(
-        |request: &Request<Body>| {
-            tracing::info_span!(
-                "gRPC",
-                http.method = %request.method(),
-                http.url = %request.uri(),
-                http.status_code = tracing::field::Empty,
-                otel.name = %format!("gRPC {}", request.method()),
-                otel.kind = "client",
-                otel.status_code = tracing::field::Empty,
-            )
-        },
-    ));
+    let tracing_layer = ServiceBuilder::new().layer(
+        TraceLayer::new_for_grpc()
+            .make_span_with(tower_http::trace::DefaultMakeSpan::new().level(Level::INFO))
+            .on_response(tower_http::trace::DefaultOnResponse::new().level(Level::INFO)),
+    );
 
     let reflection = tonic_reflection::server::Builder::configure()
         .build()
@@ -272,8 +292,8 @@ async fn main() -> anyhow::Result<()> {
         .add_service(tonic_web::enable(template_grpc_service))
         .into_service();
 
-    let hybrid_services = hybrid_service(http_services, grpc_services);
-    let api_future = hyper::Server::bind(&addr).serve(hybrid_services);
+    let combined_services = hybrid_service(http_services, grpc_services);
+    let api_future = hyper::Server::bind(&addr).serve(combined_services);
 
     let reconciler = Reconciler {
         assignment_service,

@@ -35,12 +35,9 @@ pub fn args() -> Command {
         .subcommand(Command::new("list").about("list hosts"))
 }
 
-pub async fn handlers(
-    model_match: &clap::ArgMatches,
-    context: &Context<'static>,
-) -> anyhow::Result<()> {
-    // TODO: Can this be made generic?
-    let channel = Channel::from_static(context.endpoint).connect().await?;
+pub async fn handlers(model_match: &clap::ArgMatches, context: &Context) -> anyhow::Result<()> {
+    let endpoint: &'static str = Box::leak(Box::new(context.endpoint.clone()));
+    let channel = Channel::from_static(endpoint).connect().await?;
 
     let token = context.make_token()?;
 

@@ -2,12 +2,12 @@ use tonic::metadata::MetadataValue;
 
 use crate::profile::Profile;
 
-pub struct Context<'a> {
-    pub endpoint: &'a str,
+pub struct Context {
+    pub endpoint: String,
     pub profile: Profile,
 }
 
-impl<'a> Context<'a> {
+impl Context {
     pub fn get_pat(&self) -> String {
         let pat = self
             .profile
@@ -26,12 +26,12 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> Default for Context<'a> {
-    fn default() -> Self {
+impl Context {
+    pub fn new(endpoint: &str) -> Self {
         let profile = Profile::load().unwrap();
 
         Self {
-            endpoint: "http://[::1]:50051",
+            endpoint: endpoint.to_owned(),
             profile,
         }
     }

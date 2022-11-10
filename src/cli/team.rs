@@ -18,10 +18,7 @@ pub fn args() -> Command {
         )
 }
 
-pub async fn handlers(
-    model_match: &clap::ArgMatches,
-    context: &Context<'static>,
-) -> anyhow::Result<()> {
+pub async fn handlers(model_match: &clap::ArgMatches, context: &Context) -> anyhow::Result<()> {
     match model_match.subcommand() {
         Some(("list", list_match)) => {
             let organization_id = list_match

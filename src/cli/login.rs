@@ -8,10 +8,7 @@ pub fn args() -> Command {
         .arg(arg!(<PAT> "GitHub Personal Access Token"))
 }
 
-pub async fn handlers(
-    model_match: &clap::ArgMatches,
-    _context: &Context<'static>,
-) -> anyhow::Result<()> {
+pub async fn handlers(model_match: &clap::ArgMatches, _context: &Context) -> anyhow::Result<()> {
     let pat = model_match
         .get_one::<String>("PAT")
         .expect("GitHub Personal Access Token expected")
