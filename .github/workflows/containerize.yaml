@@ -33,7 +33,7 @@ jobs:
 
       - name: download fabriq
         run: |
-          wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.0/fabriq
+          wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.1/fabriq
           chmod +x fabriq
       #        run: |
       #          curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
