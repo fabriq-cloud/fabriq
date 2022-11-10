@@ -31,6 +31,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: download fabriq
+        run: |
+          curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+      - name: login
+        run: ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+
       # Tool installation
 
       - uses: actions/checkout@v2
@@ -112,3 +118,7 @@ jobs:
           push: true
           tags: ${{ steps.gitops_meta.outputs.tags }}
           labels: ${{ steps.gitops_meta.outputs.labels }}
+      - name: update api image config
+        run: ./fabriq config create --deployment fabriq-cloud/fabriq/api/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.labels }}
+      - name: update gitops image config
+        run: ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.labels }}
