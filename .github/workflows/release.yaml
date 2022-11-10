@@ -19,7 +19,8 @@ jobs:
       - name: install target
         run: |
           rustup target add x86_64-unknown-linux-musl
-          sudo apt update && apt install -y musl-tools musl-dev
+          sudo apt update
+          sudo apt install -y musl-tools musl-dev
           update-ca-certificates
       - name: build target
         run: PATH="${PATH}:${GITHUB_WORKSPACE}/protoc" PROTOC="${GITHUB_WORKSPACE}/protoc/bin/protoc" SQLX_OFFLINE=true cargo build --target x86_64-unknown-linux-musl --release
