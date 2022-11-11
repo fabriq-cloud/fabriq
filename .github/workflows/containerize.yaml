@@ -105,6 +105,7 @@ jobs:
             type=sha,prefix=,format=long
       - name: Build and Push Docker API image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        id: api_build
         with:
           context: .
           file: Dockerfile
@@ -114,6 +115,7 @@ jobs:
           labels: ${{ steps.api_meta.outputs.labels }}
       - name: Build and Push Docker Gitops image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        id: gitops_build
         with:
           context: .
           file: Dockerfile
@@ -131,9 +133,9 @@ jobs:
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
           echo "api ############"
           echo fabriq-cloud/fabriq/api/$GIT_BRANCH
-          echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.imageid }}
-          ./fabriq config create --deployment fabriq-cloud/fabriq/api/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.imageid }}
+          echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
+          ./fabriq config create --deployment fabriq-cloud/fabriq/api/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
           echo "gitops ############"
-          ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.imageid }}
+          ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_build.outputs.imageid }}
 
 #         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
