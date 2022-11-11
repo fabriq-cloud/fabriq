@@ -31,8 +31,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set branch env vars
+      - name: show repo name
         run: |
+          echo ${{ github.repository }}
 
       # Tool installation
 
@@ -130,7 +131,7 @@ jobs:
           echo "login ############"
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
           echo "api ############"
-          echo fabriq-cloud/fabriq/api/$GIT_BRANCH
+          echo ${{ github.repository }}/api/$GIT_BRANCH
           echo ${{join(steps.api_meta.outputs.*, '\n')}}
           echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
           ./fabriq deployment create $GIT_BRANCH --target westus2 --team fabriq-cloud/fabriq --workload api
