@@ -30,15 +30,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Set environment variables
+
+      - name: Set branch env vars
         run: |
-          # Short name for current branch. For PRs, use target branch (base ref)
-          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-          echo "GIT_BRANCH=$GIT_BRANCH" >> $GITHUB_ENV
-      - name: print vars
-        run: |
-          echo $GIT_BRANCH
-          echo ${{ github.event.pull_request.head.ref }}
 
       # Tool installation
 
@@ -125,6 +119,10 @@ jobs:
           labels: ${{ steps.gitops_meta.outputs.labels }}
       - name: update api and gitops deployment images
         run: |
+          # Short name for current branch. For PRs, use target branch (base ref)
+          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          echo "GIT_BRANCH=$GIT_BRANCH" >> $GITHUB_ENV
+          echo $GIT_BRANCH
           echo "downloading ############"
           wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.1/fabriq
           echo "chmod ############"
@@ -133,6 +131,7 @@ jobs:
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
           echo "api ############"
           echo fabriq-cloud/fabriq/api/$GIT_BRANCH
+          echo ${{join(steps.api_build.outputs.*, '\n')}}
           echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
           ./fabriq config create --deployment fabriq-cloud/fabriq/api/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
           echo "gitops ############"
