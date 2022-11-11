@@ -131,10 +131,12 @@ jobs:
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
           echo "api ############"
           echo fabriq-cloud/fabriq/api/$GIT_BRANCH
-          echo ${{join(steps.api_build.outputs.*, '\n')}}
+          echo ${{join(steps.api_meta.outputs.*, '\n')}}
           echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
+          ./fabriq deployment create $GIT_BRANCH --target westus2 --team fabriq-cloud/fabriq --workload api
           ./fabriq config create --deployment fabriq-cloud/fabriq/api/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
           echo "gitops ############"
+          ./fabriq deployment create $GIT_BRANCH --target westus2 --team fabriq-cloud/fabriq --workload gitops
           ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_build.outputs.imageid }}
 
 #         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
