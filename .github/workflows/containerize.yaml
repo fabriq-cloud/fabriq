@@ -128,10 +128,10 @@ jobs:
           echo "login ############"
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
           echo "api ############"
-          echo fabriq-cloud/fabriq/api/${{ steps.extract_branch.outputs.branch }}
+          echo fabriq-cloud/fabriq/api/${{ github.event.pull_request.head.ref }}
           echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.imageid }}
-          ./fabriq config create --deployment fabriq-cloud/fabriq/api/${{ steps.extract_branch.outputs.branch }} image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.imageid }}
+          ./fabriq config create --deployment fabriq-cloud/fabriq/api/${{ github.event.pull_request.head.ref }} image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.imageid }}
           echo "gitops ############"
-          ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/${{ steps.extract_branch.outputs.branch }} image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.imageid }}
+          ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/${{ github.event.pull_request.head.ref }} image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.imageid }}
 
 #         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
