@@ -30,6 +30,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: print vars
+        run: |
+          echo ${GITHUB_REF##*/}
 
       # Tool installation
 
@@ -121,10 +124,10 @@ jobs:
           echo "login ############"
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
           echo "api ############"
-          echo fabriq-cloud/fabriq/api/${{ github.event.ref }}
-          echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.labels }}
-          ./fabriq config create --deployment fabriq-cloud/fabriq/api/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.labels }}
+          echo fabriq-cloud/fabriq/api/${GITHUB_REF##*/}
+          echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.imageid }}
+          ./fabriq config create --deployment fabriq-cloud/fabriq/api/${GITHUB_REF##*/} image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.imageid }}
           echo "gitops ############"
-          ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.labels }}
+          ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.imageid }}
 
 #         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
