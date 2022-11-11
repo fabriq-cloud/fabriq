@@ -37,6 +37,7 @@ jobs:
           echo "GIT_BRANCH=$GIT_BRANCH" >> $GITHUB_ENV
       - name: print vars
         run: |
+          echo $GIT_BRANCH
           echo ${{ github.event.pull_request.head.ref }}
 
       # Tool installation
