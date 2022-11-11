@@ -36,6 +36,7 @@ jobs:
         id: extract_branch
       - name: print vars
         run: |
+          echo ${{ github.ref_name }}
           echo ${{ github.event.pull_request.head.ref }}
 
       # Tool installation
