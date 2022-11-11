@@ -114,10 +114,15 @@ jobs:
           labels: ${{ steps.gitops_meta.outputs.labels }}
       - name: update api and gitops deployment images
         run: |
+          echo "downloading ############"
           wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.1/fabriq
+          echo "chmod ############"
           chmod +x fabriq
+          echo "login ############"
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+          echo "api ############"
           ./fabriq config create --deployment fabriq-cloud/fabriq/api/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.labels }}
+          echo "gitops ############"
           ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.labels }}
 
 #         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
