@@ -121,6 +121,8 @@ jobs:
           echo "login ############"
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
           echo "api ############"
+          echo fabriq-cloud/fabriq/api/${{ github.event.ref }}
+          echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.labels }}
           ./fabriq config create --deployment fabriq-cloud/fabriq/api/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_meta.outputs.labels }}
           echo "gitops ############"
           ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/${{ github.event.ref }} image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_meta.outputs.labels }}
