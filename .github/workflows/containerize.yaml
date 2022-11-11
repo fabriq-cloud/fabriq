@@ -31,10 +31,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: show repo name
-        run: |
-          echo ${{ github.repository }}
-
       # Tool installation
 
       - uses: actions/checkout@v2
@@ -129,7 +125,7 @@ jobs:
           echo ${{ steps.api_meta.outputs.tags }}
 
           echo "downloading ############"
-          curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+          wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.1/fabriq
 
           echo "chmod ############"
           chmod +x fabriq
@@ -141,11 +137,11 @@ jobs:
 
           echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
           ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload api
-          ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
+          ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH image ${{ steps.api_meta.outputs.tags }}
 
           echo "gitops ############"
           ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload gitops
-          ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_build.outputs.imageid }}
+          ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ${{ steps.gitops_meta.outputs.tags }}
 
 #         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
-# wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.1/fabriq
+#
