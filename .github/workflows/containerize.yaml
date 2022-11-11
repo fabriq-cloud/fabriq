@@ -123,21 +123,29 @@ jobs:
           # Short name for current branch. For PRs, use target branch (base ref)
           GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
           echo "GIT_BRANCH=$GIT_BRANCH" >> $GITHUB_ENV
+
           echo $GIT_BRANCH
+          echo ${{ github.repository }}/api/$GIT_BRANCH
+          echo ${{ steps.api_meta.outputs.tags }}
+
           echo "downloading ############"
-          wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.1/fabriq
+          curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+
           echo "chmod ############"
           chmod +x fabriq
+
           echo "login ############"
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+
           echo "api ############"
-          echo ${{ github.repository }}/api/$GIT_BRANCH
-          echo ${{join(steps.api_meta.outputs.*, '\n')}}
+
           echo ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
-          ./fabriq deployment create $GIT_BRANCH --target westus2 --team fabriq-cloud/fabriq --workload api
-          ./fabriq config create --deployment fabriq-cloud/fabriq/api/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
+          ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload api
+          ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-api:${{ steps.api_build.outputs.imageid }}
+
           echo "gitops ############"
-          ./fabriq deployment create $GIT_BRANCH --target westus2 --team fabriq-cloud/fabriq --workload gitops
-          ./fabriq config create --deployment fabriq-cloud/fabriq/gitops/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_build.outputs.imageid }}
+          ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload gitops
+          ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ghcr.io/fabriq-cloud/fabriq-gitops:${{ steps.gitops_build.outputs.imageid }}
 
 #         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+# wget https://github.com/fabriq-cloud/fabriq/releases/download/v0.1.1/fabriq
