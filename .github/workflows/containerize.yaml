@@ -30,6 +30,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - uses: robinraju/release-downloader@v1.6
+        with:
+          repository: "fabriq-cloud/fabriq"
+          latest: true
+          fileName: "fabriq"
+
+      - name: show cwd
+        run: echo ${GITHUB_WORKSPACE}
 
       # Tool installation
       - uses: actions/checkout@v2
@@ -119,7 +127,7 @@ jobs:
           repository: "fabriq-cloud/fabriq"
           latest: true
           fileName: "fabriq"
-      - name: update api and gitops deployment images
+      - name: Update api and gitops image config for this branch's deployment
         run: |
           # Short name for current branch. For PRs, use target branch (base ref)
           GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
