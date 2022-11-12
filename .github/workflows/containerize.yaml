@@ -30,14 +30,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - uses: robinraju/release-downloader@v1.6
-        with:
-          repository: "fabriq-cloud/fabriq"
-          latest: true
-          fileName: "fabriq"
-
-      - name: show cwd
-        run: echo ${GITHUB_WORKSPACE}
 
       # Tool installation
       - uses: actions/checkout@v2
