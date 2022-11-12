@@ -31,7 +31,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: test download
-        run: curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest
+        run: curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq"
 
       # Tool installation
 
