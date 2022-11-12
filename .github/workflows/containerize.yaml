@@ -123,9 +123,7 @@ jobs:
         run: |
           # Short name for current branch. For PRs, use target branch (base ref)
           GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-          echo "GIT_BRANCH=$GIT_BRANCH" >> $GITHUB_ENV
 
-          echo ${GITHUB_WORKSPACE}
           chmod +x fabriq
 
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
@@ -135,6 +133,3 @@ jobs:
 
           ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload gitops --hosts 1
           ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ${{ steps.gitops_meta.outputs.tags }}
-
-#         curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -
-#
