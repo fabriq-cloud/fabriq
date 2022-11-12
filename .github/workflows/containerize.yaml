@@ -113,18 +113,19 @@ jobs:
           push: true
           tags: ${{ steps.gitops_meta.outputs.tags }}
           labels: ${{ steps.gitops_meta.outputs.labels }}
+
       - uses: robinraju/release-downloader@v1.6
         with:
           repository: "fabriq-cloud/fabriq"
           latest: true
           fileName: "fabriq"
-
       - name: update api and gitops deployment images
         run: |
           # Short name for current branch. For PRs, use target branch (base ref)
           GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
           echo "GIT_BRANCH=$GIT_BRANCH" >> $GITHUB_ENV
 
+          echo ${GITHUB_WORKSPACE}
           chmod +x fabriq
 
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
