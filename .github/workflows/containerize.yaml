@@ -30,11 +30,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: test download
-        run: |
-          sudo apt install --reinstall coreutils wget
-          TESTOUTPUT=`curl -s https://api.github.com/repos/fabriq-cloud/fabriq/releases/latest | grep "fabriq" | cut -d : -f 2,3 | tr -d \" | wget -qi -`
-          echo $TESTOUTPUT
+      - uses: robinraju/release-downloader@v1.6
+        with:
+          repository: "fabriq-cloud/fabriq"
+          latest: true
+          fileName: "fabriq"
 
       # Tool installation
       - uses: actions/checkout@v2
