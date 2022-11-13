@@ -32,7 +32,6 @@ jobs:
         uses: actions/checkout@v3
 
       # Tool installation
-
       - uses: actions/checkout@v2
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
@@ -96,6 +95,7 @@ jobs:
             type=sha,prefix=,format=long
       - name: Build and Push Docker API image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        id: api_build
         with:
           context: .
           file: Dockerfile
@@ -105,6 +105,7 @@ jobs:
           labels: ${{ steps.api_meta.outputs.labels }}
       - name: Build and Push Docker Gitops image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        id: gitops_build
         with:
           context: .
           file: Dockerfile
@@ -112,3 +113,23 @@ jobs:
           push: true
           tags: ${{ steps.gitops_meta.outputs.tags }}
           labels: ${{ steps.gitops_meta.outputs.labels }}
+
+      - uses: robinraju/release-downloader@v1.6
+        with:
+          repository: "fabriq-cloud/fabriq"
+          latest: true
+          fileName: "fabriq"
+      - name: Update api and gitops image config for this branch's deployment
+        run: |
+          # Short name for current branch. For PRs, use target branch (base ref)
+          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+
+          chmod +x fabriq
+
+          ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+
+          ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload api --hosts 1
+          ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH image ${{ steps.api_meta.outputs.tags }}
+
+          ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload gitops --hosts 1
+          ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ${{ steps.gitops_meta.outputs.tags }}

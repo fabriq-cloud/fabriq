@@ -2,7 +2,7 @@
 
 A developer experience and GitHub first engineering system.
 
-## Install CLI
+## install CLI
 
 One line instructions to install the CLI...
 
