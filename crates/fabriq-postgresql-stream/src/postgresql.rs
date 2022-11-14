@@ -89,7 +89,7 @@ impl PostgresqlEventStream {
 }
 
 fn prost_to_naive_timestamp(timestamp: &prost_types::Timestamp) -> NaiveDateTime {
-    NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32)
+    NaiveDateTime::from_timestamp_opt(timestamp.seconds, timestamp.nanos as u32).unwrap()
 }
 
 #[async_trait]
