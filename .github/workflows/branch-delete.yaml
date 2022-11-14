@@ -14,6 +14,7 @@ jobs:
       - name: Delete api and gitops deployment for this branch
         run: |
           echo "Clean up for branch ${{ github.event.ref }}"
+
           chmod +x fabriq
 
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
