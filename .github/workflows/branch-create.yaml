@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Branch Created
 on: create
 jobs:
   create:
