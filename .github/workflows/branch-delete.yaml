@@ -13,15 +13,13 @@ jobs:
 
       - name: Delete api and gitops deployment for this branch
         run: |
-          # Short name for current branch. For PRs, use target branch (base ref)
-          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-
+          echo "Clean up for branch ${{ github.event.ref }}"
           chmod +x fabriq
 
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
 
-          ./fabriq config delete deployment:${{ github.repository }}/gitops/$GIT_BRANCH:image
-          ./fabriq deployment delete ${{ github.repository }}/gitops/$GIT_BRANCH
+          ./fabriq config delete deployment:${{ github.repository }}/gitops/${{ github.event.ref }}:image
+          ./fabriq deployment delete ${{ github.repository }}/gitops/${{ github.event.ref }}
 
-          ./fabriq config delete deployment:${{ github.repository }}/api/$GIT_BRANCH:image
-          ./fabriq deployment delete ${{ github.repository }}/api/$GIT_BRANCH
+          ./fabriq config delete deployment:${{ github.repository }}/api/${{ github.event.ref }}:image
+          ./fabriq deployment delete ${{ github.repository }}/api/${{ github.event.ref }}
