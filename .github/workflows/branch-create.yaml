@@ -1,0 +1,23 @@
+name: Branch Created
+on: create
+jobs:
+  create:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: robinraju/release-downloader@v1.6
+        with:
+          repository: "fabriq-cloud/fabriq"
+          latest: true
+          fileName: "fabriq"
+
+      - name: Delete api and gitops deployment for this branch
+        run: |
+          echo "Create deployment for branch ${{ github.event.ref }}"
+
+          chmod +x fabriq
+
+          ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+
+          ./fabriq deployment create ${{ github.event.ref }} --target westus2 --team ${{ github.repository }} --workload api --hosts 1
+          ./fabriq deployment create ${{ github.event.ref }} --target westus2 --team ${{ github.repository }} --workload gitops --hosts 1
