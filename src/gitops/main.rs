@@ -7,7 +7,7 @@ use fabriq_core::{
 use fabriq_postgresql_stream::PostgresqlEventStream;
 use processor::GitOpsProcessor;
 use sqlx::postgres::PgPoolOptions;
-use std::{env, fs, sync::Arc};
+use std::{env, sync::Arc};
 use tokio::time::Duration;
 use tonic::{
     metadata::{Ascii, MetadataValue},
