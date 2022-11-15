@@ -178,6 +178,14 @@ async fn main() -> anyhow::Result<()> {
         event_stream: Arc::clone(&event_stream),
     });
 
+    let config_persistence = Box::new(ConfigRelationalPersistence {
+        db: Arc::clone(&db),
+    });
+    let config_service = Arc::new(ConfigService {
+        persistence: config_persistence,
+        event_stream: Arc::clone(&event_stream),
+    });
+
     let deployment_persistence = Box::new(DeploymentRelationalPersistence {
         db: Arc::clone(&db),
     });
@@ -185,6 +193,7 @@ async fn main() -> anyhow::Result<()> {
         persistence: deployment_persistence,
         event_stream: Arc::clone(&event_stream),
 
+        config_service: Arc::clone(&config_service),
         target_service: Arc::clone(&target_service),
     });
 
@@ -214,17 +223,6 @@ async fn main() -> anyhow::Result<()> {
         template_service: Arc::clone(&template_service),
     });
 
-    let config_persistence = Box::new(ConfigRelationalPersistence {
-        db: Arc::clone(&db),
-    });
-    let config_service = Arc::new(ConfigService {
-        persistence: config_persistence,
-        event_stream: Arc::clone(&event_stream),
-
-        deployment_service: Arc::clone(&deployment_service),
-        workload_service: Arc::clone(&workload_service),
-    });
-
     let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());
     let addr = endpoint.parse()?;
 
@@ -234,7 +232,11 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let config_grpc_service = ConfigServer::with_interceptor(
-        GrpcConfigService::new(Arc::clone(&config_service)),
+        GrpcConfigService {
+            config_service: Arc::clone(&config_service),
+            deployment_service: Arc::clone(&deployment_service),
+            workload_service: Arc::clone(&workload_service),
+        },
         acl::authorize,
     );
 
