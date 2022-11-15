@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Delete Deployment
 on: delete
 jobs:
   delete:
@@ -18,8 +18,5 @@ jobs:
 
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
 
-          ./fabriq config delete deployment:${{ github.repository }}/gitops/${{ github.event.ref }}:image
           ./fabriq deployment delete ${{ github.repository }}/gitops/${{ github.event.ref }}
-
-          ./fabriq config delete deployment:${{ github.repository }}/api/${{ github.event.ref }}:image
           ./fabriq deployment delete ${{ github.repository }}/api/${{ github.event.ref }}

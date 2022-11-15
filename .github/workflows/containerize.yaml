@@ -128,8 +128,5 @@ jobs:
 
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
 
-          ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload api --hosts 1
           ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH image ${{ steps.api_meta.outputs.tags }}
-
-          ./fabriq deployment create $GIT_BRANCH --target westus2 --team ${{ github.repository }} --workload gitops --hosts 1
           ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ${{ steps.gitops_meta.outputs.tags }}

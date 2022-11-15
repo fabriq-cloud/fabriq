@@ -1,4 +1,4 @@
-name: Branch Created
+name: Create Branch
 on: create
 jobs:
   create:

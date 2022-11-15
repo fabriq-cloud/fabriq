@@ -6,7 +6,7 @@ on:
 name: Release
 jobs:
   release:
-    name: release ${{ matrix.target }}
+    name: Create Release
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

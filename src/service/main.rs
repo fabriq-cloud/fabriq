@@ -1,4 +1,4 @@
-use axum::{response::Html, routing::get, Router};
+use axum::{routing::get, Router};
 use opentelemetry::sdk::trace as sdktrace;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
@@ -15,13 +15,14 @@ use tracing_subscriber::prelude::*;
 use url::Url;
 
 use fabriq_core::{
-    AssignmentServer, ConfigServer, DeploymentServer, EventStream, HealthServer, HostServer,
-    TargetServer, TemplateServer, WorkloadServer,
+    AssignmentServer, ConfigServer, DeploymentServer, EventStream, HostServer, TargetServer,
+    TemplateServer, WorkloadServer,
 };
 use fabriq_postgresql_stream::PostgresqlEventStream;
 
 mod acl;
-mod api;
+mod grpc;
+mod http;
 mod hybrid;
 mod models;
 mod persistence;
@@ -37,9 +38,9 @@ pub fn hybrid_service<MakeWeb, Grpc>(
     HybridMakeService { make_web, grpc }
 }
 
-use api::{
-    GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHealthService,
-    GrpcHostService, GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
+use grpc::{
+    GrpcAssignmentService, GrpcConfigService, GrpcDeploymentService, GrpcHostService,
+    GrpcTargetService, GrpcTemplateService, GrpcWorkloadService,
 };
 
 use persistence::relational::{
@@ -74,10 +75,6 @@ async fn reconcile(
             tokio::time::sleep(Duration::from_millis(5000)).await;
         }
     }
-}
-
-async fn health() -> Html<&'static str> {
-    Html("ok")
 }
 
 fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
@@ -127,7 +124,9 @@ fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    let http_router = Router::new().route("/health", get(health));
+    let http_router = Router::new()
+        .route("/health", get(http::health::health))
+        .route("/event_handler", get(http::webhook::event_handler));
     let http_services = http_router.into_make_service();
 
     let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
@@ -246,9 +245,6 @@ async fn main() -> anyhow::Result<()> {
         acl::authorize,
     );
 
-    let health_grpc_service =
-        HealthServer::with_interceptor(GrpcHealthService::default(), acl::authorize);
-
     let host_grpc_service = HostServer::with_interceptor(
         GrpcHostService::new(Arc::clone(&host_service)),
         acl::authorize,
@@ -287,7 +283,6 @@ async fn main() -> anyhow::Result<()> {
         .add_service(tonic_web::enable(assignment_grpc_service))
         .add_service(tonic_web::enable(config_grpc_service))
         .add_service(tonic_web::enable(deployment_grpc_service))
-        .add_service(tonic_web::enable(health_grpc_service))
         .add_service(tonic_web::enable(host_grpc_service))
         .add_service(tonic_web::enable(workload_grpc_service))
         .add_service(tonic_web::enable(target_grpc_service))
