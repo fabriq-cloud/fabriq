@@ -71,6 +71,10 @@ impl ConfigMessage {
     pub const CONFIG_ID_SEPARATOR: char = ':';
     pub const OWNING_MODEL_SEPARATOR: char = ':';
 
+    pub const DEPLOYMENT_OWNER: &str = "deployment";
+    pub const TEMPLATE_OWNER: &str = "template";
+    pub const WORKLOAD_OWNER: &str = "workload";
+
     pub fn make_id(owning_model: &str, key: &str) -> String {
         format!("{owning_model}{}{key}", ConfigMessage::CONFIG_ID_SEPARATOR)
     }
@@ -80,7 +84,9 @@ impl ConfigMessage {
         owning_model_id: &str,
     ) -> anyhow::Result<String> {
         match owning_model_type {
-            "workload" | "deployment" | "template" => Ok(format!(
+            ConfigMessage::WORKLOAD_OWNER
+            | ConfigMessage::DEPLOYMENT_OWNER
+            | ConfigMessage::TEMPLATE_OWNER => Ok(format!(
                 "{owning_model_type}{}{owning_model_id}",
                 ConfigMessage::OWNING_MODEL_SEPARATOR,
             )),

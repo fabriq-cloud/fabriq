@@ -202,9 +202,11 @@ mod tests {
 
     use super::GrpcDeploymentService;
 
-    use crate::models::Target;
-    use crate::persistence::memory::{DeploymentMemoryPersistence, MemoryPersistence};
+    use crate::persistence::memory::{
+        ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
+    };
     use crate::services::{DeploymentService, TargetService};
+    use crate::{models::Target, services::ConfigService};
 
     #[tokio::test]
     async fn test_create_list_deployment() -> anyhow::Result<()> {
@@ -220,10 +222,17 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         target_service.upsert(&target, &None).await.unwrap();
 
+        let config_persistence = Box::new(ConfigMemoryPersistence::default());
+        let config_service = Arc::new(ConfigService {
+            persistence: config_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
         let deployment_service = Arc::new(DeploymentService {
             persistence: deployment_persistence,
             event_stream: Arc::clone(&event_stream),
 
+            config_service,
             target_service,
         });
 

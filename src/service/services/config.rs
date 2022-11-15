@@ -3,17 +3,15 @@ use fabriq_core::{
 };
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{models::Config, persistence::ConfigPersistence};
-
-use super::{DeploymentService, WorkloadService};
+use crate::{
+    models::{Config, Deployment, Workload},
+    persistence::ConfigPersistence,
+};
 
 #[derive(Debug)]
 pub struct ConfigService {
     pub persistence: Box<dyn ConfigPersistence>,
     pub event_stream: Arc<dyn EventStream>,
-
-    pub deployment_service: Arc<DeploymentService>,
-    pub workload_service: Arc<WorkloadService>,
 }
 
 impl ConfigService {
@@ -41,9 +39,28 @@ impl ConfigService {
         Ok(operation_id)
     }
 
+    #[tracing::instrument(name = "service::config::get_by_deployment_id")]
+    pub async fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
+        let deployment_config = self.persistence.get_by_deployment_id(deployment_id).await?;
+
+        Ok(deployment_config)
+    }
+
     #[tracing::instrument(name = "service::config::get_by_id")]
     pub async fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
         self.persistence.get_by_id(config_id).await
+    }
+
+    #[tracing::instrument(name = "service::config::get_by_template_id")]
+    pub async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Config>> {
+        self.persistence.get_by_template_id(template_id).await
+    }
+
+    #[tracing::instrument(name = "service::config::get_by_workload_id")]
+    pub async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
+        let workload_config = self.persistence.get_by_workload_id(workload_id).await?;
+
+        Ok(workload_config)
     }
 
     #[tracing::instrument(name = "service::config::delete")]
@@ -81,83 +98,47 @@ impl ConfigService {
     }
 
     #[tracing::instrument(name = "service::config::query")]
-    pub async fn query(&self, query: &QueryConfigRequest) -> anyhow::Result<Vec<Config>> {
+    pub async fn query(
+        &self,
+        query: &QueryConfigRequest,
+        deployment: Option<Deployment>,
+        workload: Option<Workload>,
+        template_id: &str,
+    ) -> anyhow::Result<Vec<Config>> {
         let model_name = query.model_name.as_str();
         let mut config_set = HashMap::new();
 
-        let template_config;
-        let mut deployment_config = vec![];
-        let mut workload_config = vec![];
+        let (deployment_config, workload_config, template_config) = match model_name {
+            ConfigMessage::DEPLOYMENT_OWNER => {
+                let deployment = deployment.unwrap();
+                let workload = workload.unwrap();
 
-        match model_name {
-            "deployment" => {
-                let deployment = match self.deployment_service.get_by_id(&query.model_id).await? {
-                    Some(deployment) => deployment,
-                    None => {
-                        return Err(anyhow::anyhow!(
-                            "Deployment id {} not found",
-                            query.model_id
-                        ));
-                    }
-                };
+                let deployment_config = self.get_by_deployment_id(&query.model_id).await?;
 
-                deployment_config = self
-                    .persistence
-                    .get_by_deployment_id(&deployment.id)
-                    .await?;
+                let workload_config = self.get_by_workload_id(&workload.id).await?;
 
-                let workload = match self
-                    .workload_service
-                    .get_by_id(&deployment.workload_id)
-                    .await?
-                {
-                    Some(workload) => workload,
-                    None => {
-                        return Err(anyhow::anyhow!(
-                            "workload id {} not found",
-                            deployment.workload_id
-                        ));
-                    }
-                };
+                let template_id = deployment.template_id.unwrap_or(workload.template_id);
+                let template_config = self.get_by_template_id(&template_id).await?;
 
-                if let Some(template_id) = deployment.template_id {
-                    template_config = self.persistence.get_by_template_id(&template_id).await?;
-                } else {
-                    template_config = self
-                        .persistence
-                        .get_by_template_id(&workload.template_id)
-                        .await?;
-                }
-
-                workload_config = self
-                    .persistence
-                    .get_by_workload_id(&deployment.workload_id)
-                    .await?;
+                (deployment_config, workload_config, template_config)
             }
 
-            "workload" => {
-                let workload = match self.workload_service.get_by_id(&query.model_id).await? {
-                    Some(deployment) => deployment,
-                    None => {
-                        return Err(anyhow::anyhow!(
-                            "Deployment id {} not found",
-                            query.model_id
-                        ));
-                    }
-                };
+            ConfigMessage::WORKLOAD_OWNER => {
+                let workload = workload.unwrap();
 
-                workload_config = self.persistence.get_by_workload_id(&query.model_id).await?;
-                template_config = self
-                    .persistence
-                    .get_by_template_id(&workload.template_id)
-                    .await?;
+                let workload_config = self.get_by_workload_id(&query.model_id).await?;
+                let template_config = self.get_by_template_id(&workload.template_id).await?;
+
+                (vec![], workload_config, template_config)
             }
 
-            "template" => {
-                template_config = self.persistence.get_by_template_id(&query.model_id).await?;
+            ConfigMessage::TEMPLATE_OWNER => {
+                let template_config = self.persistence.get_by_template_id(&query.model_id).await?;
+
+                (vec![], vec![], template_config)
             }
             _ => return Err(anyhow::anyhow!("Model type not supported")),
-        }
+        };
 
         // shred config in tiered order into a HashMap such that deployment config overrides
         // workload config overrides template config.
@@ -197,7 +178,7 @@ mod tests {
             ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
             WorkloadMemoryPersistence,
         },
-        services::{TargetService, TemplateService},
+        services::{DeploymentService, TargetService, TemplateService, WorkloadService},
     };
     use fabriq_core::test::{
         get_deployment_fixture, get_string_config_fixture, get_target_fixture,
@@ -209,7 +190,6 @@ mod tests {
     async fn test_create_get_delete() {
         dotenvy::from_filename(".env.test").ok();
 
-        let config_persistence = ConfigMemoryPersistence::default();
         let event_stream: Arc<dyn EventStream> = Arc::new(MemoryEventStream::new().unwrap());
 
         let template_persistence = MemoryPersistence::<Template>::default();
@@ -244,24 +224,23 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         target_service.upsert(&target, &None).await.unwrap();
 
+        let config_persistence = ConfigMemoryPersistence::default();
+        let config_service = Arc::new(ConfigService {
+            persistence: Box::new(config_persistence),
+            event_stream: Arc::clone(&event_stream),
+        });
+
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
         let deployment_service = Arc::new(DeploymentService {
-            event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
+            event_stream: Arc::clone(&event_stream),
             persistence: deployment_persistence,
 
-            target_service,
+            config_service: Arc::clone(&config_service),
+            target_service: Arc::clone(&target_service),
         });
 
         let deployment: Deployment = get_deployment_fixture(None).into();
         deployment_service.upsert(&deployment, &None).await.unwrap();
-
-        let config_service = ConfigService {
-            persistence: Box::new(config_persistence),
-            event_stream,
-
-            deployment_service,
-            workload_service,
-        };
 
         let config: Config = get_string_config_fixture().into();
 
@@ -281,11 +260,14 @@ mod tests {
         assert_eq!(configs_by_workload.len(), 1);
 
         let query = QueryConfigRequest {
-            model_name: "deployment".to_string(),
-            model_id: deployment.id,
+            model_name: ConfigMessage::DEPLOYMENT_OWNER.to_string(),
+            model_id: deployment.id.clone(),
         };
 
-        let config_for_deployment = config_service.query(&query).await.unwrap();
+        let config_for_deployment = config_service
+            .query(&query, Some(deployment), Some(workload), &template.id)
+            .await
+            .unwrap();
         assert_eq!(config_for_deployment.len(), 1);
 
         let deleted_operation_id = config_service.delete(&config.id, &None).await.unwrap();

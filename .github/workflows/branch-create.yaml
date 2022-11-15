@@ -13,7 +13,7 @@ jobs:
 
       - name: Delete api and gitops deployment for this branch
         run: |
-          echo "Create deployment for branch ${{ github.event.ref }}"
+          echo "create deployment for branch ${{ github.event.ref }}"
 
           chmod +x fabriq
 

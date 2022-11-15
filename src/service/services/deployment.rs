@@ -5,13 +5,14 @@ use std::sync::Arc;
 
 use crate::{models::Deployment, persistence::DeploymentPersistence};
 
-use super::TargetService;
+use super::{ConfigService, TargetService};
 
 #[derive(Debug)]
 pub struct DeploymentService {
     pub persistence: Box<dyn DeploymentPersistence>,
     pub event_stream: Arc<dyn EventStream>,
 
+    pub config_service: Arc<ConfigService>,
     pub target_service: Arc<TargetService>,
 }
 
@@ -78,6 +79,17 @@ impl DeploymentService {
             None => return Err(anyhow::anyhow!("Deployment id {deployment_id} not found")),
         };
 
+        // delete config directly associated with deployment
+
+        let config_for_deployment = self
+            .config_service
+            .get_by_deployment_id(deployment_id)
+            .await?;
+
+        for config in config_for_deployment {
+            self.config_service.delete(&config.id, operation_id).await?;
+        }
+
         let deleted_count = self.persistence.delete(deployment_id).await?;
 
         if deleted_count == 0 {
@@ -134,7 +146,9 @@ mod tests {
     use super::*;
     use crate::{
         models::Target,
-        persistence::memory::{DeploymentMemoryPersistence, MemoryPersistence},
+        persistence::memory::{
+            ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
+        },
     };
     use fabriq_core::test::{get_deployment_fixture, get_target_fixture};
     use fabriq_memory_stream::MemoryEventStream;
@@ -154,11 +168,18 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         let operation_id = target_service.upsert(&target, &None).await.unwrap();
 
+        let config_persistence = ConfigMemoryPersistence::default();
+        let config_service = Arc::new(ConfigService {
+            persistence: Box::new(config_persistence),
+            event_stream: Arc::clone(&event_stream),
+        });
+
         let deployment_persistence = DeploymentMemoryPersistence::default();
         let deployment_service = DeploymentService {
             persistence: Box::new(deployment_persistence),
             event_stream: Arc::clone(&event_stream),
 
+            config_service,
             target_service,
         };
 
