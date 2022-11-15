@@ -142,7 +142,7 @@ mod tests {
     };
     use fabriq_memory_stream::MemoryEventStream;
 
-    use crate::api::GrpcAssignmentService;
+    use crate::grpc::GrpcAssignmentService;
     use crate::persistence::memory::AssignmentMemoryPersistence;
     use crate::services::AssignmentService;
 

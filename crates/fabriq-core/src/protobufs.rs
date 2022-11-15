@@ -219,15 +219,6 @@ impl From<i32> for ModelType {
     }
 }
 
-// health protobufs
-
-pub mod health {
-    tonic::include_proto!("fabriq.health");
-}
-
-pub use health::health_server::{Health, HealthServer};
-pub use health::{HealthRequest, HealthResponse};
-
 // host protobufs
 
 pub mod host {

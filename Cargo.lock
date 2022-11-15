@@ -506,6 +506,7 @@ dependencies = [
  "ascii_table",
  "async-trait",
  "axum",
+ "base64",
  "clap",
  "dirs",
  "dotenvy",

@@ -41,7 +41,6 @@ pub fn args() -> Command {
 
 pub async fn handlers(model_match: &clap::ArgMatches, context: &Context) -> anyhow::Result<()> {
     let endpoint: &'static str = Box::leak(Box::new(context.endpoint.clone()));
-
     let channel = Channel::from_static(endpoint).connect().await?;
 
     let token = context.make_token()?;

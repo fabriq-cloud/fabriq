@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cargo update
+#cargo update
 cargo sqlx prepare
 sqlx migrate run
 cargo test --bins --tests --examples

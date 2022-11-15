@@ -71,8 +71,9 @@ async fn main() -> anyhow::Result<()> {
     let repo_url = env::var("GITOPS_REPO_URL").expect("GITOPS_REPO_URL must be set");
     let repo_branch = env::var("GITOPS_REPO_BRANCH").unwrap_or_else(|_| "main".to_owned());
 
-    let private_ssh_key =
-        env::var("GITOPS_PRIVATE_SSH_KEY").expect("GITOPS_PRIVATE_SSH_KEY must be set");
+    let private_ssh_key_base64 = env::var("GITOPS_PRIVATE_SSH_KEY_BASE64")
+        .expect("GITOPS_PRIVATE_SSH_KEY_BASE64 must be set");
+    let private_ssh_key: String = String::from_utf8(base64::decode(&private_ssh_key_base64)?)?;
 
     let gitops_repo = Arc::new(RemoteGitRepo::new(
         &repo_url,
