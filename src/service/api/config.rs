@@ -5,17 +5,62 @@ use fabriq_core::{
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
-use crate::models::Config;
-use crate::services::ConfigService;
+use crate::models::{Config, Deployment, Workload};
+use crate::services::{ConfigService, DeploymentService, WorkloadService};
 
 #[derive(Debug)]
 pub struct GrpcConfigService {
-    service: Arc<ConfigService>,
+    pub config_service: Arc<ConfigService>,
+    pub deployment_service: Arc<DeploymentService>,
+    pub workload_service: Arc<WorkloadService>,
 }
 
 impl GrpcConfigService {
-    pub fn new(service: Arc<ConfigService>) -> Self {
-        GrpcConfigService { service }
+    async fn wrapped_get_deployment_by_id(
+        &self,
+        deployment_id: &str,
+    ) -> Result<Deployment, Status> {
+        let deployment_result = match self.deployment_service.get_by_id(deployment_id).await {
+            Ok(deployment) => match deployment {
+                Some(deployment) => deployment,
+                None => {
+                    return Err(Status::new(
+                        tonic::Code::NotFound,
+                        format!("deployment with id {} not found", deployment_id),
+                    ))
+                }
+            },
+            Err(err) => {
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!("get_by_id with id {} failed", err),
+                ))
+            }
+        };
+
+        Ok(deployment_result)
+    }
+
+    async fn wrapped_get_workload_by_id(&self, workload_id: &str) -> Result<Workload, Status> {
+        let workload_result = match self.workload_service.get_by_id(workload_id).await {
+            Ok(deployment) => match deployment {
+                Some(deployment) => deployment,
+                None => {
+                    return Err(Status::new(
+                        tonic::Code::NotFound,
+                        format!("deployment with id {} not found", workload_id),
+                    ))
+                }
+            },
+            Err(err) => {
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!("get_by_id with id {} failed", err),
+                ))
+            }
+        };
+
+        Ok(workload_result)
     }
 }
 
@@ -28,7 +73,7 @@ impl ConfigTrait for GrpcConfigService {
     ) -> Result<Response<OperationId>, Status> {
         let new_config: Config = request.into_inner().into();
 
-        let operation_id = match self.service.upsert(&new_config, &None).await {
+        let operation_id = match self.config_service.upsert(&new_config, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -50,7 +95,7 @@ impl ConfigTrait for GrpcConfigService {
         // Query workload service for workloads by config_id, error if any exist
 
         let operation_id = match self
-            .service
+            .config_service
             .delete(&request.into_inner().config_id, &None)
             .await
         {
@@ -73,7 +118,42 @@ impl ConfigTrait for GrpcConfigService {
     ) -> Result<Response<QueryConfigResponse>, Status> {
         let query = request.into_inner();
 
-        let configs = match self.service.query(&query).await {
+        let (deployment, workload, template_id) = match query.model_name.as_ref() {
+            ConfigMessage::DEPLOYMENT_OWNER => {
+                let deployment = self.wrapped_get_deployment_by_id(&query.model_id).await?;
+                let workload = self
+                    .wrapped_get_workload_by_id(&deployment.workload_id)
+                    .await?;
+                let template_id = deployment
+                    .template_id
+                    .clone()
+                    .unwrap_or_else(|| workload.template_id.clone());
+
+                (Some(deployment), Some(workload), template_id)
+            }
+
+            ConfigMessage::TEMPLATE_OWNER => (None, None, query.model_id.clone()),
+
+            ConfigMessage::WORKLOAD_OWNER => {
+                let workload = self.wrapped_get_workload_by_id(&query.model_id).await?;
+                let template_id = workload.template_id.clone();
+
+                (None, Some(workload), template_id)
+            }
+
+            _ => {
+                return Err(Status::new(
+                    tonic::Code::InvalidArgument,
+                    format!("unknown query model owner type: {}", query.model_name),
+                ))
+            }
+        };
+
+        let configs = match self
+            .config_service
+            .query(&query, deployment, workload, &template_id)
+            .await
+        {
             Ok(configs) => configs,
             Err(err) => {
                 return Err(Status::new(
@@ -119,7 +199,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_config() -> anyhow::Result<()> {
-        let config_persistence = Box::new(ConfigMemoryPersistence::default());
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let template_persistence = MemoryPersistence::<Template>::default();
@@ -136,7 +215,7 @@ mod tests {
             event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
             persistence: workload_persistence,
 
-            template_service,
+            template_service: Arc::clone(&template_service),
         });
 
         let workload: Workload = get_workload_fixture(None).into();
@@ -154,11 +233,18 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         let operation_id = target_service.upsert(&target, &None).await.unwrap();
 
+        let config_persistence = Box::new(ConfigMemoryPersistence::default());
+        let config_service = Arc::new(ConfigService {
+            persistence: config_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
         let deployment_service = Arc::new(DeploymentService {
-            event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
+            event_stream: Arc::clone(&event_stream),
             persistence: deployment_persistence,
 
+            config_service: Arc::clone(&config_service),
             target_service,
         });
 
@@ -169,15 +255,11 @@ mod tests {
             .await
             .unwrap();
 
-        let config_service = Arc::new(ConfigService {
-            persistence: config_persistence,
-            event_stream,
-
-            deployment_service,
-            workload_service,
-        });
-
-        let config_grpc_service = GrpcConfigService::new(Arc::clone(&config_service));
+        let config_grpc_service = GrpcConfigService {
+            config_service: Arc::clone(&config_service),
+            deployment_service: Arc::clone(&deployment_service),
+            workload_service: Arc::clone(&workload_service),
+        };
 
         let config = get_string_config_fixture();
 
