@@ -1,4 +1,3 @@
-use axum::{routing::get, Router};
 use opentelemetry::sdk::trace as sdktrace;
 use opentelemetry_otlp::WithExportConfig;
 use sqlx::postgres::PgPoolOptions;
@@ -124,10 +123,7 @@ fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
-    let http_router = Router::new()
-        .route("/health", get(http::health::health))
-        .route("/event_handler", get(http::webhook::event_handler));
-    let http_services = http_router.into_make_service();
+    let http_services = http::http_router().into_make_service();
 
     let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
 
