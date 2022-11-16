@@ -19,5 +19,5 @@ jobs:
 
           ./fabriq login ${{ secrets.GITHUB_TOKEN }}
 
-          ./fabriq deployment create ${{ github.event.ref }} --target westus2 --team ${{ github.repository }} --workload api --hosts 1
-          ./fabriq deployment create ${{ github.event.ref }} --target westus2 --team ${{ github.repository }} --workload gitops --hosts 1
+          ./fabriq deployment create ${{ github.event.ref }} --target westus3 --team ${{ github.repository }} --workload api --hosts 1
+          ./fabriq deployment create ${{ github.event.ref }} --target westus3 --team ${{ github.repository }} --workload gitops --hosts 1
