@@ -1,4 +1,4 @@
-name: Create Branch
+name: Create Deployment for New Branch
 on: create
 jobs:
   create:

@@ -74,10 +74,10 @@ impl WorkloadTrait for GrpcWorkloadService {
         let workload = match self.service.get_by_id(&workload_id).await {
             Ok(workload) => workload,
             Err(err) => {
-                tracing::error!("get target with id {}: failed: {}", workload_id, err);
+                tracing::error!("get workload with id {}: failed: {}", workload_id, err);
                 return Err(Status::new(
                     tonic::Code::Internal,
-                    format!("get target with id {}: failed", &workload_id),
+                    format!("get workload with id {}: failed", &workload_id),
                 ));
             }
         };

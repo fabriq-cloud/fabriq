@@ -72,13 +72,14 @@ impl DeploymentTrait for GrpcDeploymentService {
         request: Request<DeploymentIdRequest>,
     ) -> Result<Response<DeploymentMessage>, Status> {
         let deployment_id = request.into_inner().deployment_id;
+
         let deployment = match self.service.get_by_id(&deployment_id).await {
             Ok(deployment) => deployment,
             Err(err) => {
-                tracing::error!("get target with id {}: failed: {}", deployment_id, err);
+                println!("get deployment with id {}: failed: {}", deployment_id, err);
                 return Err(Status::new(
                     tonic::Code::Internal,
-                    format!("get target with id {}: failed", &deployment_id),
+                    format!("get deployment with id {}: failed", &deployment_id),
                 ));
             }
         };
@@ -88,7 +89,7 @@ impl DeploymentTrait for GrpcDeploymentService {
             None => {
                 return Err(Status::new(
                     tonic::Code::NotFound,
-                    format!("get workload with id {}: not found", &deployment_id),
+                    format!("get deployment with id {}: not found", &deployment_id),
                 ))
             }
         };
