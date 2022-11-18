@@ -81,11 +81,11 @@ impl DeploymentService {
         };
 
         self.assignment_service
-            .delete_by_deployment_id(deployment_id, &operation_id)
+            .delete_by_deployment_id(deployment_id, operation_id)
             .await?;
 
         self.config_service
-            .delete_by_deployment_id(deployment_id, &operation_id)
+            .delete_by_deployment_id(deployment_id, operation_id)
             .await?;
 
         let deleted_count = self.persistence.delete(deployment_id).await?;
