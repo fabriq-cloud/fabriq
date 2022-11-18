@@ -5,13 +5,14 @@ use std::sync::Arc;
 
 use crate::{models::Deployment, persistence::DeploymentPersistence};
 
-use super::{ConfigService, TargetService};
+use super::{AssignmentService, ConfigService, TargetService};
 
 #[derive(Debug)]
 pub struct DeploymentService {
     pub persistence: Box<dyn DeploymentPersistence>,
     pub event_stream: Arc<dyn EventStream>,
 
+    pub assignment_service: Arc<AssignmentService>,
     pub config_service: Arc<ConfigService>,
     pub target_service: Arc<TargetService>,
 }
@@ -79,14 +80,27 @@ impl DeploymentService {
             None => return Err(anyhow::anyhow!("Deployment id {deployment_id} not found")),
         };
 
+        // delete assignments associated with deployment
+
+        let deployment_assignments = self
+            .assignment_service
+            .get_by_deployment_id(deployment_id)
+            .await?;
+
+        for assignment in deployment_assignments {
+            self.assignment_service
+                .delete(&assignment.id, &None)
+                .await?;
+        }
+
         // delete config directly associated with deployment
 
-        let config_for_deployment = self
+        let deployment_config = self
             .config_service
             .get_by_deployment_id(deployment_id)
             .await?;
 
-        for config in config_for_deployment {
+        for config in deployment_config {
             self.config_service.delete(&config.id, operation_id).await?;
         }
 
@@ -145,12 +159,16 @@ impl DeploymentService {
 mod tests {
     use super::*;
     use crate::{
-        models::Target,
+        models::{Assignment, Config, Target},
         persistence::memory::{
-            ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
+            AssignmentMemoryPersistence, ConfigMemoryPersistence, DeploymentMemoryPersistence,
+            MemoryPersistence,
         },
     };
-    use fabriq_core::test::{get_deployment_fixture, get_target_fixture};
+    use fabriq_core::test::{
+        get_assignment_fixture, get_deployment_fixture, get_keyvalue_config_fixture,
+        get_target_fixture,
+    };
     use fabriq_memory_stream::MemoryEventStream;
 
     #[tokio::test]
@@ -174,16 +192,36 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
         });
 
+        let config: Config = get_keyvalue_config_fixture().into();
+        config_service
+            .upsert(&config, &Some(operation_id.clone()))
+            .await
+            .unwrap();
+
+        let assignment_persistence = AssignmentMemoryPersistence::default();
+        let assignment_service = Arc::new(AssignmentService {
+            persistence: Box::new(assignment_persistence),
+            event_stream: Arc::clone(&event_stream),
+        });
+
+        let assignment: Assignment = get_assignment_fixture(None).into();
+        assignment_service
+            .upsert(&assignment, &Some(operation_id.clone()))
+            .await
+            .unwrap();
+
         let deployment_persistence = DeploymentMemoryPersistence::default();
         let deployment_service = DeploymentService {
             persistence: Box::new(deployment_persistence),
             event_stream: Arc::clone(&event_stream),
 
+            assignment_service,
             config_service,
             target_service,
         };
 
         let deployment: Deployment = get_deployment_fixture(None).into();
+
         let deployment_created_operation_id = deployment_service
             .upsert(&deployment, &Some(operation_id))
             .await

@@ -31,10 +31,13 @@ impl DeploymentTrait for GrpcDeploymentService {
         let operation_id = match self.service.upsert(&new_deployment, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
-                return Err(Status::new(
-                    tonic::Code::InvalidArgument,
-                    format!("upserting deployment failed with {}", err),
-                ))
+                let message = format!(
+                    "delete deployment with id {} returned error {err}",
+                    new_deployment.id
+                );
+
+                tracing::error!(message);
+                return Err(Status::new(tonic::Code::InvalidArgument, message));
             }
         };
 
@@ -49,17 +52,15 @@ impl DeploymentTrait for GrpcDeploymentService {
         // TODO: check that no workloads are currently still using deployment
         // Query workload service for workloads by deployment_id, error if any exist
 
-        let operation_id = match self
-            .service
-            .delete(&request.into_inner().deployment_id, &None)
-            .await
-        {
+        let deployment_id = request.into_inner().deployment_id;
+        let operation_id = match self.service.delete(&deployment_id, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
-                return Err(Status::new(
-                    tonic::Code::NotFound,
-                    format!("deployment with id {} not found", err),
-                ))
+                let message =
+                    format!("delete deployment with id {deployment_id} returned error {err}");
+
+                tracing::error!(message);
+                return Err(Status::new(tonic::Code::NotFound, message));
             }
         };
 
@@ -76,21 +77,21 @@ impl DeploymentTrait for GrpcDeploymentService {
         let deployment = match self.service.get_by_id(&deployment_id).await {
             Ok(deployment) => deployment,
             Err(err) => {
-                println!("get deployment with id {}: failed: {}", deployment_id, err);
-                return Err(Status::new(
-                    tonic::Code::Internal,
-                    format!("get deployment with id {}: failed", &deployment_id),
-                ));
+                let message =
+                    format!("get deployment with id {deployment_id} returned error {err}");
+
+                tracing::error!(message);
+                return Err(Status::new(tonic::Code::Internal, message));
             }
         };
 
         let deployment = match deployment {
             Some(deployment) => deployment,
             None => {
-                return Err(Status::new(
-                    tonic::Code::NotFound,
-                    format!("get deployment with id {}: not found", &deployment_id),
-                ))
+                let message = format!("get deployment with id {deployment_id} not found");
+
+                tracing::warn!(message);
+                return Err(Status::new(tonic::Code::NotFound, message));
             }
         };
 
@@ -111,10 +112,10 @@ impl DeploymentTrait for GrpcDeploymentService {
         {
             Ok(deployments) => deployments,
             Err(err) => {
-                return Err(Status::new(
-                    tonic::Code::Internal,
-                    format!("listing deployments failed with {}", err),
-                ))
+                let message = format!("list deployments returned error {err}");
+
+                tracing::error!(message);
+                return Err(Status::new(tonic::Code::Internal, message));
             }
         };
 
@@ -203,11 +204,15 @@ mod tests {
 
     use super::GrpcDeploymentService;
 
-    use crate::persistence::memory::{
-        ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
-    };
     use crate::services::{DeploymentService, TargetService};
     use crate::{models::Target, services::ConfigService};
+    use crate::{
+        persistence::memory::{
+            AssignmentMemoryPersistence, ConfigMemoryPersistence, DeploymentMemoryPersistence,
+            MemoryPersistence,
+        },
+        services::AssignmentService,
+    };
 
     #[tokio::test]
     async fn test_create_list_deployment() -> anyhow::Result<()> {
@@ -223,6 +228,12 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         target_service.upsert(&target, &None).await.unwrap();
 
+        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
+        let assignment_service = Arc::new(AssignmentService {
+            persistence: assignment_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
         let config_persistence = Box::new(ConfigMemoryPersistence::default());
         let config_service = Arc::new(ConfigService {
             persistence: config_persistence,
@@ -233,6 +244,7 @@ mod tests {
             persistence: deployment_persistence,
             event_stream: Arc::clone(&event_stream),
 
+            assignment_service,
             config_service,
             target_service,
         });

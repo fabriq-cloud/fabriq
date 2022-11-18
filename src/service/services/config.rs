@@ -175,10 +175,12 @@ mod tests {
     use crate::{
         models::{Deployment, Target, Template, Workload},
         persistence::memory::{
-            ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
-            WorkloadMemoryPersistence,
+            AssignmentMemoryPersistence, ConfigMemoryPersistence, DeploymentMemoryPersistence,
+            MemoryPersistence, WorkloadMemoryPersistence,
         },
-        services::{DeploymentService, TargetService, TemplateService, WorkloadService},
+        services::{
+            AssignmentService, DeploymentService, TargetService, TemplateService, WorkloadService,
+        },
     };
     use fabriq_core::test::{
         get_deployment_fixture, get_string_config_fixture, get_target_fixture,
@@ -230,11 +232,18 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
         });
 
+        let assignment_persistence = AssignmentMemoryPersistence::default();
+        let assignment_service = Arc::new(AssignmentService {
+            persistence: Box::new(assignment_persistence),
+            event_stream: Arc::clone(&event_stream),
+        });
+
         let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
         let deployment_service = Arc::new(DeploymentService {
             event_stream: Arc::clone(&event_stream),
             persistence: deployment_persistence,
 
+            assignment_service: Arc::clone(&assignment_service),
             config_service: Arc::clone(&config_service),
             target_service: Arc::clone(&target_service),
         });

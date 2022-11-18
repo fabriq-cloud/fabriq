@@ -188,13 +188,19 @@ mod tests {
 
     use super::GrpcConfigService;
 
-    use crate::models::{Deployment, Target, Template, Workload};
-    use crate::persistence::memory::{
-        ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
-        WorkloadMemoryPersistence,
-    };
     use crate::services::{
         ConfigService, DeploymentService, TargetService, TemplateService, WorkloadService,
+    };
+    use crate::{
+        models::{Deployment, Target, Template, Workload},
+        persistence::memory::AssignmentMemoryPersistence,
+    };
+    use crate::{
+        persistence::memory::{
+            ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
+            WorkloadMemoryPersistence,
+        },
+        services::AssignmentService,
     };
 
     #[tokio::test]
@@ -233,6 +239,12 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         let operation_id = target_service.upsert(&target, &None).await.unwrap();
 
+        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
+        let assignment_service = Arc::new(AssignmentService {
+            persistence: assignment_persistence,
+            event_stream: Arc::clone(&event_stream),
+        });
+
         let config_persistence = Box::new(ConfigMemoryPersistence::default());
         let config_service = Arc::new(ConfigService {
             persistence: config_persistence,
@@ -244,6 +256,7 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
             persistence: deployment_persistence,
 
+            assignment_service: Arc::clone(&assignment_service),
             config_service: Arc::clone(&config_service),
             target_service,
         });
