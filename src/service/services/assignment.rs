@@ -105,6 +105,21 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
+    pub async fn delete_by_deployment_id(
+        &self,
+        deployment_id: &str,
+        operation_id: &Option<OperationId>,
+    ) -> anyhow::Result<OperationId> {
+        let operation_id = OperationId::unwrap_or_create(operation_id);
+
+        let deployment_assignments = self.get_by_deployment_id(deployment_id).await?;
+
+        self.delete_many(&deployment_assignments, &Some(operation_id.clone()))
+            .await?;
+
+        Ok(operation_id)
+    }
+
     #[tracing::instrument(name = "service::assignment::get_by_id")]
     pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
         self.persistence.get_by_id(host_id).await
@@ -171,10 +186,10 @@ mod tests {
     async fn test_create_get_delete_many() {
         dotenvy::from_filename(".env.test").ok();
 
-        let assignment_persistence = AssignmentMemoryPersistence::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
         let assignment: Assignment = get_assignment_fixture(None).into();
 
+        let assignment_persistence = AssignmentMemoryPersistence::default();
         let assignment_service = AssignmentService {
             persistence: Box::new(assignment_persistence),
             event_stream: Arc::clone(&event_stream),

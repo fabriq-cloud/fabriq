@@ -80,29 +80,13 @@ impl DeploymentService {
             None => return Err(anyhow::anyhow!("Deployment id {deployment_id} not found")),
         };
 
-        // delete assignments associated with deployment
-
-        let deployment_assignments = self
-            .assignment_service
-            .get_by_deployment_id(deployment_id)
+        self.assignment_service
+            .delete_by_deployment_id(deployment_id, &operation_id)
             .await?;
 
-        for assignment in deployment_assignments {
-            self.assignment_service
-                .delete(&assignment.id, &None)
-                .await?;
-        }
-
-        // delete config directly associated with deployment
-
-        let deployment_config = self
-            .config_service
-            .get_by_deployment_id(deployment_id)
+        self.config_service
+            .delete_by_deployment_id(deployment_id, &operation_id)
             .await?;
-
-        for config in deployment_config {
-            self.config_service.delete(&config.id, operation_id).await?;
-        }
 
         let deleted_count = self.persistence.delete(deployment_id).await?;
 

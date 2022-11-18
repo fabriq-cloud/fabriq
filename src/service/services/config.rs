@@ -97,6 +97,22 @@ impl ConfigService {
         Ok(operation_id)
     }
 
+    pub async fn delete_by_deployment_id(
+        &self,
+        deployment_id: &str,
+        operation_id: &Option<OperationId>,
+    ) -> anyhow::Result<OperationId> {
+        let operation_id = OperationId::unwrap_or_create(operation_id);
+
+        let deployment_config = self.get_by_deployment_id(deployment_id).await?;
+
+        for config in deployment_config {
+            self.delete(&config.id, &Some(operation_id.clone())).await?;
+        }
+
+        Ok(operation_id)
+    }
+
     #[tracing::instrument(name = "service::config::query")]
     pub async fn query(
         &self,
