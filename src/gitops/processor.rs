@@ -127,8 +127,12 @@ impl GitOpsProcessor {
 
                             self.update_template(&template).await?;
                         }
-                        Err(_) => {
-                            tracing::warn!("owning template not found (possibly deleted in the mean time), moving on");
+                        Err(err) => {
+                            if err.code() == tonic::Code::NotFound {
+                                tracing::warn!("owning template not found (possibly deleted in the meantime), moving on");
+                            } else {
+                                return Err(anyhow::format_err!("error getting template: {}", err));
+                            }
                         }
                     }
                 }
@@ -145,8 +149,15 @@ impl GitOpsProcessor {
 
                             self.update_deployment(&deployment, true).await?;
                         }
-                        Err(_) => {
-                            tracing::warn!("owning deployment not found (possibly deleted in the mean time), moving on.");
+                        Err(err) => {
+                            if err.code() == tonic::Code::NotFound {
+                                tracing::warn!("owning deployment not found (possibly deleted in the meantime), moving on");
+                            } else {
+                                return Err(anyhow::format_err!(
+                                    "error getting deployment: {}",
+                                    err
+                                ));
+                            }
                         }
                     }
                 }
@@ -163,8 +174,12 @@ impl GitOpsProcessor {
 
                             self.update_workload(&workload).await?;
                         }
-                        Err(_) => {
-                            tracing::warn!("owning workload not found (possibly deleted in the mean time), moving on.");
+                        Err(err) => {
+                            if err.code() == tonic::Code::NotFound {
+                                tracing::warn!("owning workload not found (possibly deleted in the meantime), moving on");
+                            } else {
+                                return Err(anyhow::format_err!("error getting workload: {}", err));
+                            }
                         }
                     }
                 }
@@ -306,42 +321,26 @@ impl GitOpsProcessor {
         assignment: &AssignmentMessage,
         created: bool,
     ) -> anyhow::Result<()> {
-        let deployment_request = Request::new(DeploymentIdRequest {
-            deployment_id: assignment.deployment_id.clone(),
-        });
-
-        let deployment = self
-            .deployment_client
-            .get_by_id(deployment_request)
-            .await?
-            .into_inner();
-
-        let workload_request = Request::new(WorkloadIdRequest {
-            workload_id: deployment.workload_id.clone(),
-        });
-
-        let workload = self
-            .workload_client
-            .get_by_id(workload_request)
-            .await?
-            .into_inner();
+        let (team_id, workload_name, deployment_name) =
+            DeploymentMessage::split_id(&assignment.deployment_id)?;
 
         if created {
             self.render_assignment(
                 &assignment.host_id,
-                &workload.team_id,
-                &workload.name,
-                &deployment.name,
+                &team_id,
+                &workload_name,
+                &deployment_name,
             )
             .await?;
         } else {
-            let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
+            let (organization_name, team_name) = WorkloadMessage::split_team_id(&team_id)?;
+
             let assignment_path = GitOpsProcessor::make_assignment_directory(
                 &assignment.host_id,
                 &organization_name,
                 &team_name,
-                &workload.name,
-                &deployment.name,
+                &workload_name,
+                &deployment_name,
             );
 
             self.gitops_repo.remove_dir(&assignment_path)?;

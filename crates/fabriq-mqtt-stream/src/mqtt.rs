@@ -124,8 +124,6 @@ mod tests {
         let host_stream = MqttEventStream::new(&mqtt_broker_uri, "mqtt-stream-test", true).unwrap();
         let operation_id = OperationId::create();
 
-        println!("setup finished");
-
         let timestamp = Timestamp {
             seconds: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -143,15 +141,9 @@ mod tests {
             timestamp: Some(timestamp),
         };
 
-        println!("sending event");
-
         host_stream.send(&create_host_event).unwrap();
 
-        println!("event sent");
-
         let received_events = host_stream.receive("").unwrap();
-
-        println!("event received");
 
         assert_eq!(received_events.len(), 1);
 

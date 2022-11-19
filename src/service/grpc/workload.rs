@@ -71,6 +71,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         request: Request<WorkloadIdRequest>,
     ) -> Result<Response<WorkloadMessage>, Status> {
         let workload_id = request.into_inner().workload_id;
+
         let workload = match self.service.get_by_id(&workload_id).await {
             Ok(workload) => workload,
             Err(err) => {
@@ -97,7 +98,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(workload_message))
     }
 
-    #[tracing::instrument(name = "grpc::deployment::get_by_template_id")]
+    #[tracing::instrument(name = "grpc::workload::get_by_template_id")]
     async fn get_by_template_id(
         &self,
         request: Request<TemplateIdRequest>,

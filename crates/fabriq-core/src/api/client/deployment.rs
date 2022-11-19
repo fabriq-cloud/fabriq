@@ -51,11 +51,7 @@ impl DeploymentTrait for WrappedDeploymentClient {
         request: Request<DeploymentIdRequest>,
     ) -> Result<Response<DeploymentMessage>, Status> {
         let mut inner = self.inner.lock().await;
-        let test = inner.get_by_id(request).await;
-
-        println!("test: {:?}", test);
-
-        test
+        inner.get_by_id(request).await
     }
 
     async fn get_by_template_id(
