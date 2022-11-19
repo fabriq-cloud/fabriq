@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{
     codegen::InterceptedService,
@@ -17,13 +16,13 @@ use crate::{
 use super::interceptor::ClientInterceptor;
 
 pub struct WrappedDeploymentClient {
-    inner: Arc<Mutex<DeploymentClient<InterceptedService<Channel, ClientInterceptor>>>>,
+    inner: Mutex<DeploymentClient<InterceptedService<Channel, ClientInterceptor>>>,
 }
 
 impl WrappedDeploymentClient {
     pub fn new(channel: Channel, token: MetadataValue<Ascii>) -> Self {
         let inner = DeploymentClient::with_interceptor(channel, ClientInterceptor { token });
-        let inner = Arc::new(Mutex::new(inner));
+        let inner = Mutex::new(inner);
 
         WrappedDeploymentClient { inner }
     }

@@ -1,4 +1,4 @@
-name: Delete Deployment
+name: Delete Deployment for Deleted Branch
 on: delete
 jobs:
   delete:

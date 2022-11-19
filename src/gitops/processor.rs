@@ -104,6 +104,7 @@ impl GitOpsProcessor {
         // Deleted: Rerender all deployments that could be effected by this config change.
 
         let config = get_current_or_previous_model::<ConfigMessage>(event)?;
+
         let owning_model_parts: Vec<&str> = config
             .owning_model
             .split(ConfigMessage::OWNING_MODEL_SEPARATOR)
@@ -113,38 +114,74 @@ impl GitOpsProcessor {
             let model_id = owning_model_parts[1];
 
             match model_type {
-                "template" => {
-                    let template = self
+                ConfigMessage::TEMPLATE_OWNER => {
+                    match self
                         .template_client
                         .get_by_id(Request::new(TemplateIdRequest {
                             template_id: model_id.to_string(),
                         }))
-                        .await?
-                        .into_inner();
+                        .await
+                    {
+                        Ok(response) => {
+                            let template = response.into_inner();
 
-                    self.update_template(&template).await?;
+                            self.update_template(&template).await?;
+                        }
+                        Err(err) => {
+                            if err.code() == tonic::Code::NotFound {
+                                tracing::warn!("owning template not found (possibly deleted in the meantime), moving on");
+                            } else {
+                                return Err(anyhow::format_err!("error getting template: {}", err));
+                            }
+                        }
+                    }
                 }
-                "deployment" => {
-                    let deployment = self
+                ConfigMessage::DEPLOYMENT_OWNER => {
+                    match self
                         .deployment_client
                         .get_by_id(Request::new(DeploymentIdRequest {
                             deployment_id: model_id.to_string(),
                         }))
-                        .await?
-                        .into_inner();
+                        .await
+                    {
+                        Ok(response) => {
+                            let deployment = response.into_inner();
 
-                    self.update_deployment(&deployment, true).await?;
+                            self.update_deployment(&deployment, true).await?;
+                        }
+                        Err(err) => {
+                            if err.code() == tonic::Code::NotFound {
+                                tracing::warn!("owning deployment not found (possibly deleted in the meantime), moving on");
+                            } else {
+                                return Err(anyhow::format_err!(
+                                    "error getting deployment: {}",
+                                    err
+                                ));
+                            }
+                        }
+                    }
                 }
-                "workload" => {
-                    let workload = self
+                ConfigMessage::WORKLOAD_OWNER => {
+                    match self
                         .workload_client
                         .get_by_id(Request::new(WorkloadIdRequest {
                             workload_id: model_id.to_string(),
                         }))
-                        .await?
-                        .into_inner();
+                        .await
+                    {
+                        Ok(response) => {
+                            let workload = response.into_inner();
 
-                    self.update_workload(&workload).await?;
+                            self.update_workload(&workload).await?;
+                        }
+                        Err(err) => {
+                            if err.code() == tonic::Code::NotFound {
+                                tracing::warn!("owning workload not found (possibly deleted in the meantime), moving on");
+                            } else {
+                                return Err(anyhow::format_err!("error getting workload: {}", err));
+                            }
+                        }
+                    }
                 }
                 _ => {
                     tracing::error!("unsupported model type: {:?}", model_type);
@@ -284,42 +321,26 @@ impl GitOpsProcessor {
         assignment: &AssignmentMessage,
         created: bool,
     ) -> anyhow::Result<()> {
-        let deployment_request = Request::new(DeploymentIdRequest {
-            deployment_id: assignment.deployment_id.clone(),
-        });
-
-        let deployment = self
-            .deployment_client
-            .get_by_id(deployment_request)
-            .await?
-            .into_inner();
-
-        let workload_request = Request::new(WorkloadIdRequest {
-            workload_id: deployment.workload_id.clone(),
-        });
-
-        let workload = self
-            .workload_client
-            .get_by_id(workload_request)
-            .await?
-            .into_inner();
+        let (team_id, workload_name, deployment_name) =
+            DeploymentMessage::split_id(&assignment.deployment_id)?;
 
         if created {
             self.render_assignment(
                 &assignment.host_id,
-                &workload.team_id,
-                &workload.name,
-                &deployment.name,
+                &team_id,
+                &workload_name,
+                &deployment_name,
             )
             .await?;
         } else {
-            let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
+            let (organization_name, team_name) = WorkloadMessage::split_team_id(&team_id)?;
+
             let assignment_path = GitOpsProcessor::make_assignment_directory(
                 &assignment.host_id,
                 &organization_name,
                 &team_name,
-                &workload.name,
-                &deployment.name,
+                &workload_name,
+                &deployment_name,
             );
 
             self.gitops_repo.remove_dir(&assignment_path)?;

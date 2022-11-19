@@ -189,6 +189,7 @@ async fn main() -> anyhow::Result<()> {
         persistence: deployment_persistence,
         event_stream: Arc::clone(&event_stream),
 
+        assignment_service: Arc::clone(&assignment_service),
         config_service: Arc::clone(&config_service),
         target_service: Arc::clone(&target_service),
     });

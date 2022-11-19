@@ -151,6 +151,28 @@ impl DeploymentMessage {
             DeploymentMessage::DEPLOYMENT_ID_SEPARATOR
         )
     }
+
+    pub fn split_id(id: &str) -> anyhow::Result<(String, String, String)> {
+        let id_parts = id
+            .split(WorkloadMessage::TEAM_ID_SEPARATOR)
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        if id_parts.len() != 4 {
+            return Err(anyhow::anyhow!("invalid team id"));
+        }
+
+        Ok((
+            format!(
+                "{}{}{}",
+                id_parts[0],
+                WorkloadMessage::TEAM_ID_SEPARATOR,
+                id_parts[1]
+            ),
+            id_parts[2].to_string(),
+            id_parts[3].to_string(),
+        ))
+    }
 }
 
 // event protobufs
@@ -306,7 +328,6 @@ mod tests {
 
         let kv = config.deserialize_keyvalue_pairs()?;
 
-        println!("{:?}", kv);
         assert_eq!(kv.len(), 2);
         assert_eq!(kv[0].key, "A");
         assert_eq!(kv[0].value, "postgres://postgres:[euro4sure]@fabriq.postgres.database.azure.com/fabriq?sslmode=require");
