@@ -1,7 +1,7 @@
 use tonic::{Request, Status};
 
-#[tracing::instrument(name = "authorize")]
-pub fn authorize(req: Request<()>) -> Result<Request<()>, Status> {
+#[tracing::instrument(name = "authenticate")]
+pub async fn authenticate(req: Request<()>) -> Result<Request<()>, Status> {
     let headers = req.metadata().clone().into_headers();
 
     let auth_header = match headers.get("authorization") {
@@ -14,7 +14,7 @@ pub fn authorize(req: Request<()>) -> Result<Request<()>, Status> {
         }
     };
 
-    let _pat = match auth_header.to_str() {
+    let pat = match auth_header.to_str() {
         Ok(pat) => pat,
         Err(_) => {
             return Err(Status::new(
@@ -24,7 +24,35 @@ pub fn authorize(req: Request<()>) -> Result<Request<()>, Status> {
         }
     };
 
-    // TODO: validate PAT when https://github.com/hyperium/tonic/pull/910 lands async interceptors
+    let octocrab = match octocrab::OctocrabBuilder::new()
+        .personal_token(pat.to_string())
+        .build()
+    {
+        Ok(octocrab) => octocrab,
+        Err(_) => {
+            return Err(Status::new(
+                tonic::Code::Internal,
+                "failed to create octocrab instance",
+            ));
+        }
+    };
 
-    Ok(req)
+    match octocrab.current().user().await {
+        Ok(user) => {
+            tracing::info!("PAT is user with login '{}'", user.login);
+
+            Ok(req)
+        }
+        Err(_) => match octocrab.current().app().await {
+            Ok(app) => {
+                tracing::info!("PAT is app with name '{}'", app.name);
+
+                Ok(req)
+            }
+            Err(_) => Err(Status::new(
+                tonic::Code::PermissionDenied,
+                "could not authenticate with provided PAT",
+            )),
+        },
+    }
 }

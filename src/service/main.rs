@@ -7,6 +7,7 @@ use tonic::{
     metadata::MetadataMap,
     transport::{ClientTlsConfig, Server},
 };
+use tonic_async_interceptor::async_interceptor;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::Level;
@@ -223,44 +224,28 @@ async fn main() -> anyhow::Result<()> {
     let endpoint = env::var("ENDPOINT").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());
     let addr = endpoint.parse()?;
 
-    let assignment_grpc_service = AssignmentServer::with_interceptor(
-        GrpcAssignmentService::new(Arc::clone(&assignment_service)),
-        acl::authorize,
-    );
+    let assignment_grpc_service =
+        AssignmentServer::new(GrpcAssignmentService::new(Arc::clone(&assignment_service)));
 
-    let config_grpc_service = ConfigServer::with_interceptor(
-        GrpcConfigService {
-            config_service: Arc::clone(&config_service),
-            deployment_service: Arc::clone(&deployment_service),
-            workload_service: Arc::clone(&workload_service),
-        },
-        acl::authorize,
-    );
+    let config_grpc_service = ConfigServer::new(GrpcConfigService {
+        config_service: Arc::clone(&config_service),
+        deployment_service: Arc::clone(&deployment_service),
+        workload_service: Arc::clone(&workload_service),
+    });
 
-    let deployment_grpc_service = DeploymentServer::with_interceptor(
-        GrpcDeploymentService::new(Arc::clone(&deployment_service)),
-        acl::authorize,
-    );
+    let deployment_grpc_service =
+        DeploymentServer::new(GrpcDeploymentService::new(Arc::clone(&deployment_service)));
 
-    let host_grpc_service = HostServer::with_interceptor(
-        GrpcHostService::new(Arc::clone(&host_service)),
-        acl::authorize,
-    );
+    let host_grpc_service = HostServer::new(GrpcHostService::new(Arc::clone(&host_service)));
 
-    let target_grpc_service = TargetServer::with_interceptor(
-        GrpcTargetService::new(Arc::clone(&target_service)),
-        acl::authorize,
-    );
+    let target_grpc_service =
+        TargetServer::new(GrpcTargetService::new(Arc::clone(&target_service)));
 
-    let template_grpc_service = TemplateServer::with_interceptor(
-        GrpcTemplateService::new(Arc::clone(&template_service)),
-        acl::authorize,
-    );
+    let template_grpc_service =
+        TemplateServer::new(GrpcTemplateService::new(Arc::clone(&template_service)));
 
-    let workload_grpc_service = WorkloadServer::with_interceptor(
-        GrpcWorkloadService::new(Arc::clone(&workload_service)),
-        acl::authorize,
-    );
+    let workload_grpc_service =
+        WorkloadServer::new(GrpcWorkloadService::new(Arc::clone(&workload_service)));
 
     tracing::info!("grpc services listening on {}", addr);
 
@@ -276,6 +261,7 @@ async fn main() -> anyhow::Result<()> {
 
     let grpc_services = Server::builder()
         .layer(tracing_layer)
+        .layer(async_interceptor(acl::authenticate))
         .add_service(reflection)
         .add_service(tonic_web::enable(assignment_grpc_service))
         .add_service(tonic_web::enable(config_grpc_service))
