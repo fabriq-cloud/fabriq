@@ -40,6 +40,9 @@ impl GitOpsProcessor {
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
 
+        println!("model_type: {:?}", model_type);
+        println!("processing event: {:?}", event);
+
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
                 self.process_assignment_event(event).await
@@ -109,82 +112,35 @@ impl GitOpsProcessor {
             .owning_model
             .split(ConfigMessage::OWNING_MODEL_SEPARATOR)
             .collect();
+
         if owning_model_parts.len() == 2 {
             let model_type = owning_model_parts[0];
             let model_id = owning_model_parts[1];
 
             match model_type {
-                ConfigMessage::TEMPLATE_OWNER => {
-                    match self
-                        .template_client
-                        .get_by_id(Request::new(TemplateIdRequest {
-                            template_id: model_id.to_string(),
-                        }))
-                        .await
-                    {
-                        Ok(response) => {
-                            let template = response.into_inner();
-
-                            self.update_template(&template).await?;
-                        }
-                        Err(err) => {
-                            if err.code() == tonic::Code::NotFound {
-                                tracing::warn!("owning template not found (possibly deleted in the meantime), moving on");
-                            } else {
-                                return Err(anyhow::format_err!("error getting template: {}", err));
-                            }
-                        }
-                    }
-                }
                 ConfigMessage::DEPLOYMENT_OWNER => {
-                    match self
-                        .deployment_client
-                        .get_by_id(Request::new(DeploymentIdRequest {
-                            deployment_id: model_id.to_string(),
-                        }))
-                        .await
-                    {
-                        Ok(response) => {
-                            let deployment = response.into_inner();
-
-                            self.update_deployment(&deployment, true).await?;
-                        }
-                        Err(err) => {
-                            if err.code() == tonic::Code::NotFound {
-                                tracing::warn!("owning deployment not found (possibly deleted in the meantime), moving on");
-                            } else {
-                                return Err(anyhow::format_err!(
-                                    "error getting deployment: {}",
-                                    err
-                                ));
-                            }
-                        }
+                    let deployment = self.get_deployment(model_id).await?;
+                    if let Some(deployment) = deployment {
+                        self.update_deployment(&deployment, true).await?;
                     }
                 }
+
+                ConfigMessage::TEMPLATE_OWNER => {
+                    let template = self.get_template(model_id).await?;
+                    if let Some(template) = template {
+                        self.update_template(&template).await?;
+                    }
+                }
+
                 ConfigMessage::WORKLOAD_OWNER => {
-                    match self
-                        .workload_client
-                        .get_by_id(Request::new(WorkloadIdRequest {
-                            workload_id: model_id.to_string(),
-                        }))
-                        .await
-                    {
-                        Ok(response) => {
-                            let workload = response.into_inner();
-
-                            self.update_workload(&workload).await?;
-                        }
-                        Err(err) => {
-                            if err.code() == tonic::Code::NotFound {
-                                tracing::warn!("owning workload not found (possibly deleted in the meantime), moving on");
-                            } else {
-                                return Err(anyhow::format_err!("error getting workload: {}", err));
-                            }
-                        }
+                    let workload = self.get_workload(model_id).await?;
+                    if let Some(workload) = workload {
+                        self.update_workload(&workload).await?;
                     }
                 }
+
                 _ => {
-                    tracing::error!("unsupported model type: {:?}", model_type);
+                    tracing::error!("unsupported owning model type: {:?}", model_type);
                 }
             }
         }
@@ -359,47 +315,116 @@ impl GitOpsProcessor {
         Ok(())
     }
 
+    async fn get_deployment(
+        &self,
+        deployment_id: &str,
+    ) -> anyhow::Result<Option<DeploymentMessage>> {
+        match self
+            .deployment_client
+            .get_by_id(Request::new(DeploymentIdRequest {
+                deployment_id: deployment_id.to_string(),
+            }))
+            .await
+        {
+            Ok(response) => {
+                let deployment = response.into_inner();
+
+                Ok(Some(deployment))
+            }
+            Err(err) => {
+                if err.code() == tonic::Code::NotFound {
+                    Ok(None)
+                } else {
+                    Err(anyhow::format_err!("error getting deployment: {}", err))
+                }
+            }
+        }
+    }
+
+    async fn get_template(&self, template_id: &str) -> anyhow::Result<Option<TemplateMessage>> {
+        match self
+            .template_client
+            .get_by_id(Request::new(TemplateIdRequest {
+                template_id: template_id.to_string(),
+            }))
+            .await
+        {
+            Ok(response) => {
+                let template = response.into_inner();
+
+                Ok(Some(template))
+            }
+            Err(err) => {
+                if err.code() == tonic::Code::NotFound {
+                    tracing::warn!(
+                        "owning template not found (possibly deleted in the meantime), moving on"
+                    );
+
+                    Ok(None)
+                } else {
+                    Err(anyhow::format_err!("error getting template: {}", err))
+                }
+            }
+        }
+    }
+
+    async fn get_workload(&self, workload_id: &str) -> anyhow::Result<Option<WorkloadMessage>> {
+        match self
+            .workload_client
+            .get_by_id(Request::new(WorkloadIdRequest {
+                workload_id: workload_id.to_string(),
+            }))
+            .await
+        {
+            Ok(response) => {
+                let workload = response.into_inner();
+
+                Ok(Some(workload))
+            }
+            Err(err) => {
+                if err.code() == tonic::Code::NotFound {
+                    tracing::warn!(
+                        "owning workload not found (possibly deleted in the meantime), moving on"
+                    );
+
+                    Ok(None)
+                } else {
+                    Err(anyhow::format_err!("error getting workload: {}", err))
+                }
+            }
+        }
+    }
+
     async fn update_deployment(
         &self,
         deployment: &DeploymentMessage,
         create: bool,
     ) -> anyhow::Result<()> {
-        let workload_request = Request::new(WorkloadIdRequest {
-            workload_id: deployment.workload_id.clone(),
-        });
-
-        let workload = self
-            .workload_client
-            .get_by_id(workload_request)
-            .await?
-            .into_inner();
-
-        let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
-
-        let deployment_repo_path = Self::make_deployment_path(
-            &organization_name,
-            &team_name,
-            &workload.name,
-            &deployment.name,
-        );
-
-        self.gitops_repo.remove_dir(&deployment_repo_path)?;
+        self.gitops_repo.remove_dir(&deployment.id)?;
 
         if create {
-            let config_request = Request::new(QueryConfigRequest {
-                model_name: "deployment".to_string(),
-                model_id: deployment.id.clone(),
-            });
+            // check to make sure the deployment still exists, otherwise delete deployment.
+            let deployment = self.get_deployment(&deployment.id).await?;
+            if let Some(deployment) = deployment {
+                // check to make sure the workload still exists, otherwise delete deployment.
+                let workload = self.get_workload(&deployment.workload_id).await?;
+                if let Some(workload) = workload {
+                    let config_request = Request::new(QueryConfigRequest {
+                        model_name: "deployment".to_string(),
+                        model_id: deployment.id.clone(),
+                    });
 
-            let response = self.config_client.query(config_request).await?.into_inner();
-            let configs = response.configs;
+                    let response = self.config_client.query(config_request).await?.into_inner();
+                    let configs = response.configs;
 
-            self.render_deployment(&configs, &workload, deployment)
-                .await?;
+                    self.render_deployment(&configs, &workload, &deployment)
+                        .await?;
+                }
+            }
         }
 
         // TODO: Add generic capability to handle commit
-        // TODO: Need to figure out how to plumb user effecting these changes here.
+        // TODO: Need to figure out how to plumb user making these changes here.
 
         let message = format!("Updated deployment {}", deployment.id);
 

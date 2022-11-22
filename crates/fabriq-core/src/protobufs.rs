@@ -159,7 +159,7 @@ impl DeploymentMessage {
             .collect::<Vec<_>>();
 
         if id_parts.len() != 4 {
-            return Err(anyhow::anyhow!("invalid team id"));
+            return Err(anyhow::anyhow!("split_id: invalid deployment id"));
         }
 
         Ok((
@@ -315,6 +315,44 @@ impl WorkloadMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_deployment_split_id() -> anyhow::Result<()> {
+        let team_id = WorkloadMessage::make_team_id("fabriq-cloud", "fabriq");
+        assert_eq!(team_id, "fabriq-cloud/fabriq");
+
+        let workload_id = WorkloadMessage::make_id(&team_id, "api");
+        assert_eq!(workload_id, "fabriq-cloud/fabriq/api");
+
+        let deployment_id = DeploymentMessage::make_id(&workload_id, "main");
+        assert_eq!(deployment_id, "fabriq-cloud/fabriq/api/main");
+
+        let result = DeploymentMessage::split_id(&team_id);
+        assert!(result.is_err());
+
+        let (team_id, workload_name, deployment_name) =
+            DeploymentMessage::split_id(&deployment_id)?;
+
+        assert_eq!(team_id, "fabriq-cloud/fabriq");
+        assert_eq!(workload_name, "api");
+        assert_eq!(deployment_name, "main");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_workload_split_team_id() -> anyhow::Result<()> {
+        let team_id = WorkloadMessage::make_team_id("fabriq-cloud", "fabriq");
+
+        assert_eq!(team_id, "fabriq-cloud/fabriq");
+
+        let (org_id, team_id) = WorkloadMessage::split_team_id(&team_id)?;
+
+        assert_eq!(org_id, "fabriq-cloud");
+        assert_eq!(team_id, "fabriq");
+
+        Ok(())
+    }
 
     #[test]
     fn test_decode_kv() -> anyhow::Result<()> {
