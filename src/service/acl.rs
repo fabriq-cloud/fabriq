@@ -1,7 +1,6 @@
 use tonic::{Request, Status};
 
-#[tracing::instrument(name = "authenticate")]
-pub async fn authenticate(req: Request<()>) -> Result<Request<()>, Status> {
+pub async fn get_pat_from_headers<T>(req: &Request<T>) -> Result<String, Status> {
     let headers = req.metadata().clone().into_headers();
 
     let auth_header = match headers.get("authorization") {
@@ -24,46 +23,12 @@ pub async fn authenticate(req: Request<()>) -> Result<Request<()>, Status> {
         }
     };
 
-    println!("pat: {}", pat);
+    Ok(pat.to_string())
+}
 
-    let octocrab = match octocrab::OctocrabBuilder::new()
-        .personal_token(pat.to_string())
-        .build()
-    {
-        Ok(octocrab) => octocrab,
-        Err(_) => {
-            return Err(Status::new(
-                tonic::Code::Internal,
-                "failed to create octocrab instance",
-            ));
-        }
-    };
+#[tracing::instrument(name = "authenticate")]
+pub async fn authenticate(req: Request<()>) -> Result<Request<()>, Status> {
+    get_pat_from_headers(&req).await?;
 
-    match octocrab.current().user().await {
-        Ok(user) => {
-            tracing::info!("PAT is user with login '{}'", user.login);
-
-            Ok(req)
-        }
-        Err(err) => {
-            let err = format!("failed to authenticate PAT as user: {}", err);
-
-            println!("{}", err);
-
-            match octocrab.current().app().await {
-                Ok(app) => {
-                    tracing::info!("PAT is app with name '{}'", app.name);
-
-                    Ok(req)
-                }
-                Err(err) => {
-                    let err = format!("failed to authenticate PAT as app: {}", err);
-
-                    println!("{}", err);
-
-                    Err(Status::new(tonic::Code::PermissionDenied, err))
-                }
-            }
-        }
-    }
+    Ok(req)
 }
