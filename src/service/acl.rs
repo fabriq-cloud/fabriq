@@ -24,6 +24,8 @@ pub async fn authenticate(req: Request<()>) -> Result<Request<()>, Status> {
         }
     };
 
+    println!("pat: {}", pat);
+
     let octocrab = match octocrab::OctocrabBuilder::new()
         .personal_token(pat.to_string())
         .build()
@@ -43,16 +45,25 @@ pub async fn authenticate(req: Request<()>) -> Result<Request<()>, Status> {
 
             Ok(req)
         }
-        Err(_) => match octocrab.current().app().await {
-            Ok(app) => {
-                tracing::info!("PAT is app with name '{}'", app.name);
+        Err(err) => {
+            let err = format!("failed to authenticate PAT as user: {}", err);
 
-                Ok(req)
+            println!("{}", err);
+
+            match octocrab.current().app().await {
+                Ok(app) => {
+                    tracing::info!("PAT is app with name '{}'", app.name);
+
+                    Ok(req)
+                }
+                Err(err) => {
+                    let err = format!("failed to authenticate PAT as app: {}", err);
+
+                    println!("{}", err);
+
+                    Err(Status::new(tonic::Code::PermissionDenied, err))
+                }
             }
-            Err(_) => Err(Status::new(
-                tonic::Code::PermissionDenied,
-                "could not authenticate with provided PAT",
-            )),
-        },
+        }
     }
 }
