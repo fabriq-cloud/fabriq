@@ -34,6 +34,7 @@ jobs:
       - name: Print teams
         run: |
           curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user/repos
+          echo ${{github.actor}}
 
       # Tool installation
       - uses: actions/checkout@v2
