@@ -8,7 +8,7 @@ use tonic::{Request, Response, Status};
 use crate::models::Template;
 use crate::services::TemplateService;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct GrpcTemplateService {
     service: Arc<TemplateService>,
 }
