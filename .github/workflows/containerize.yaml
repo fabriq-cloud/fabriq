@@ -31,6 +31,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Print teams
+        run: |
+          curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user/teams
+
       # Tool installation
       - uses: actions/checkout@v2
       - name: Install Protoc
