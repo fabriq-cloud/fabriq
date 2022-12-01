@@ -28,7 +28,9 @@ pub async fn get_pat_from_headers<T>(req: &Request<T>) -> Result<String, Status>
 
 #[tracing::instrument(name = "authenticate")]
 pub async fn authenticate(req: Request<()>) -> Result<Request<()>, Status> {
-    get_pat_from_headers(&req).await?;
+    let pat = get_pat_from_headers(&req).await?;
+
+    println!("pat: {pat}");
 
     Ok(req)
 }
