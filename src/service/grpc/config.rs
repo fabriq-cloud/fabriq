@@ -73,6 +73,27 @@ impl ConfigTrait for GrpcConfigService {
     ) -> Result<Response<OperationId>, Status> {
         let new_config: Config = request.into_inner().into();
 
+        /*
+        let pat = crate::acl::get_pat_from_headers(&request).await?;
+
+        let _octocrab = match octocrab::OctocrabBuilder::new()
+            .personal_token(pat.to_string())
+            .build()
+        {
+            Ok(octocrab) => octocrab,
+            Err(_) => {
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    "failed to create octocrab instance",
+                ));
+            }
+        };
+
+        if new_config.owning_model == ConfigMessage::DEPLOYMENT_OWNER
+            || new_config.owning_model == ConfigMessage::WORKLOAD_OWNER
+        {}
+        */
+
         let operation_id = match self.config_service.upsert(&new_config, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
