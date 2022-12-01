@@ -31,6 +31,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - uses: robinraju/release-downloader@v1.6
+        with:
+          repository: "fabriq-cloud/fabriq"
+          latest: true
+          fileName: "fabriq"
+      - name: Update api and gitops image config for this branch's deployment
+        run: |
+          # Short name for current branch. For PRs, use target branch (base ref)
+          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+
+          chmod +x fabriq
+
+          ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+          ./fabriq deployment list
+
       # Tool installation
       - uses: actions/checkout@v2
       - name: Install Protoc
