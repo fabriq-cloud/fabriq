@@ -30,6 +30,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Check team membership
+        run: |
+          curl \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/orgs/fabriq-cloud/teams/fabriq/members
 
       - uses: robinraju/release-downloader@v1.6
         with:
