@@ -28,6 +28,10 @@ impl GitRepo for MemoryGitRepo {
         Ok(())
     }
 
+    fn clone(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn commit(&self, _name: &str, _email: &str, _message: &str) -> anyhow::Result<()> {
         Ok(())
     }

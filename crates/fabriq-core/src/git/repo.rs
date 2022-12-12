@@ -4,6 +4,7 @@ use std::path::PathBuf;
 pub trait GitRepo: Debug {
     fn add_path(&self, repo_path: PathBuf) -> anyhow::Result<()>;
     fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<()>;
+    fn clone(&mut self) -> anyhow::Result<()>;
     fn list(&self, repo_path: PathBuf) -> anyhow::Result<Vec<PathBuf>>;
     fn push(&self) -> anyhow::Result<()>;
     fn read_file(&self, repo_path: PathBuf) -> anyhow::Result<Vec<u8>>;

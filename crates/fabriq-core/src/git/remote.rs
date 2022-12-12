@@ -11,13 +11,19 @@ use tempfile::TempDir;
 
 use super::{GitRepo, GitRepoFactory};
 
-pub struct RemoteGitRepo {
-    pub index: Mutex<Index>,
+pub struct ClonedGitRepo {
+    pub index: Index,
     pub repository: Repository,
+
+    pub local_path: TempDir,
+}
+
+pub struct RemoteGitRepo {
+    pub cloned_repo: Mutex<Option<ClonedGitRepo>>,
 
     pub branch: String,
     pub private_ssh_key: String,
-    pub local_path: TempDir,
+    pub repo_url: String,
 }
 
 impl Debug for RemoteGitRepo {
@@ -28,28 +34,11 @@ impl Debug for RemoteGitRepo {
 
 impl RemoteGitRepo {
     pub fn new(repo_url: &str, branch: &str, private_ssh_key: &str) -> anyhow::Result<Self> {
-        let local_path = tempfile::tempdir()?;
-        let auth_callback = RemoteGitRepo::get_auth_callback(private_ssh_key);
-
-        let mut fetch_options = git2::FetchOptions::new();
-        fetch_options.remote_callbacks(auth_callback);
-
-        // Prepare builder.
-        let mut repo_builder = git2::build::RepoBuilder::new();
-        repo_builder.fetch_options(fetch_options);
-
-        let repository = repo_builder
-            .branch(branch)
-            .clone(repo_url, local_path.path())?;
-
-        let index = Mutex::new(repository.index()?);
-
         Ok(Self {
+            cloned_repo: Mutex::new(None),
             branch: branch.to_string(),
-            index,
             private_ssh_key: private_ssh_key.to_string(),
-            repository,
-            local_path,
+            repo_url: repo_url.to_string(),
         })
     }
 
@@ -90,20 +79,46 @@ impl GitRepoFactory for RemoteGitRepoFactory {
 impl GitRepo for RemoteGitRepo {
     #[tracing::instrument]
     fn add_path(&self, repo_path: PathBuf) -> anyhow::Result<()> {
-        let mut index = self.index.lock().unwrap();
+        let mut cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_mut().unwrap();
         let repo_path = Path::new(&repo_path);
-        Ok(index.add_path(repo_path)?)
+        Ok(cloned_repo.index.add_path(repo_path)?)
+    }
+
+    fn clone(&mut self) -> anyhow::Result<()> {
+        let local_path = tempfile::tempdir()?;
+        let auth_callback = RemoteGitRepo::get_auth_callback(&self.private_ssh_key);
+
+        let mut fetch_options = git2::FetchOptions::new();
+        fetch_options.remote_callbacks(auth_callback);
+
+        // Prepare builder.
+        let mut repo_builder = git2::build::RepoBuilder::new();
+        repo_builder.fetch_options(fetch_options);
+
+        let repository = repo_builder
+            .branch(&self.branch)
+            .clone(&self.repo_url, local_path.path())?;
+
+        self.cloned_repo = Mutex::new(Some(ClonedGitRepo {
+            index: repository.index()?,
+            repository,
+            local_path,
+        }));
+
+        Ok(())
     }
 
     #[tracing::instrument]
     fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<()> {
-        let mut index = self.index.lock().unwrap();
+        let mut cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_mut().unwrap();
 
-        let oid = index.write_tree()?;
+        let oid = cloned_repo.index.write_tree()?;
 
         let signature = Signature::now(name, email)?;
 
-        let obj = self
+        let obj = cloned_repo
             .repository
             .head()?
             .resolve()?
@@ -113,9 +128,9 @@ impl GitRepo for RemoteGitRepo {
             .into_commit()
             .map_err(|err| anyhow::anyhow!("error: {:?}", err))?;
 
-        let tree = self.repository.find_tree(oid)?;
+        let tree = cloned_repo.repository.find_tree(oid)?;
 
-        self.repository.commit(
+        cloned_repo.repository.commit(
             Some("HEAD"),
             &signature,
             &signature,
@@ -131,7 +146,9 @@ impl GitRepo for RemoteGitRepo {
 
     #[tracing::instrument]
     fn push(&self) -> anyhow::Result<()> {
-        let mut remote = self.repository.find_remote("origin")?;
+        let cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_ref().unwrap();
+        let mut remote = cloned_repo.repository.find_remote("origin")?;
 
         let connect_auth_callback = RemoteGitRepo::get_auth_callback(&self.private_ssh_key);
         remote.connect_auth(Direction::Push, Some(connect_auth_callback), None)?;
@@ -151,19 +168,23 @@ impl GitRepo for RemoteGitRepo {
 
     #[tracing::instrument]
     fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
-        let mut index = self.index.lock().unwrap();
-        Ok(index.remove_dir(Path::new(&path), 0)?)
+        let mut cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_mut().unwrap();
+        Ok(cloned_repo.index.remove_dir(Path::new(&path), 0)?)
     }
 
     #[tracing::instrument]
     fn remove_file(&self, path: &str) -> anyhow::Result<()> {
-        let mut index = self.index.lock().unwrap();
-        Ok(index.remove_path(Path::new(path))?)
+        let mut cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_mut().unwrap();
+        Ok(cloned_repo.index.remove_path(Path::new(path))?)
     }
 
     #[tracing::instrument]
     fn list(&self, repo_path: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
-        let file_path = self.local_path.path().join(repo_path);
+        let cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_ref().unwrap();
+        let file_path = cloned_repo.local_path.path().join(repo_path);
         let directory = fs::read_dir(file_path)?;
 
         let mut entries = vec![];
@@ -176,7 +197,9 @@ impl GitRepo for RemoteGitRepo {
 
     #[tracing::instrument]
     fn read_file(&self, repo_path: PathBuf) -> anyhow::Result<Vec<u8>> {
-        let file_path = self.local_path.path().join(repo_path);
+        let cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_ref().unwrap();
+        let file_path = cloned_repo.local_path.path().join(repo_path);
         let contents = fs::read(file_path)?;
 
         Ok(contents)
@@ -184,7 +207,10 @@ impl GitRepo for RemoteGitRepo {
 
     #[tracing::instrument]
     fn write_file(&self, repo_path: &str, contents: &[u8]) -> anyhow::Result<()> {
-        let file_path = self.local_path.path().join(repo_path);
+        let cloned_repo_option = self.cloned_repo.lock().unwrap();
+        let cloned_repo = cloned_repo_option.as_ref().unwrap();
+
+        let file_path = cloned_repo.local_path.path().join(repo_path);
         let directory_path = file_path.parent().unwrap();
 
         fs::create_dir_all(directory_path)?;
@@ -219,7 +245,9 @@ mod tests {
         let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
         let repo_url = "git@github.com:timfpark/akira-clone-repo-test.git";
 
-        let gitops_repo = RemoteGitRepo::new(repo_url, branch, &private_ssh_key).unwrap();
+        let mut gitops_repo = RemoteGitRepo::new(repo_url, branch, &private_ssh_key).unwrap();
+
+        gitops_repo.clone().unwrap();
 
         let host_file = gitops_repo
             .read_file("hosts/azure-eastus2-1.yaml".into())
