@@ -126,7 +126,8 @@ jobs:
 
           chmod +x fabriq
 
-          ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+          # FABRIQ_GITHUB_TOKEN is a PAT for a principal that is a member of the team for underlying workload.
+          ./fabriq login ${{ secrets.FABRIQ_GITHUB_TOKEN }}
 
           ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH image ${{ steps.api_meta.outputs.tags }}
           ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ${{ steps.gitops_meta.outputs.tags }}
