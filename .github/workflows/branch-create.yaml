@@ -17,7 +17,8 @@ jobs:
 
           chmod +x fabriq
 
-          ./fabriq login ${{ secrets.GITHUB_TOKEN }}
+          # FABRIQ_GITHUB_TOKEN is a PAT for a principal that is a member of the team for underlying workload.
+          ./fabriq login ${{ secrets.FABRIQ_GITHUB_TOKEN  }}
 
           ./fabriq deployment create ${{ github.event.ref }} --target westus3 --team ${{ github.repository }} --workload api --hosts 1
           ./fabriq deployment create ${{ github.event.ref }} --target westus3 --team ${{ github.repository }} --workload gitops --hosts 1
