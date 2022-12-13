@@ -1,34 +1,36 @@
 use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
-use super::GitRepo;
+use super::{ClonedGitRepo, GitRepo};
 
 #[derive(Debug)]
-pub struct MemoryGitRepo {
+pub struct MemoryClonedGitRepo {
     pub files: Mutex<HashMap<String, Vec<u8>>>, // path -> contents
 }
 
-impl MemoryGitRepo {
+impl MemoryClonedGitRepo {
     pub fn new() -> Self {
-        MemoryGitRepo {
+        MemoryClonedGitRepo {
             files: Mutex::new(HashMap::new()),
         }
     }
 }
 
-impl Default for MemoryGitRepo {
+impl Default for MemoryClonedGitRepo {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl MemoryGitRepo {}
+pub struct MemoryGitRepo {}
 
 impl GitRepo for MemoryGitRepo {
-    fn add_path(&self, _repo_path: PathBuf) -> anyhow::Result<()> {
-        Ok(())
+    fn clone_repo(&self) -> anyhow::Result<Box<dyn ClonedGitRepo>> {
+        Ok(Box::new(MemoryClonedGitRepo::default()))
     }
+}
 
-    fn clone(&mut self) -> anyhow::Result<()> {
+impl ClonedGitRepo for MemoryClonedGitRepo {
+    fn add_path(&self, _repo_path: PathBuf) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -94,30 +96,26 @@ impl GitRepo for MemoryGitRepo {
     }
 }
 
-impl MemoryGitRepo {
-    pub fn print(&self) {
-        let files = self.files.lock().unwrap();
-        println!("{:?}", *files);
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::git::GitRepo;
 
     #[test]
     fn test_write_read_file() -> anyhow::Result<()> {
-        let repo = super::MemoryGitRepo::new();
+        let repo = MemoryGitRepo {};
+
+        let cloned_repo = repo.clone_repo()?;
 
         let contents = b"Hello, world!";
         let path =
             "deployments/workspace-fixture/workload-fixture/deployment-fixture/deployment.yaml";
 
-        repo.write_file(path, contents)?;
-        let read_contents = repo.read_file(path.into())?;
+        cloned_repo.write_file(path, contents)?;
+        let read_contents = cloned_repo.read_file(path.into())?;
         assert_eq!(read_contents, contents);
 
-        let list = repo.list(path.into()).unwrap();
+        let list = cloned_repo.list(path.into()).unwrap();
         assert_eq!(list.len(), 1);
 
         Ok(())

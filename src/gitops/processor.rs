@@ -1,3 +1,4 @@
+use fabriq_core::git::remote::ClonedGitRepo;
 use handlebars::{to_json, Handlebars};
 use serde_json::value::{Map, Value as Json};
 use std::fmt::Debug;
@@ -280,6 +281,8 @@ impl GitOpsProcessor {
         let (team_id, workload_name, deployment_name) =
             DeploymentMessage::split_id(&assignment.deployment_id)?;
 
+        self.gitops_repo.clone_repo();
+
         if created {
             self.render_assignment(
                 &assignment.host_id,
@@ -496,6 +499,7 @@ impl GitOpsProcessor {
         team_id: &str,
         workload_name: &str,
         deployment_name: &str,
+        cloned_repo: &ClonedGitRepo,
     ) -> anyhow::Result<()> {
         let (organization_name, team_name) = WorkloadMessage::split_team_id(team_id)?;
 
