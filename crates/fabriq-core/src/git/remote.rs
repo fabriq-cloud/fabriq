@@ -5,11 +5,11 @@ use std::{
     fmt::Debug,
     fs,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 use tempfile::TempDir;
 
-use super::{ClonedGitRepo, GitRepo};
+use super::{ClonedGitRepo, GitRepo, GitRepoFactory};
 
 pub struct RemoteClonedGitRepo {
     pub branch: String,
@@ -52,7 +52,7 @@ impl RemoteGitRepo {
 }
 
 impl GitRepo for RemoteGitRepo {
-    fn clone_repo(&self) -> anyhow::Result<Box<dyn ClonedGitRepo>> {
+    fn clone_repo(&self) -> anyhow::Result<Arc<dyn ClonedGitRepo>> {
         let local_path = tempfile::tempdir()?;
         let auth_callback = RemoteGitRepo::get_auth_callback(&self.private_ssh_key);
 
@@ -76,7 +76,7 @@ impl GitRepo for RemoteGitRepo {
             local_path,
         };
 
-        let boxed_cloned_git_repo = Box::new(cloned_git_repo);
+        let boxed_cloned_git_repo = Arc::new(cloned_git_repo);
 
         Ok(boxed_cloned_git_repo)
     }
@@ -217,6 +217,24 @@ impl ClonedGitRepo for RemoteClonedGitRepo {
         fs::write(file_path, contents).expect("Unable to write host file");
 
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct RemoteGitRepoFactory {}
+
+impl GitRepoFactory for RemoteGitRepoFactory {
+    fn create(
+        &self,
+        repo_url: &str,
+        branch: &str,
+        private_ssh_key: &str,
+    ) -> anyhow::Result<Box<dyn GitRepo>> {
+        Ok(Box::new(RemoteGitRepo::new(
+            repo_url,
+            branch,
+            private_ssh_key,
+        )?))
     }
 }
 

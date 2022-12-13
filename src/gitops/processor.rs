@@ -1,4 +1,4 @@
-use fabriq_core::git::remote::ClonedGitRepo;
+use fabriq_core::git::ClonedGitRepo;
 use handlebars::{to_json, Handlebars};
 use serde_json::value::{Map, Value as Json};
 use std::fmt::Debug;
@@ -40,9 +40,6 @@ impl GitOpsProcessor {
     #[tracing::instrument(skip(self, event), fields(event_type = event.event_type))]
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
-
-        println!("model_type: {:?}", model_type);
-        println!("processing event: {:?}", event);
 
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
@@ -281,7 +278,7 @@ impl GitOpsProcessor {
         let (team_id, workload_name, deployment_name) =
             DeploymentMessage::split_id(&assignment.deployment_id)?;
 
-        self.gitops_repo.clone_repo();
+        let cloned_repo = self.gitops_repo.clone_repo()?;
 
         if created {
             self.render_assignment(
@@ -289,6 +286,7 @@ impl GitOpsProcessor {
                 &team_id,
                 &workload_name,
                 &deployment_name,
+                &cloned_repo,
             )
             .await?;
         } else {
@@ -302,7 +300,7 @@ impl GitOpsProcessor {
                 &deployment_name,
             );
 
-            self.gitops_repo.remove_dir(&assignment_path)?;
+            cloned_repo.remove_dir(&assignment_path)?;
         }
 
         // TODO: Add generic capability to handle commit
@@ -310,10 +308,8 @@ impl GitOpsProcessor {
 
         let message = format!("Updated assignment {}", assignment.id);
 
-        self.gitops_repo
-            .commit("Tim Park", "timfpark@gmail.com", &message)?;
-
-        self.gitops_repo.push()?;
+        cloned_repo.commit("Tim Park", "timfpark@gmail.com", &message)?;
+        cloned_repo.push()?;
 
         Ok(())
     }
@@ -403,7 +399,9 @@ impl GitOpsProcessor {
         deployment: &DeploymentMessage,
         create: bool,
     ) -> anyhow::Result<()> {
-        self.gitops_repo.remove_dir(&deployment.id)?;
+        let cloned_repo = self.gitops_repo.clone_repo()?;
+
+        cloned_repo.remove_dir(&deployment.id)?;
 
         if create {
             // check to make sure the deployment still exists, otherwise delete deployment.
@@ -420,7 +418,7 @@ impl GitOpsProcessor {
                     let response = self.config_client.query(config_request).await?.into_inner();
                     let configs = response.configs;
 
-                    self.render_deployment(&configs, &workload, &deployment)
+                    self.render_deployment(&configs, &workload, &deployment, &cloned_repo)
                         .await?;
                 }
             }
@@ -428,13 +426,10 @@ impl GitOpsProcessor {
 
         // TODO: Add generic capability to handle commit
         // TODO: Need to figure out how to plumb user making these changes here.
-
         let message = format!("Updated deployment {}", deployment.id);
 
-        self.gitops_repo
-            .commit("Tim Park", "timfpark@gmail.com", &message)?;
-
-        self.gitops_repo.push()?;
+        cloned_repo.commit("Tim Park", "timfpark@gmail.com", &message)?;
+        cloned_repo.push()?;
 
         Ok(())
     }
@@ -499,7 +494,7 @@ impl GitOpsProcessor {
         team_id: &str,
         workload_name: &str,
         deployment_name: &str,
-        cloned_repo: &ClonedGitRepo,
+        cloned_repo: &Arc<dyn ClonedGitRepo>,
     ) -> anyhow::Result<()> {
         let (organization_name, team_name) = WorkloadMessage::split_team_id(team_id)?;
 
@@ -530,9 +525,8 @@ impl GitOpsProcessor {
 
         let rendered_assignment = handlebars.render("assignment", &values)?;
 
-        self.gitops_repo
-            .write_file(&assignment_path, rendered_assignment.as_bytes())?;
-        self.gitops_repo.add_path(assignment_path.into())?;
+        cloned_repo.write_file(&assignment_path, rendered_assignment.as_bytes())?;
+        cloned_repo.add_path(assignment_path.into())?;
 
         Ok(())
     }
@@ -596,7 +590,6 @@ impl GitOpsProcessor {
 
     #[allow(clippy::too_many_arguments)]
     fn render_template_path(
-        &self,
         configs: &[ConfigMessage],
         template_repo: &dyn GitRepo,
         template_path: PathBuf,
@@ -604,6 +597,7 @@ impl GitOpsProcessor {
         sub_template_path: &PathBuf,
         template: &TemplateMessage,
         workload: &WorkloadMessage,
+        cloned_repo: &Arc<dyn ClonedGitRepo>,
     ) -> anyhow::Result<()> {
         let (organization_name, team_name) = WorkloadMessage::split_team_id(&workload.team_id)?;
         let deployment_repo_path = Self::make_deployment_path(
@@ -613,12 +607,13 @@ impl GitOpsProcessor {
             &deployment.name,
         );
 
-        let template_paths = template_repo.list(template_path)?;
+        let cloned_template_repo = template_repo.clone_repo()?;
+        let template_paths = cloned_template_repo.list(template_path)?;
 
         for template_path in template_paths {
             if template_path.is_dir() {
                 let sub_path = sub_template_path.join(template_path.file_name().unwrap());
-                self.render_template_path(
+                GitOpsProcessor::render_template_path(
                     configs,
                     template_repo,
                     template_path,
@@ -626,9 +621,10 @@ impl GitOpsProcessor {
                     &sub_path,
                     template,
                     workload,
+                    cloned_repo,
                 )?;
             } else {
-                let template_bytes = template_repo.read_file(template_path.clone())?;
+                let template_bytes = cloned_template_repo.read_file(template_path.clone())?;
                 let template_string = String::from_utf8(template_bytes)?;
 
                 let mut handlebars = Handlebars::new();
@@ -669,9 +665,8 @@ impl GitOpsProcessor {
 
                 let rendered_template = handlebars.render(&template.id, &values)?;
 
-                self.gitops_repo
-                    .write_file(&string_path, rendered_template.as_bytes())?;
-                self.gitops_repo.add_path(file_path.clone())?;
+                cloned_repo.write_file(&string_path, rendered_template.as_bytes())?;
+                cloned_repo.add_path(file_path.clone())?;
             }
         }
 
@@ -685,6 +680,7 @@ impl GitOpsProcessor {
         deployment: &DeploymentMessage,
         template: &TemplateMessage,
         workload: &WorkloadMessage,
+        cloned_repo: &Arc<dyn ClonedGitRepo>,
     ) -> anyhow::Result<()> {
         let template_repo = self.template_repo_factory.create(
             &template.repository,
@@ -694,7 +690,7 @@ impl GitOpsProcessor {
 
         let template_root_path: PathBuf = template.path.clone().into();
 
-        self.render_template_path(
+        GitOpsProcessor::render_template_path(
             configs,
             &*template_repo,
             template_root_path,
@@ -702,6 +698,7 @@ impl GitOpsProcessor {
             &PathBuf::new(),
             template,
             workload,
+            cloned_repo,
         )?;
 
         Ok(())
@@ -712,6 +709,7 @@ impl GitOpsProcessor {
         configs: &[ConfigMessage],
         workload: &WorkloadMessage,
         deployment: &DeploymentMessage,
+        cloned_repo: &Arc<dyn ClonedGitRepo>,
     ) -> anyhow::Result<()> {
         let template_id = deployment
             .template_id
@@ -728,7 +726,7 @@ impl GitOpsProcessor {
             .await?
             .into_inner();
 
-        self.render_deployment_template(configs, deployment, &template, workload)?;
+        self.render_deployment_template(configs, deployment, &template, workload, cloned_repo)?;
 
         Ok(())
     }
@@ -767,10 +765,12 @@ mod tests {
             _branch: &str,
             _private_ssh_key: &str,
         ) -> anyhow::Result<Box<dyn GitRepo>> {
-            let git_repo = MemoryGitRepo::new();
+            let git_repo = MemoryGitRepo::new()?;
+
+            let cloned_repo = git_repo.clone_repo()?;
 
             let deployment_contents = fs::read_to_string("tests/fixtures/deployment.yaml")?;
-            git_repo.write_file(
+            cloned_repo.write_file(
                 "external-service/deployment.yaml",
                 deployment_contents.as_bytes(),
             )?;
@@ -795,11 +795,12 @@ mod tests {
             &deployment.name,
         );
 
-        let gitops_repo = Arc::new(MemoryGitRepo::new());
+        let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
+        let cloned_repo = gitops_repo.clone_repo().unwrap();
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Created).await;
 
-        let assignment_contents = gitops_repo
+        let assignment_contents = cloned_repo
             .read_file(assignment_path.clone().into())
             .unwrap();
 
@@ -813,7 +814,7 @@ mod tests {
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
-        let deployment_contents = gitops_repo
+        let deployment_contents = cloned_repo
             .read_file(assignment_path.clone().into())
             .unwrap();
 
@@ -835,16 +836,17 @@ mod tests {
         let deployment_path =
             "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
-        let gitops_repo = Arc::new(MemoryGitRepo::new());
+        let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
+        let cloned_repo = gitops_repo.clone_repo().unwrap();
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Created).await;
 
         let deployment_pathbuf: PathBuf = format!("{}/deployment.yaml", deployment_path).into();
-        let deployment_contents = gitops_repo.read_file(deployment_pathbuf.clone()).unwrap();
+        let deployment_contents = cloned_repo.read_file(deployment_pathbuf.clone()).unwrap();
 
         assert!(!deployment_contents.is_empty());
 
-        gitops_repo
+        cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
             .unwrap();
 
@@ -852,12 +854,12 @@ mod tests {
 
         // we are just testing to make sure the deployment was rerendered when config was changed.
 
-        let deployment_contents = gitops_repo
+        let deployment_contents = cloned_repo
             .read_file(format!("{}/deployment.yaml", deployment_path).into())
             .unwrap();
         assert!(!deployment_contents.is_empty());
 
-        gitops_repo
+        cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
             .unwrap();
 
@@ -865,7 +867,7 @@ mod tests {
 
         // we are just testing to make sure the deployment was rerendered when config was changed.
 
-        let deployment_contents = gitops_repo
+        let deployment_contents = cloned_repo
             .read_file(format!("{}/deployment.yaml", deployment_path).into())
             .unwrap();
 
@@ -877,13 +879,14 @@ mod tests {
         let deployment_path =
             "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
-        let gitops_repo = Arc::new(MemoryGitRepo::new());
+        let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
+        let cloned_repo = gitops_repo.clone_repo().unwrap();
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Created).await;
 
         let deployment_pathbuf: PathBuf = format!("{}/deployment.yaml", deployment_path).into();
 
-        let deployment_contents = gitops_repo.read_file(deployment_pathbuf.clone()).unwrap();
+        let deployment_contents = cloned_repo.read_file(deployment_pathbuf.clone()).unwrap();
 
         assert!(!deployment_contents.is_empty());
 
@@ -893,13 +896,13 @@ mod tests {
 
         assert_eq!(deployment_hash, 3259457315578900542);
 
-        gitops_repo
+        cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
             .unwrap();
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
-        let deployment_contents = gitops_repo
+        let deployment_contents = cloned_repo
             .read_file(format!("{}/deployment.yaml", deployment_path).into())
             .unwrap();
 
@@ -921,13 +924,14 @@ mod tests {
         let deployment_path =
             "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
-        let gitops_repo = Arc::new(MemoryGitRepo::new());
+        let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
+        let cloned_repo = gitops_repo.clone_repo().unwrap();
 
         create_and_process_template_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
         // we are just testing to make sure the deployment was rerendered when config was changed.
 
-        let deployment_contents = gitops_repo
+        let deployment_contents = cloned_repo
             .read_file(format!("{}/deployment.yaml", deployment_path).into())
             .unwrap();
         assert!(!deployment_contents.is_empty());
@@ -938,12 +942,14 @@ mod tests {
         let deployment_path =
             "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
 
-        let gitops_repo = Arc::new(MemoryGitRepo::new());
+        let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
 
         create_and_process_workload_event(Arc::clone(&gitops_repo), EventType::Created).await;
 
+        let cloned_repo = gitops_repo.clone_repo().unwrap();
+
         let deployment_pathbuf: PathBuf = format!("{}/deployment.yaml", deployment_path).into();
-        let deployment_contents = gitops_repo.read_file(deployment_pathbuf.clone()).unwrap();
+        let deployment_contents = cloned_repo.read_file(deployment_pathbuf.clone()).unwrap();
 
         assert!(!deployment_contents.is_empty());
 
@@ -953,13 +959,13 @@ mod tests {
 
         assert_eq!(deployment_hash, 3259457315578900542);
 
-        gitops_repo
+        cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
             .unwrap();
 
         create_and_process_workload_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
-        let deployment_contents = gitops_repo
+        let deployment_contents = cloned_repo
             .read_file(format!("{}/deployment.yaml", deployment_path).into())
             .unwrap();
 
