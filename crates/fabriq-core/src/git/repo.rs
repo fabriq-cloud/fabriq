@@ -1,7 +1,12 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-pub trait GitRepo: Debug {
+pub trait GitRepo {
+    fn clone_repo(&self) -> anyhow::Result<Arc<dyn ClonedGitRepo>>;
+}
+
+pub trait ClonedGitRepo: Debug {
     fn add_path(&self, repo_path: PathBuf) -> anyhow::Result<()>;
     fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<()>;
     fn list(&self, repo_path: PathBuf) -> anyhow::Result<Vec<PathBuf>>;
