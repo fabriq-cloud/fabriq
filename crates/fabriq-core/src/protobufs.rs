@@ -131,6 +131,21 @@ impl ConfigMessage {
 
         Ok(config_key_values)
     }
+
+    pub fn split_id(id: &str) -> anyhow::Result<(String, String)> {
+        let mut split = id.split(ConfigMessage::CONFIG_ID_SEPARATOR);
+        if split.clone().count() != 2 {
+            return Err(anyhow::anyhow!(
+                "config id {} does not contain exactly one separator",
+                id
+            ));
+        }
+
+        let owning_model = split.next().unwrap().to_string();
+        let key = split.next().unwrap().to_string();
+
+        Ok((owning_model, key))
+    }
 }
 
 // deployment protobufs

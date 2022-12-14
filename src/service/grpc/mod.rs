@@ -1,4 +1,5 @@
 mod assignment;
+mod auth;
 mod config;
 mod deployment;
 mod host;

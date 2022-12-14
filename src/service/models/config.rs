@@ -49,13 +49,21 @@ impl From<ConfigMessage> for Config {
 }
 
 impl Config {
-    pub fn split_owning_model(&self) -> (String, String) {
+    pub fn split_owning_model(&self) -> anyhow::Result<(String, String)> {
         let mut split = self
             .owning_model
             .split(ConfigMessage::OWNING_MODEL_SEPARATOR);
-        (
-            split.next().unwrap().to_owned(),
-            split.next().unwrap().to_owned(),
-        )
+
+        if split.clone().count() == 2 {
+            Ok((
+                split.next().unwrap().to_owned(),
+                split.next().unwrap().to_owned(),
+            ))
+        } else {
+            Err(anyhow::anyhow!(
+                "config id {} does not contain exactly one separator",
+                self.owning_model
+            ))
+        }
     }
 }

@@ -5,6 +5,7 @@ use fabriq_core::{
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
+use super::auth::*;
 use crate::models::{Config, Deployment, Workload};
 use crate::services::{ConfigService, DeploymentService, WorkloadService};
 
@@ -62,6 +63,67 @@ impl GrpcConfigService {
 
         Ok(workload_result)
     }
+
+    async fn check_auth(&self, pat: &str, config: &Config) -> Result<(), Status> {
+        let (owning_model, owning_model_id) = match config.split_owning_model() {
+            Ok((owning_model, owning_model_id)) => (owning_model, owning_model_id),
+            Err(err) => {
+                return Err(Status::new(
+                    tonic::Code::InvalidArgument,
+                    format!("split_owning_model failed: {}", err),
+                ))
+            }
+        };
+
+        if owning_model == ConfigMessage::DEPLOYMENT_OWNER {
+            let deployment = match self.wrapped_get_deployment_by_id(&owning_model_id).await {
+                Ok(deployment) => deployment,
+                Err(err) => {
+                    return Err(Status::new(
+                        tonic::Code::InvalidArgument,
+                        format!("get_deployment_by_id failed: {}", err),
+                    ))
+                }
+            };
+
+            let workload = match self
+                .wrapped_get_workload_by_id(&deployment.workload_id)
+                .await
+            {
+                Ok(workload) => workload,
+                Err(err) => {
+                    return Err(Status::new(
+                        tonic::Code::InvalidArgument,
+                        format!("get_workload_by_id failed: {}", err),
+                    ))
+                }
+            };
+
+            is_team_member(pat, &workload.team_id).await?;
+        } else if owning_model == ConfigMessage::WORKLOAD_OWNER {
+            let workload = match self.wrapped_get_workload_by_id(&owning_model_id).await {
+                Ok(workload) => workload,
+                Err(err) => {
+                    return Err(Status::new(
+                        tonic::Code::InvalidArgument,
+                        format!("get_workload_by_id failed: {}", err),
+                    ))
+                }
+            };
+
+            is_team_member(pat, &workload.team_id).await?;
+        } else if owning_model == ConfigMessage::TEMPLATE_OWNER {
+            // what to do here?  check if member of special platform team?
+            // should templates be owned by a team so changes can be authed?
+        } else {
+            return Err(Status::new(
+                tonic::Code::InvalidArgument,
+                format!("owning_model is unknown"),
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 #[tonic::async_trait]
@@ -71,28 +133,10 @@ impl ConfigTrait for GrpcConfigService {
         &self,
         request: Request<ConfigMessage>,
     ) -> Result<Response<OperationId>, Status> {
+        // let pat = crate::acl::get_pat_from_headers(&request).await?;
         let new_config: Config = request.into_inner().into();
 
-        /*
-        let pat = crate::acl::get_pat_from_headers(&request).await?;
-
-        let _octocrab = match octocrab::OctocrabBuilder::new()
-            .personal_token(pat.to_string())
-            .build()
-        {
-            Ok(octocrab) => octocrab,
-            Err(_) => {
-                return Err(Status::new(
-                    tonic::Code::Internal,
-                    "failed to create octocrab instance",
-                ));
-            }
-        };
-
-        if new_config.owning_model == ConfigMessage::DEPLOYMENT_OWNER
-            || new_config.owning_model == ConfigMessage::WORKLOAD_OWNER
-        {}
-        */
+        // self.check_auth(&pat, &new_config).await?;
 
         let operation_id = match self.config_service.upsert(&new_config, &None).await {
             Ok(operation_id) => operation_id,
