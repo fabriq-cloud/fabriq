@@ -11,7 +11,7 @@ use tonic::Request;
 use fabriq_core::{
     common::TemplateIdRequest,
     get_current_or_previous_model,
-    git::{GitRepo, GitRepoFactory, RemoteGitRepo},
+    git::{GitRepo, GitRepoFactory},
     AssignmentMessage, ConfigMessage, ConfigTrait, ConfigValueType, DeploymentIdRequest,
     DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage, ModelType,
     QueryConfigRequest, TargetMessage, TemplateMessage, TemplateTrait, WorkloadIdRequest,
@@ -531,19 +531,6 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
-    async fn _fetch_template_repo(
-        &self,
-        template: &TemplateMessage,
-    ) -> anyhow::Result<impl GitRepo> {
-        // TODO: Ability to use a different private ssh key for each template
-        RemoteGitRepo::new(
-            &template.repository,
-            &template.git_ref,
-            &self.private_ssh_key,
-        )
-    }
-
     fn make_assignment_directory(
         host_id: &str,
         organization_name: &str,
@@ -747,7 +734,7 @@ mod tests {
 
     use std::{
         collections::hash_map::DefaultHasher,
-        env, fs,
+        fs,
         hash::{Hash, Hasher},
         path::{Path, PathBuf},
         sync::Arc,
@@ -810,7 +797,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 16868760048877290495);
+        assert_eq!(assignment_hash, 8237067629619207915);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
@@ -824,7 +811,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 16868760048877290495);
+        assert_eq!(assignment_hash, 8237067629619207915);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -833,8 +820,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_config_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
         let cloned_repo = gitops_repo.clone_repo().unwrap();
@@ -876,8 +862,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_deployment_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
         let cloned_repo = gitops_repo.clone_repo().unwrap();
@@ -894,7 +879,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -912,7 +897,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -921,8 +906,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_template_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
         let cloned_repo = gitops_repo.clone_repo().unwrap();
@@ -939,8 +923,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_workload_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
 
@@ -957,7 +940,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -975,7 +958,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         create_and_process_workload_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -985,8 +968,6 @@ mod tests {
     async fn create_processor_fixture(
         gitops_repo: Arc<dyn GitRepo>,
     ) -> anyhow::Result<GitOpsProcessor> {
-        let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
-
         let config_client = Arc::new(fabriq_core::api::mock::MockConfigClient {});
         let deployment_client = Arc::new(fabriq_core::api::mock::MockDeploymentClient {});
         let template_client = Arc::new(fabriq_core::api::mock::MockTemplateClient {});
@@ -994,7 +975,7 @@ mod tests {
 
         Ok(GitOpsProcessor {
             gitops_repo,
-            private_ssh_key,
+            private_ssh_key: "unused".to_owned(),
 
             template_repo_factory: Arc::new(MockTemplateRepoFactory {}),
 
