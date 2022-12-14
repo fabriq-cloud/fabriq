@@ -104,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
         channel, token,
     ));
 
-    tracing::info!("gitops processor: starting");
+    tracing::info!("starting");
 
     let template_repo_factory = Arc::new(RemoteGitRepoFactory {});
 
@@ -120,17 +120,32 @@ async fn main() -> anyhow::Result<()> {
         workload_client,
     };
 
-    tracing::info!("gitops processor: starting event loop");
+    tracing::info!("starting event loop");
 
     loop {
+        tracing::info!("fetching events");
+
         let events = event_stream.receive(&gitops_consumer_id).await?;
 
+        tracing::info!("event loop fetched {} events", events.len());
+
         for event in events.iter() {
-            gitops_processor.process(event).await?;
-            event_stream.delete(event, &gitops_consumer_id).await?;
+            tracing::info!("event loop processing event {:?}", event);
+            match gitops_processor.process(event).await {
+                Ok(_) => {
+                    tracing::info!("gitops processor: processed event successfully");
+                    event_stream.delete(event, &gitops_consumer_id).await?;
+                }
+                Err(err) => {
+                    tracing::error!("gitops processor: failed to process event: {}", err);
+                    tokio::time::sleep(Duration::from_millis(1000)).await;
+                    break;
+                }
+            };
         }
 
         if events.is_empty() {
+            tracing::info!("event loop sleeping");
             tokio::time::sleep(Duration::from_millis(5000)).await;
         }
     }
