@@ -62,7 +62,7 @@ jobs:
         id: test
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PRIVATE_SSH_KEY: ${{ secrets.PRIVATE_SSH_KEY }}
+          FABRIQ_GITHUB_TOKEN: ${{ secrets.FABRIQ_GITHUB_TOKEN }}
 
       # Static Analysis
 
