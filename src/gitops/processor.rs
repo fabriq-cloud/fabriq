@@ -810,7 +810,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 16868760048877290495);
+        assert_eq!(assignment_hash, 8237067629619207915);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
@@ -824,7 +824,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 16868760048877290495);
+        assert_eq!(assignment_hash, 8237067629619207915);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -833,8 +833,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_config_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
         let cloned_repo = gitops_repo.clone_repo().unwrap();
@@ -876,8 +875,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_deployment_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
         let cloned_repo = gitops_repo.clone_repo().unwrap();
@@ -894,7 +892,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -912,7 +910,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         create_and_process_deployment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
@@ -921,8 +919,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_template_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
         let cloned_repo = gitops_repo.clone_repo().unwrap();
@@ -939,8 +936,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_workload_events() {
-        let deployment_path =
-            "deployments/org-fixture/team-fixture/workload-fixture/deployment-fixture";
+        let deployment_path = "deployments/fabriq-cloud/fabriq/workload-fixture/deployment-fixture";
 
         let gitops_repo = Arc::new(MemoryGitRepo::new().unwrap());
 
@@ -957,7 +953,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         cloned_repo
             .remove_file(&deployment_pathbuf.to_string_lossy())
@@ -975,7 +971,7 @@ mod tests {
         deployment_contents.hash(&mut hasher);
         let deployment_hash = hasher.finish();
 
-        assert_eq!(deployment_hash, 3259457315578900542);
+        assert_eq!(deployment_hash, 4035192254134204402);
 
         create_and_process_workload_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 

@@ -57,7 +57,10 @@ pub async fn is_team_member(pat: &str, team_id: &str) -> Result<bool, Status> {
     let octocrab = build_octocrab_client(pat).await?;
 
     let user = get_user(&octocrab).await?;
-    let team_members = get_team_members(&octocrab, org, team).await?;
+    let team_members = match get_team_members(&octocrab, org, team).await {
+        Ok(team_members) => team_members,
+        Err(_) => return Ok(false),
+    };
 
     for team_member in team_members {
         if team_member.login == user.login {
@@ -89,7 +92,7 @@ mod tests {
         let octocrab = build_octocrab_client(&pat).await?;
         let members = get_team_members(&octocrab, "fabriq-cloud", "fabriq").await?;
 
-        assert!(members.len() > 0);
+        assert!(!members.is_empty());
 
         Ok(())
     }
@@ -101,6 +104,17 @@ mod tests {
         let is_member = is_team_member(&pat, "fabriq-cloud/fabriq").await?;
 
         assert!(is_member);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_is_not_team_member() -> anyhow::Result<()> {
+        let pat = std::env::var("GITHUB_TOKEN")?;
+
+        let is_member = is_team_member(&pat, "another-cloud/team").await?;
+
+        assert!(!is_member);
 
         Ok(())
     }

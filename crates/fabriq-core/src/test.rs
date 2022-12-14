@@ -108,5 +108,6 @@ pub fn get_workload_fixture(name: Option<&str>) -> WorkloadMessage {
 }
 
 pub fn get_team_fixture() -> String {
-    WorkloadMessage::make_team_id("org-fixture", "team-fixture")
+    // NOTE: Need to use something real here because we use the Github API to query it.
+    WorkloadMessage::make_team_id("fabriq-cloud", "fabriq")
 }

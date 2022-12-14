@@ -118,7 +118,7 @@ impl GrpcConfigService {
         } else {
             return Err(Status::new(
                 tonic::Code::InvalidArgument,
-                format!("owning_model is unknown"),
+                "owning_model type is unknown".to_string(),
             ));
         }
 
@@ -133,17 +133,17 @@ impl ConfigTrait for GrpcConfigService {
         &self,
         request: Request<ConfigMessage>,
     ) -> Result<Response<OperationId>, Status> {
-        // let pat = crate::acl::get_pat_from_headers(&request).await?;
-        let new_config: Config = request.into_inner().into();
+        let pat = crate::acl::get_pat_from_headers(&request).await?;
+        let config: Config = request.into_inner().into();
 
-        // self.check_auth(&pat, &new_config).await?;
+        self.check_auth(&pat, &config).await?;
 
-        let operation_id = match self.config_service.upsert(&new_config, &None).await {
+        let operation_id = match self.config_service.upsert(&config, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
-                    tonic::Code::AlreadyExists,
-                    format!("config {} already exists", err),
+                    tonic::Code::InvalidArgument,
+                    format!("config could not be upserted: {err}"),
                 ))
             }
         };
@@ -156,14 +156,33 @@ impl ConfigTrait for GrpcConfigService {
         &self,
         request: Request<ConfigIdRequest>,
     ) -> Result<Response<OperationId>, Status> {
+        let pat = crate::acl::get_pat_from_headers(&request).await?;
+        let config_id = request.into_inner().config_id;
+
+        let config = match self.config_service.get_by_id(&config_id).await {
+            Ok(config) => match config {
+                Some(config) => config,
+                None => {
+                    return Err(Status::new(
+                        tonic::Code::NotFound,
+                        format!("config with id {config_id} not found"),
+                    ))
+                }
+            },
+            Err(err) => {
+                return Err(Status::new(
+                    tonic::Code::NotFound,
+                    format!("fetching config with id {config_id} failed with {err}"),
+                ))
+            }
+        };
+
+        self.check_auth(&pat, &config).await?;
+
         // TODO: check that no workloads are currently still using config
         // Query workload service for workloads by config_id, error if any exist
 
-        let operation_id = match self
-            .config_service
-            .delete(&request.into_inner().config_id, &None)
-            .await
-        {
+        let operation_id = match self.config_service.delete(&config_id, &None).await {
             Ok(operation_id) => operation_id,
             Err(err) => {
                 return Err(Status::new(
@@ -248,8 +267,8 @@ mod tests {
         ConfigIdRequest, ConfigTrait, EventStream, QueryConfigRequest,
     };
     use fabriq_memory_stream::MemoryEventStream;
-    use std::sync::Arc;
-    use tonic::Request;
+    use std::{env, sync::Arc};
+    use tonic::{metadata::MetadataValue, Request};
 
     use super::GrpcConfigService;
 
@@ -268,8 +287,7 @@ mod tests {
         services::AssignmentService,
     };
 
-    #[tokio::test]
-    async fn test_create_list_config() -> anyhow::Result<()> {
+    async fn create_config_grpc_service() -> GrpcConfigService {
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let template_persistence = MemoryPersistence::<Template>::default();
@@ -333,15 +351,41 @@ mod tests {
             .await
             .unwrap();
 
-        let config_grpc_service = GrpcConfigService {
+        GrpcConfigService {
             config_service: Arc::clone(&config_service),
             deployment_service: Arc::clone(&deployment_service),
             workload_service: Arc::clone(&workload_service),
-        };
+        }
+    }
+    #[tokio::test]
+    async fn test_check_auth() -> anyhow::Result<()> {
+        let access_token = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
+        let config = get_string_config_fixture().into();
 
+        let config_grpc_service = create_config_grpc_service().await;
+
+        config_grpc_service
+            .check_auth(&access_token, &config)
+            .await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_list_config() -> anyhow::Result<()> {
         let config = get_string_config_fixture();
+        let config_grpc_service = create_config_grpc_service().await;
 
-        let request = Request::new(config.clone());
+        let deployment: Deployment = get_deployment_fixture(None).into();
+
+        let mut request = Request::new(config.clone());
+
+        let access_token = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
+        let token: MetadataValue<_> = access_token.parse()?;
+
+        request
+            .metadata_mut()
+            .insert("authorization", token.clone());
 
         let response = config_grpc_service
             .upsert(request)
@@ -364,9 +408,11 @@ mod tests {
 
         assert_eq!(response.configs.len(), 1);
 
-        let request = Request::new(ConfigIdRequest {
+        let mut request = Request::new(ConfigIdRequest {
             config_id: config.id.clone(),
         });
+
+        request.metadata_mut().insert("authorization", token);
 
         let response = config_grpc_service
             .delete(request)
