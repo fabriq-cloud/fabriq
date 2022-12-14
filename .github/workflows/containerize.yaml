@@ -33,7 +33,7 @@ jobs:
 
       # Tool installation
       - uses: actions/checkout@v2
-      - name: Install Protoc
+      - name: Install protoc
         uses: arduino/setup-protoc@v1
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -41,7 +41,7 @@ jobs:
           toolchain: stable
           components: clippy, rustfmt
           override: true
-      - name: Cache Dependencies
+      - name: Cache dependencies
         uses: Swatinem/rust-cache@v1
       - name: Install SQLx
         run: cargo install sqlx-cli
@@ -72,7 +72,7 @@ jobs:
 
       # Containerize
 
-      - name: Log in to the Container registry
+      - name: Log into container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
         with:
           registry: ${{ env.REGISTRY }}
@@ -93,7 +93,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-gitops
           tags: |
             type=sha,prefix=,format=long
-      - name: Build and Push Docker API image
+      - name: Build and push docker API image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         id: api_build
         with:
@@ -103,7 +103,7 @@ jobs:
           push: true
           tags: ${{ steps.api_meta.outputs.tags }}
           labels: ${{ steps.api_meta.outputs.labels }}
-      - name: Build and Push Docker Gitops image
+      - name: Build and push docker itops image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         id: gitops_build
         with:

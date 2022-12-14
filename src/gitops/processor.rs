@@ -11,7 +11,7 @@ use tonic::Request;
 use fabriq_core::{
     common::TemplateIdRequest,
     get_current_or_previous_model,
-    git::{GitRepo, GitRepoFactory, RemoteGitRepo},
+    git::{GitRepo, GitRepoFactory},
     AssignmentMessage, ConfigMessage, ConfigTrait, ConfigValueType, DeploymentIdRequest,
     DeploymentMessage, DeploymentTrait, Event, EventType, HostMessage, ModelType,
     QueryConfigRequest, TargetMessage, TemplateMessage, TemplateTrait, WorkloadIdRequest,
@@ -531,19 +531,6 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
-    async fn _fetch_template_repo(
-        &self,
-        template: &TemplateMessage,
-    ) -> anyhow::Result<impl GitRepo> {
-        // TODO: Ability to use a different private ssh key for each template
-        RemoteGitRepo::new(
-            &template.repository,
-            &template.git_ref,
-            &self.private_ssh_key,
-        )
-    }
-
     fn make_assignment_directory(
         host_id: &str,
         organization_name: &str,
@@ -747,7 +734,7 @@ mod tests {
 
     use std::{
         collections::hash_map::DefaultHasher,
-        env, fs,
+        fs,
         hash::{Hash, Hasher},
         path::{Path, PathBuf},
         sync::Arc,
@@ -981,8 +968,6 @@ mod tests {
     async fn create_processor_fixture(
         gitops_repo: Arc<dyn GitRepo>,
     ) -> anyhow::Result<GitOpsProcessor> {
-        let private_ssh_key = env::var("PRIVATE_SSH_KEY").expect("PRIVATE_SSH_KEY must be set");
-
         let config_client = Arc::new(fabriq_core::api::mock::MockConfigClient {});
         let deployment_client = Arc::new(fabriq_core::api::mock::MockDeploymentClient {});
         let template_client = Arc::new(fabriq_core::api::mock::MockTemplateClient {});
@@ -990,7 +975,7 @@ mod tests {
 
         Ok(GitOpsProcessor {
             gitops_repo,
-            private_ssh_key,
+            private_ssh_key: "unused".to_owned(),
 
             template_repo_factory: Arc::new(MockTemplateRepoFactory {}),
 
