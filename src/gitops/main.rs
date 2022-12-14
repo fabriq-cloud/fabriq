@@ -123,11 +123,14 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("starting event loop");
 
     loop {
+        tracing::info!("fetching events");
+
         let events = event_stream.receive(&gitops_consumer_id).await?;
 
         tracing::info!("event loop fetched {} events", events.len());
 
         for event in events.iter() {
+            tracing::info!("event loop processing event {:?}", event);
             match gitops_processor.process(event).await {
                 Ok(_) => {
                     tracing::info!("gitops processor: processed event successfully");
