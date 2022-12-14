@@ -126,8 +126,13 @@ async fn main() -> anyhow::Result<()> {
         let events = event_stream.receive(&gitops_consumer_id).await?;
 
         for event in events.iter() {
-            gitops_processor.process(event).await?;
-            event_stream.delete(event, &gitops_consumer_id).await?;
+            match gitops_processor.process(event).await {
+                Ok(_) => {
+                    tracing::info!("gitops processor: processed event successfully");
+                    event_stream.delete(event, &gitops_consumer_id).await?;
+                }
+                Err(err) => tracing::error!("gitops processor: failed to process event: {}", err),
+            };
         }
 
         if events.is_empty() {
