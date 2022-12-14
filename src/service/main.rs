@@ -255,21 +255,16 @@ async fn main() -> anyhow::Result<()> {
             .on_response(tower_http::trace::DefaultOnResponse::new().level(Level::INFO)),
     );
 
-    let reflection = tonic_reflection::server::Builder::configure()
-        .build()
-        .unwrap();
-
     let grpc_services = Server::builder()
         .layer(tracing_layer)
         .layer(async_interceptor(acl::authenticate))
-        .add_service(reflection)
-        .add_service(tonic_web::enable(assignment_grpc_service))
-        .add_service(tonic_web::enable(config_grpc_service))
-        .add_service(tonic_web::enable(deployment_grpc_service))
-        .add_service(tonic_web::enable(host_grpc_service))
-        .add_service(tonic_web::enable(workload_grpc_service))
-        .add_service(tonic_web::enable(target_grpc_service))
-        .add_service(tonic_web::enable(template_grpc_service))
+        .add_service(assignment_grpc_service)
+        .add_service(config_grpc_service)
+        .add_service(deployment_grpc_service)
+        .add_service(host_grpc_service)
+        .add_service(workload_grpc_service)
+        .add_service(target_grpc_service)
+        .add_service(template_grpc_service)
         .into_service();
 
     let combined_services = hybrid_service(http_services, grpc_services);

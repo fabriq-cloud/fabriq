@@ -11,7 +11,7 @@ jobs:
           latest: true
           fileName: "fabriq"
 
-      - name: Delete api and gitops deployment for this branch
+      - name: Create api and gitops deployment for this branch
         run: |
           echo "create deployment for branch ${{ github.event.ref }}"
 

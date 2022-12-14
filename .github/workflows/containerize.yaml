@@ -67,7 +67,7 @@ jobs:
       # Static Analysis
 
       - run: cargo audit --ignore RUSTSEC-2020-0071
-      - run: SQLX_OFFLINE=true cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings -A clippy::extra-unused-lifetimes -A clippy::derive_partial_eq_without_eq
+      - run: SQLX_OFFLINE=true cargo clippy --all-targets --all-features --workspace --no-deps -- -D warnings
       - run: cargo fmt --all -- --check
 
       # Containerize
@@ -103,7 +103,7 @@ jobs:
           push: true
           tags: ${{ steps.api_meta.outputs.tags }}
           labels: ${{ steps.api_meta.outputs.labels }}
-      - name: Build and push docker itops image
+      - name: Build and push docker gitops image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         id: gitops_build
         with:

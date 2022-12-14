@@ -17,8 +17,8 @@ fabriq-postgresql-stream = { path = "crates/fabriq-postgresql-stream" }
 anyhow = "1.0"
 ascii_table = { version = "4.0", features = ["auto_table_width"] }
 async-trait = "0.1"
-axum = { version = "0.5" }
-base64 = "0.13"
+axum = { version = "0.6" }
+base64 = "0.20"
 clap = { version = "4.0.26", features = ["derive"] }
 dirs = "4.0"
 dotenvy = "0.15"
@@ -41,8 +41,6 @@ sqlx = { version = "0.6", features = [ "chrono", "json", "offline", "runtime-tok
 tokio = { version = "1.14", features = ["fs", "macros", "rt", "rt-multi-thread"] }
 tonic = { version = "0.8.2", features = ["tls-roots"] }
 tonic-async-interceptor = "0.1"
-tonic-web = "0.4"
-tonic-reflection = "0.5"
 tower = "0.4"
 tower-http = { version = "0.3", features = ["trace"] }
 tracing = "0.1"
