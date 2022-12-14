@@ -359,7 +359,8 @@ mod tests {
     }
     #[tokio::test]
     async fn test_check_auth() -> anyhow::Result<()> {
-        let access_token = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
+        let access_token =
+            env::var("FABRIQ_GITHUB_TOKEN").expect("FABRIQ_GITHUB_TOKEN must be set");
         let config = get_string_config_fixture().into();
 
         let config_grpc_service = create_config_grpc_service().await;
@@ -380,7 +381,8 @@ mod tests {
 
         let mut request = Request::new(config.clone());
 
-        let access_token = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
+        let access_token =
+            env::var("FABRIQ_GITHUB_TOKEN").expect("FABRIQ_GITHUB_TOKEN must be set");
         let token: MetadataValue<_> = access_token.parse()?;
 
         request
