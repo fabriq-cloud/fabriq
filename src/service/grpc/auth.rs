@@ -77,7 +77,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_user() -> anyhow::Result<()> {
-        let pat = std::env::var("FABRIQ_GITHUB_TOKEN")?;
+        let pat = std::env::var("FABRIQ_GITHUB_TOKEN").expect("FABRIQ_GITHUB_TOKEN must be set");
 
         let octocrab = build_octocrab_client(&pat).await?;
         get_user(&octocrab).await?;
@@ -87,7 +87,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_team_members() -> anyhow::Result<()> {
-        let pat = std::env::var("FABRIQ_GITHUB_TOKEN")?;
+        let pat = std::env::var("FABRIQ_GITHUB_TOKEN").expect("FABRIQ_GITHUB_TOKEN must be set");
 
         let octocrab = build_octocrab_client(&pat).await?;
         let members = get_team_members(&octocrab, "fabriq-cloud", "fabriq").await?;
@@ -99,7 +99,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_team_member() -> anyhow::Result<()> {
-        let pat = std::env::var("FABRIQ_GITHUB_TOKEN")?;
+        let pat = std::env::var("FABRIQ_GITHUB_TOKEN").expect("FABRIQ_GITHUB_TOKEN must be set");
 
         let is_member = is_team_member(&pat, "fabriq-cloud/fabriq").await?;
 
@@ -110,7 +110,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_not_team_member() -> anyhow::Result<()> {
-        let pat = std::env::var("FABRIQ_GITHUB_TOKEN")?;
+        let pat = std::env::var("FABRIQ_GITHUB_TOKEN").expect("FABRIQ_GITHUB_TOKEN must be set");
 
         let is_member = is_team_member(&pat, "another-cloud/team").await?;
 
