@@ -41,6 +41,8 @@ impl GitOpsProcessor {
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
 
+        tracing::info!("model_type: {:?}", model_type);
+
         match model_type {
             model_type if model_type == ModelType::Assignment as i32 => {
                 self.process_assignment_event(event).await
@@ -77,6 +79,8 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         let assignment = get_current_or_previous_model::<AssignmentMessage>(event)?;
 
+        tracing::info!("processing event for assignment: {:?}", assignment);
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 self.update_assignment(&assignment, true).await?;
@@ -105,6 +109,8 @@ impl GitOpsProcessor {
         // Deleted: Rerender all deployments that could be effected by this config change.
 
         let config = get_current_or_previous_model::<ConfigMessage>(event)?;
+
+        tracing::info!("processing event for config: {:?}", config);
 
         let owning_model_parts: Vec<&str> = config
             .owning_model
@@ -154,6 +160,8 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         let deployment = get_current_or_previous_model::<DeploymentMessage>(event)?;
 
+        tracing::info!("processing event for deployment: {:?}", deployment);
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 self.update_deployment(&deployment, true).await?;
@@ -180,6 +188,8 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         let host = get_current_or_previous_model::<HostMessage>(event)?;
 
+        tracing::info!("processing event for host: {:?}", host);
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 tracing::info!("host id {} created (NOP)", host.id);
@@ -202,6 +212,8 @@ impl GitOpsProcessor {
     async fn process_target_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let target = get_current_or_previous_model::<TargetMessage>(event)?;
+
+        tracing::info!("processing event for target: {:?}", target);
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
@@ -226,6 +238,8 @@ impl GitOpsProcessor {
         let event_type = event.event_type;
         let template = get_current_or_previous_model::<TemplateMessage>(event)?;
 
+        tracing::info!("processing event for template: {:?}", template);
+
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
                 tracing::info!("template id {} created (NOP)", template.id);
@@ -249,6 +263,8 @@ impl GitOpsProcessor {
     async fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let workload = get_current_or_previous_model::<WorkloadMessage>(event)?;
+
+        tracing::info!("processing event for workload: {:?}", workload);
 
         match event_type {
             event_type if event_type == EventType::Created as i32 => {
