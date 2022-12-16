@@ -2,7 +2,6 @@ use fabriq_core::git::ClonedGitRepo;
 use handlebars::{to_json, Handlebars};
 use serde_json::value::{Map, Value as Json};
 use std::fmt::Debug;
-use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use std::{collections::HashMap, path::PathBuf};
@@ -294,8 +293,6 @@ impl GitOpsProcessor {
         let (team_id, workload_name, deployment_name) =
             DeploymentMessage::split_id(&assignment.deployment_id)?;
 
-        tracing::info!("update assignment: {team_id} {workload_name}");
-
         let cloned_repo = self.gitops_repo.clone_repo()?;
 
         if created {
@@ -318,8 +315,6 @@ impl GitOpsProcessor {
                 &deployment_name,
             );
 
-            tracing::info!("removing assignment path: {assignment_path}");
-
             cloned_repo.remove_dir(&assignment_path)?;
         }
 
@@ -328,12 +323,8 @@ impl GitOpsProcessor {
 
         let message = format!("Updated assignment {}", assignment.id);
 
-        tracing::info!("committing assignment changes");
-
         cloned_repo.commit("Tim Park", "timfpark@gmail.com", &message)?;
         cloned_repo.push()?;
-
-        tracing::info!("committing assignment changes completed");
 
         Ok(())
     }
@@ -522,8 +513,6 @@ impl GitOpsProcessor {
     ) -> anyhow::Result<()> {
         let (organization_name, team_name) = WorkloadMessage::split_team_id(team_id)?;
 
-        tracing::info!("render assignment: {organization_name} {team_name}");
-
         let assignment_path = GitOpsProcessor::make_assignment_path(
             host_id,
             &organization_name,
@@ -532,8 +521,6 @@ impl GitOpsProcessor {
             deployment_name,
         );
 
-        tracing::info!("assignment path: {assignment_path}");
-
         let deployment_path = GitOpsProcessor::make_deployment_path(
             &organization_name,
             &team_name,
@@ -541,14 +528,12 @@ impl GitOpsProcessor {
             deployment_name,
         );
 
-        tracing::info!("deployment path: {deployment_path}");
-
         let host_relative_deployment_path = format!("../../../../../../{}", deployment_path);
-        tracing::info!("deployment host_relative_deployment_path: {host_relative_deployment_path}");
 
-        let template_string = fs::read_to_string("templates/assignment.yaml")?;
-
-        tracing::info!("got template");
+        let template_string = "apiVersion: kustomize.config.k8s.io/v1beta1\n\
+            kind: Kustomization\n\
+            resources:\n\
+            - {{relative_deployment_path}}";
 
         let mut handlebars = Handlebars::new();
         handlebars.register_template_string("assignment", template_string)?;
@@ -559,15 +544,8 @@ impl GitOpsProcessor {
 
         let rendered_assignment = handlebars.render("assignment", &values)?;
 
-        tracing::info!("writing assignment");
-
         cloned_repo.write_file(&assignment_path, rendered_assignment.as_bytes())?;
-
-        tracing::info!("wrote assignment");
-
         cloned_repo.add_path(assignment_path.into())?;
-
-        tracing::info!("added assignment to repo");
 
         Ok(())
     }
@@ -838,7 +816,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 8237067629619207915);
+        assert_eq!(assignment_hash, 251129924695039903);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Updated).await;
 
@@ -852,7 +830,7 @@ mod tests {
         assignment_contents.hash(&mut hasher);
         let assignment_hash = hasher.finish();
 
-        assert_eq!(assignment_hash, 8237067629619207915);
+        assert_eq!(assignment_hash, 251129924695039903);
 
         create_and_process_assignment_event(Arc::clone(&gitops_repo), EventType::Deleted).await;
 
