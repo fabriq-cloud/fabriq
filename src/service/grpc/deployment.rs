@@ -216,7 +216,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_deployment() -> anyhow::Result<()> {
-        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
+        let deployment_persistence = Box::<DeploymentMemoryPersistence>::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let target_persistence = MemoryPersistence::<Target>::default();
@@ -228,13 +228,13 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         target_service.upsert(&target, &None).await.unwrap();
 
-        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
+        let assignment_persistence = Box::<AssignmentMemoryPersistence>::default();
         let assignment_service = Arc::new(AssignmentService {
             persistence: assignment_persistence,
             event_stream: Arc::clone(&event_stream),
         });
 
-        let config_persistence = Box::new(ConfigMemoryPersistence::default());
+        let config_persistence = Box::<ConfigMemoryPersistence>::default();
         let config_service = Arc::new(ConfigService {
             persistence: config_persistence,
             event_stream: Arc::clone(&event_stream),

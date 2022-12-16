@@ -107,7 +107,7 @@ mod tests {
 
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
-        let host_persistence = Box::new(HostMemoryPersistence::default());
+        let host_persistence = Box::<HostMemoryPersistence>::default();
         let host: Host = get_host_fixture(None).into();
 
         let host_service = HostService {

@@ -148,7 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_list_assignment() -> anyhow::Result<()> {
-        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
+        let assignment_persistence = Box::<AssignmentMemoryPersistence>::default();
         let event_stream = Arc::new(MemoryEventStream::new().unwrap()) as Arc<dyn EventStream>;
 
         let assignment_service = Arc::new(AssignmentService {

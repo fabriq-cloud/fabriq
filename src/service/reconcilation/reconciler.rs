@@ -403,13 +403,13 @@ mod tests {
     async fn create_reconciler_fixture() -> anyhow::Result<Reconciler> {
         let event_stream: Arc<dyn EventStream> = Arc::new(MemoryEventStream::new()?);
 
-        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
+        let assignment_persistence = Box::<AssignmentMemoryPersistence>::default();
         let assignment_service = Arc::new(AssignmentService {
             persistence: assignment_persistence,
             event_stream: Arc::clone(&event_stream),
         });
 
-        let target_persistence = Box::new(MemoryPersistence::<Target>::default());
+        let target_persistence = Box::<MemoryPersistence<Target>>::default();
         let target_service = Arc::new(TargetService {
             persistence: target_persistence,
             event_stream: Arc::clone(&event_stream),
@@ -424,7 +424,7 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
         });
 
-        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
+        let deployment_persistence = Box::<DeploymentMemoryPersistence>::default();
         let deployment_service = Arc::new(DeploymentService {
             persistence: deployment_persistence,
             event_stream: Arc::clone(&event_stream),
@@ -434,19 +434,19 @@ mod tests {
             target_service: Arc::clone(&target_service),
         });
 
-        let host_persistence = Box::new(HostMemoryPersistence::default());
+        let host_persistence = Box::<HostMemoryPersistence>::default();
         let host_service = Arc::new(HostService {
             persistence: host_persistence,
             event_stream: Arc::clone(&event_stream),
         });
 
-        let template_persistence = Box::new(MemoryPersistence::<Template>::default());
+        let template_persistence = Box::<MemoryPersistence<Template>>::default();
         let template_service = Arc::new(TemplateService {
             persistence: template_persistence,
             event_stream: Arc::clone(&event_stream),
         });
 
-        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
+        let workload_persistence = Box::<WorkloadMemoryPersistence>::default();
         let workload_service = Arc::new(WorkloadService {
             persistence: workload_persistence,
             event_stream: Arc::clone(&event_stream),
