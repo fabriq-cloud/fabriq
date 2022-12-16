@@ -277,12 +277,9 @@ mod tests {
     };
     use crate::{
         models::{Deployment, Target, Template, Workload},
-        persistence::memory::AssignmentMemoryPersistence,
-    };
-    use crate::{
         persistence::memory::{
-            ConfigMemoryPersistence, DeploymentMemoryPersistence, MemoryPersistence,
-            WorkloadMemoryPersistence,
+            AssignmentMemoryPersistence, ConfigMemoryPersistence, DeploymentMemoryPersistence,
+            MemoryPersistence, WorkloadMemoryPersistence,
         },
         services::AssignmentService,
     };
@@ -299,7 +296,7 @@ mod tests {
         let template: Template = get_template_fixture(Some("template-fixture")).into();
         let operation_id = template_service.upsert(&template, None).await.unwrap();
 
-        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
+        let workload_persistence = Box::<WorkloadMemoryPersistence>::default();
         let workload_service = Arc::new(WorkloadService {
             event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
             persistence: workload_persistence,
@@ -322,19 +319,19 @@ mod tests {
         let target: Target = get_target_fixture(None).into();
         let operation_id = target_service.upsert(&target, &None).await.unwrap();
 
-        let assignment_persistence = Box::new(AssignmentMemoryPersistence::default());
+        let assignment_persistence = Box::<AssignmentMemoryPersistence>::default();
         let assignment_service = Arc::new(AssignmentService {
             persistence: assignment_persistence,
             event_stream: Arc::clone(&event_stream),
         });
 
-        let config_persistence = Box::new(ConfigMemoryPersistence::default());
+        let config_persistence = Box::<ConfigMemoryPersistence>::default();
         let config_service = Arc::new(ConfigService {
             persistence: config_persistence,
             event_stream: Arc::clone(&event_stream),
         });
 
-        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
+        let deployment_persistence = Box::<DeploymentMemoryPersistence>::default();
         let deployment_service = Arc::new(DeploymentService {
             event_stream: Arc::clone(&event_stream),
             persistence: deployment_persistence,

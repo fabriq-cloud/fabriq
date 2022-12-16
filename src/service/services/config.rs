@@ -219,7 +219,7 @@ mod tests {
         let template: Template = get_template_fixture(Some("template-fixture")).into();
         let operation_id = template_service.upsert(&template, None).await.unwrap();
 
-        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
+        let workload_persistence = Box::<WorkloadMemoryPersistence>::default();
         let workload_service = Arc::new(WorkloadService {
             event_stream: Arc::clone(&event_stream) as Arc<dyn EventStream>,
             persistence: workload_persistence,
@@ -254,7 +254,7 @@ mod tests {
             event_stream: Arc::clone(&event_stream),
         });
 
-        let deployment_persistence = Box::new(DeploymentMemoryPersistence::default());
+        let deployment_persistence = Box::<DeploymentMemoryPersistence>::default();
         let deployment_service = Arc::new(DeploymentService {
             event_stream: Arc::clone(&event_stream),
             persistence: deployment_persistence,

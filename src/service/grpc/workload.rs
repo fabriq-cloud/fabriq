@@ -187,7 +187,7 @@ mod tests {
         let template: Template = get_template_fixture(Some("template-fixture")).into();
         template_service.upsert(&template, None).await.unwrap();
 
-        let workload_persistence = Box::new(WorkloadMemoryPersistence::default());
+        let workload_persistence = Box::<WorkloadMemoryPersistence>::default();
         let workload_service = Arc::new(WorkloadService {
             persistence: workload_persistence,
             event_stream,

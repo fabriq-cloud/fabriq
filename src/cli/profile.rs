@@ -54,6 +54,6 @@ impl Profile {
 
         let profile_json = serde_json::to_string(&self)?;
 
-        Ok(fs::write(&auth_path, profile_json)?)
+        Ok(fs::write(auth_path, profile_json)?)
     }
 }
