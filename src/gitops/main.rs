@@ -5,7 +5,13 @@ use fabriq_core::{
     EventStream,
 };
 use fabriq_postgresql_stream::PostgresqlEventStream;
+use opentelemetry::{
+    sdk::{trace as sdktrace, Resource},
+    KeyValue,
+};
+use opentelemetry_otlp::WithExportConfig;
 use processor::GitOpsProcessor;
+use reqwest::Url;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tokio::time::Duration;
@@ -20,14 +26,35 @@ mod processor;
 
 const DEFAULT_GITOPS_CONSUMER_ID: &str = "gitops";
 
+fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
+    let opentelemetry_endpoint = env::var("OTEL_ENDPOINT").expect("OTEL_ENDPOINT expected");
+    let opentelemetry_endpoint =
+        Url::parse(&opentelemetry_endpoint).expect("OTEL_ENDPOINT is not a valid url");
+
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(opentelemetry_endpoint),
+        )
+        .with_trace_config(
+            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
+                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                "fabriq-api",
+            )])),
+        )
+        .install_batch(opentelemetry::runtime::Tokio)
+        .expect("init tracer failed");
+
+    Ok(tracer)
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_service_name(DEFAULT_GITOPS_CONSUMER_ID)
-        .install_simple()
-        .expect("Failed to instantiate OpenTelemetry / Jaeger tracing");
+    let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env())
