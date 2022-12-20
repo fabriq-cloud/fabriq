@@ -15,7 +15,7 @@ pub struct HostRelationalPersistence {
 
 #[async_trait]
 impl Persistence<Host> for HostRelationalPersistence {
-    #[tracing::instrument(name = "relational::host::create")]
+    #[tracing::instrument(name = "relational::host::create", skip_all)]
     async fn upsert(&self, host: &Host) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             r#"
@@ -35,7 +35,7 @@ impl Persistence<Host> for HostRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::host::delete")]
+    #[tracing::instrument(name = "relational::host::delete", skip_all)]
     async fn delete(&self, id: &str) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             // language=PostgreSQL
@@ -51,7 +51,7 @@ impl Persistence<Host> for HostRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::host::list")]
+    #[tracing::instrument(name = "relational::host::list", skip_all)]
     async fn list(&self) -> anyhow::Result<Vec<Host>> {
         let rows = sqlx::query_as!(
             Host,
@@ -67,7 +67,7 @@ impl Persistence<Host> for HostRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::host::get_by_id")]
+    #[tracing::instrument(name = "relational::host::get_by_id", skip_all)]
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Host>> {
         let supply = sqlx::query_as!(Host, "SELECT * FROM hosts WHERE id = $1", id)
             .fetch_optional(&*self.db)
@@ -79,7 +79,7 @@ impl Persistence<Host> for HostRelationalPersistence {
 
 #[async_trait]
 impl HostPersistence for HostRelationalPersistence {
-    #[tracing::instrument]
+    #[tracing::instrument(name = "relational::host::get_matching_target", skip_all)]
     async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
         // $1 <@ labels matches the set of hosts that have target.labels
         let rows = sqlx::query_as!(

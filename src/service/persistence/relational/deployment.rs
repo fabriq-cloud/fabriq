@@ -12,7 +12,7 @@ pub struct DeploymentRelationalPersistence {
 
 #[async_trait]
 impl Persistence<Deployment> for DeploymentRelationalPersistence {
-    #[tracing::instrument(name = "relational::deployment::create")]
+    #[tracing::instrument(name = "relational::deployment::create", skip_all)]
     async fn upsert(&self, deployment: &Deployment) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             r#"
@@ -40,7 +40,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::deployment::delete")]
+    #[tracing::instrument(name = "relational::deployment::delete", skip_all)]
     async fn delete(&self, id: &str) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             // language=PostgreSQL
@@ -56,7 +56,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::deployment::list")]
+    #[tracing::instrument(name = "relational::deployment::list", skip_all)]
     async fn list(&self) -> anyhow::Result<Vec<Deployment>> {
         let rows = sqlx::query_as!(
             Deployment,
@@ -75,7 +75,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::deployment::get_by_id")]
+    #[tracing::instrument(name = "relational::deployment::get_by_id", skip_all)]
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Deployment>> {
         let supply = sqlx::query_as!(Deployment, "SELECT * FROM deployments WHERE id = $1", id)
             .fetch_optional(&*self.db)
@@ -87,7 +87,7 @@ impl Persistence<Deployment> for DeploymentRelationalPersistence {
 
 #[async_trait]
 impl DeploymentPersistence for DeploymentRelationalPersistence {
-    #[tracing::instrument(name = "relational::deployment::get_by_target_id")]
+    #[tracing::instrument(name = "relational::deployment::get_by_target_id", skip_all)]
     async fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let rows = sqlx::query_as!(
             Deployment,
@@ -107,7 +107,7 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::deployment::get_by_template_id")]
+    #[tracing::instrument(name = "relational::deployment::get_by_template_id", skip_all)]
     async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let rows = sqlx::query_as!(
             Deployment,
@@ -127,7 +127,7 @@ impl DeploymentPersistence for DeploymentRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::deployment::get_by_workload_id")]
+    #[tracing::instrument(name = "relational::deployment::get_by_workload_id", skip_all)]
     async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
         let rows = sqlx::query_as!(
             Deployment,

@@ -20,7 +20,7 @@ impl GrpcWorkloadService {
 
 #[tonic::async_trait]
 impl WorkloadTrait for GrpcWorkloadService {
-    #[tracing::instrument(name = "grpc::workload::upsert")]
+    #[tracing::instrument(name = "grpc::workload::upsert", skip_all)]
     async fn upsert(
         &self,
         request: Request<WorkloadMessage>,
@@ -40,7 +40,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::workload::delete")]
+    #[tracing::instrument(name = "grpc::workload::delete", skip_all)]
     async fn delete(
         &self,
         request: Request<WorkloadIdRequest>,
@@ -65,7 +65,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::workload::get_by_id")]
+    #[tracing::instrument(name = "grpc::workload::get_by_id", skip_all)]
     async fn get_by_id(
         &self,
         request: Request<WorkloadIdRequest>,
@@ -98,7 +98,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(workload_message))
     }
 
-    #[tracing::instrument(name = "grpc::workload::get_by_template_id")]
+    #[tracing::instrument(name = "grpc::workload::get_by_template_id", skip_all)]
     async fn get_by_template_id(
         &self,
         request: Request<TemplateIdRequest>,
@@ -129,7 +129,7 @@ impl WorkloadTrait for GrpcWorkloadService {
         Ok(Response::new(response))
     }
 
-    #[tracing::instrument(name = "grpc::workload::list")]
+    #[tracing::instrument(name = "grpc::workload::list", skip_all)]
     async fn list(
         &self,
         _request: Request<ListWorkloadsRequest>,

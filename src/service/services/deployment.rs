@@ -18,7 +18,7 @@ pub struct DeploymentService {
 }
 
 impl DeploymentService {
-    #[tracing::instrument(name = "service::deployment::create")]
+    #[tracing::instrument(name = "service::deployment::create", skip_all)]
     pub async fn upsert(
         &self,
         deployment: &Deployment,
@@ -69,7 +69,7 @@ impl DeploymentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::deployment::delete")]
+    #[tracing::instrument(name = "service::deployment::delete", skip_all)]
     pub async fn delete(
         &self,
         deployment_id: &str,
@@ -111,27 +111,27 @@ impl DeploymentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::deployment::get_by_id")]
+    #[tracing::instrument(name = "service::deployment::get_by_id", skip_all)]
     pub async fn get_by_id(&self, deployment_id: &str) -> anyhow::Result<Option<Deployment>> {
         self.persistence.get_by_id(deployment_id).await
     }
 
-    #[tracing::instrument(name = "service::deployment::get_by_target_id")]
+    #[tracing::instrument(name = "service::deployment::get_by_target_id", skip_all)]
     pub async fn get_by_target_id(&self, target_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_target_id(target_id).await
     }
 
-    #[tracing::instrument(name = "service::deployment::get_by_template_id")]
+    #[tracing::instrument(name = "service::deployment::get_by_template_id", skip_all)]
     pub async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_template_id(template_id).await
     }
 
-    #[tracing::instrument(name = "service::deployment::get_by_workload_id")]
+    #[tracing::instrument(name = "service::deployment::get_by_workload_id", skip_all)]
     pub async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Deployment>> {
         self.persistence.get_by_workload_id(workload_id).await
     }
 
-    #[tracing::instrument(name = "service::deployment::list")]
+    #[tracing::instrument(name = "service::deployment::list", skip_all)]
     pub async fn list(&self) -> anyhow::Result<Vec<Deployment>> {
         let results = self.persistence.list().await?;
 

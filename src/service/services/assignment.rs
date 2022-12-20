@@ -13,7 +13,7 @@ pub struct AssignmentService {
 }
 
 impl AssignmentService {
-    #[tracing::instrument(name = "service::assignment::create")]
+    #[tracing::instrument(name = "service::assignment::create", skip_all)]
     pub async fn upsert(
         &self,
         assignment: &Assignment,
@@ -40,7 +40,7 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::assignment::create_many")]
+    #[tracing::instrument(name = "service::assignment::create_many", skip_all)]
     pub async fn upsert_many(
         &self,
         assignments: &[Assignment],
@@ -55,7 +55,7 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::assignment::delete")]
+    #[tracing::instrument(name = "service::assignment::delete", skip_all)]
     pub async fn delete(
         &self,
         assignment_id: &str,
@@ -89,7 +89,7 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::assignment::delete_many")]
+    #[tracing::instrument(name = "service::assignment::delete_many", skip_all)]
     pub async fn delete_many(
         &self,
         assignments: &[Assignment],
@@ -120,12 +120,12 @@ impl AssignmentService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::assignment::get_by_id")]
+    #[tracing::instrument(name = "service::assignment::get_by_id", skip_all)]
     pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Assignment>> {
         self.persistence.get_by_id(host_id).await
     }
 
-    #[tracing::instrument(name = "service::assignment::get_by_deployment_id")]
+    #[tracing::instrument(name = "service::assignment::get_by_deployment_id", skip_all)]
     pub async fn get_by_deployment_id(
         &self,
         deployment_id: &str,
@@ -133,7 +133,7 @@ impl AssignmentService {
         self.persistence.get_by_deployment_id(deployment_id).await
     }
 
-    #[tracing::instrument(name = "service::assignment::list")]
+    #[tracing::instrument(name = "service::assignment::list", skip_all)]
     pub async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
         let results = self.persistence.list().await?;
 

@@ -30,7 +30,7 @@ pub struct Reconciler {
 }
 
 impl Reconciler {
-    #[tracing::instrument]
+    #[tracing::instrument(name = "reconciler::processor::process", skip_all)]
     pub async fn process(&self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
 
@@ -65,17 +65,17 @@ impl Reconciler {
         }
     }
 
-    #[tracing::instrument]
-    async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
+    #[tracing::instrument(name = "reconciler::processor::process_assignment_event", skip_all)]
+    async fn process_assignment_event(&self, _event: &Event) -> anyhow::Result<()> {
         Ok(())
     }
 
-    #[tracing::instrument]
-    async fn process_config_event(&self, event: &Event) -> anyhow::Result<()> {
+    #[tracing::instrument(name = "reconciler::processor::process_config_event", skip_all)]
+    async fn process_config_event(&self, _event: &Event) -> anyhow::Result<()> {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(name = "reconciler::processor::process_workload_event", skip_all)]
     async fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
         let workload = Self::get_current_or_previous_model::<WorkloadMessage, Workload>(event)?;
         let deployments = self
@@ -94,7 +94,7 @@ impl Reconciler {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(name = "reconciler::processor::process_deployment_event", skip_all)]
     async fn process_deployment_event(&self, event: &Event) -> anyhow::Result<()> {
         let deployment =
             Self::get_current_or_previous_model::<DeploymentMessage, Deployment>(event)?;
@@ -153,7 +153,7 @@ impl Reconciler {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(name = "reconciler::processor::process_host_event", skip_all)]
     async fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
         let mut spanning_target_set: HashMap<String, Target> = HashMap::new();
 
@@ -225,7 +225,7 @@ impl Reconciler {
         Ok(message.into())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(name = "reconciler::processor::process_template_event", skip_all)]
     async fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
         let template = Self::get_current_or_previous_model::<TemplateMessage, Template>(event)?;
         let mut spanning_deployments_set: HashMap<String, Deployment> = HashMap::new();

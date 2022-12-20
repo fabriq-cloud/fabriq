@@ -20,7 +20,7 @@ impl GrpcHostService {
 
 #[tonic::async_trait]
 impl HostTrait for GrpcHostService {
-    #[tracing::instrument(name = "grpc::host::upsert")]
+    #[tracing::instrument(name = "grpc::host::upsert", skip_all)]
     async fn upsert(&self, request: Request<HostMessage>) -> Result<Response<OperationId>, Status> {
         let new_host: Host = request.into_inner().into();
 
@@ -37,7 +37,7 @@ impl HostTrait for GrpcHostService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::host::delete")]
+    #[tracing::instrument(name = "grpc::host::delete", skip_all)]
     async fn delete(
         &self,
         request: Request<DeleteHostRequest>,
@@ -58,7 +58,7 @@ impl HostTrait for GrpcHostService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::host::list")]
+    #[tracing::instrument(name = "grpc::host::list", skip_all)]
     async fn list(
         &self,
         _request: Request<ListHostsRequest>,

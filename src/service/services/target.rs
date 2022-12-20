@@ -13,7 +13,7 @@ pub struct TargetService {
 }
 
 impl TargetService {
-    #[tracing::instrument(name = "service::target::create")]
+    #[tracing::instrument(name = "service::target::create", skip_all)]
     pub async fn upsert(
         &self,
         target: &Target,
@@ -40,12 +40,12 @@ impl TargetService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::target::get_by_id")]
+    #[tracing::instrument(name = "service::target::get_by_id", skip_all)]
     pub async fn get_by_id(&self, target_id: &str) -> anyhow::Result<Option<Target>> {
         self.persistence.get_by_id(target_id).await
     }
 
-    #[tracing::instrument(name = "service::target::delete")]
+    #[tracing::instrument(name = "service::target::delete", skip_all)]
     pub async fn delete(
         &self,
         target_id: &str,
@@ -78,14 +78,14 @@ impl TargetService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::target::list")]
+    #[tracing::instrument(name = "service::target::list", skip_all)]
     pub async fn list(&self) -> anyhow::Result<Vec<Target>> {
         let results = self.persistence.list().await?;
 
         Ok(results)
     }
 
-    #[tracing::instrument(name = "service::target::get_matching_host")]
+    #[tracing::instrument(name = "service::target::get_matching_host", skip_all)]
     pub async fn get_matching_host(&self, host: &Host) -> anyhow::Result<Vec<Target>> {
         // TODO: Naive implementation, use proper query
         let targets = self.list().await?;

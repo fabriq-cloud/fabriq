@@ -12,7 +12,7 @@ pub struct AssignmentRelationalPersistence {
 
 #[async_trait]
 impl Persistence<Assignment> for AssignmentRelationalPersistence {
-    #[tracing::instrument(name = "relational::assignment::create")]
+    #[tracing::instrument(name = "relational::assignment::create", skip_all)]
     async fn upsert(&self, assignment: &Assignment) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             r#"
@@ -34,7 +34,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::assignment::delete")]
+    #[tracing::instrument(name = "relational::assignment::delete", skip_all)]
     async fn delete(&self, id: &str) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             // language=PostgreSQL
@@ -50,7 +50,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::assignment::get_by_id")]
+    #[tracing::instrument(name = "relational::assignment::get_by_id", skip_all)]
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Assignment>> {
         let supply = sqlx::query_as!(Assignment, "SELECT * FROM assignments WHERE id = $1", id)
             .fetch_optional(&*self.db)
@@ -59,7 +59,7 @@ impl Persistence<Assignment> for AssignmentRelationalPersistence {
         Ok(supply)
     }
 
-    #[tracing::instrument(name = "relational::assignment::list")]
+    #[tracing::instrument(name = "relational::assignment::list", skip_all)]
     async fn list(&self) -> anyhow::Result<Vec<Assignment>> {
         let rows = sqlx::query_as!(
             Assignment,

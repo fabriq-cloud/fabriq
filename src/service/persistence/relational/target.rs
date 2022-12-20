@@ -13,7 +13,7 @@ pub struct TargetRelationalPersistence {
 
 #[async_trait]
 impl Persistence<Target> for TargetRelationalPersistence {
-    #[tracing::instrument(name = "relational::target::create")]
+    #[tracing::instrument(name = "relational::target::create", skip_all)]
     async fn upsert(&self, target: &Target) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             r#"
@@ -33,7 +33,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::target::delete")]
+    #[tracing::instrument(name = "relational::target::delete", skip_all)]
     async fn delete(&self, id: &str) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             // language=PostgreSQL
@@ -49,7 +49,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::target::list")]
+    #[tracing::instrument(name = "relational::target::list", skip_all)]
     async fn list(&self) -> anyhow::Result<Vec<Target>> {
         let rows = sqlx::query_as!(
             Target,
@@ -65,7 +65,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::target::get_by_id")]
+    #[tracing::instrument(name = "relational::target::get_by_id", skip_all)]
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Target>> {
         let supply = sqlx::query_as!(Target, "SELECT * FROM targets WHERE id = $1", id)
             .fetch_optional(&*self.db)
@@ -77,7 +77,7 @@ impl Persistence<Target> for TargetRelationalPersistence {
 
 #[async_trait]
 impl TargetPersistence for TargetRelationalPersistence {
-    #[tracing::instrument]
+    #[tracing::instrument(name = "relational::target::get_matching_host", skip_all)]
     async fn get_matching_host(&self, host: &Host) -> anyhow::Result<Vec<Target>> {
         // $1 <@ labels matches the set of hosts that have target.labels
         let rows = sqlx::query_as!(

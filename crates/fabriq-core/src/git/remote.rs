@@ -109,14 +109,14 @@ impl Debug for RemoteClonedGitRepo {
 }
 
 impl ClonedGitRepo for RemoteClonedGitRepo {
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn add_path(&self, repo_path: PathBuf) -> anyhow::Result<()> {
         let mut index = self.index.lock().unwrap();
         let repo_path = Path::new(&repo_path);
         Ok(index.add_path(repo_path)?)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn commit(&self, name: &str, email: &str, message: &str) -> anyhow::Result<()> {
         let mut index = self.index.lock().unwrap();
         let oid = index.write_tree()?;
@@ -149,7 +149,7 @@ impl ClonedGitRepo for RemoteClonedGitRepo {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn push(&self) -> anyhow::Result<()> {
         let mut remote = self.repository.find_remote("origin")?;
 
@@ -169,19 +169,19 @@ impl ClonedGitRepo for RemoteClonedGitRepo {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn remove_dir(&self, path: &str) -> anyhow::Result<()> {
         let mut index = self.index.lock().unwrap();
         Ok(index.remove_dir(Path::new(&path), 0)?)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn remove_file(&self, path: &str) -> anyhow::Result<()> {
         let mut index = self.index.lock().unwrap();
         Ok(index.remove_path(Path::new(path))?)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn list(&self, repo_path: PathBuf) -> anyhow::Result<Vec<PathBuf>> {
         let file_path = self.local_path.path().join(repo_path);
         let directory = fs::read_dir(file_path)?;
@@ -194,7 +194,7 @@ impl ClonedGitRepo for RemoteClonedGitRepo {
         Ok(entries)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn read_file(&self, repo_path: PathBuf) -> anyhow::Result<Vec<u8>> {
         let file_path = self.local_path.path().join(repo_path);
         let contents = fs::read(file_path)?;
@@ -202,7 +202,7 @@ impl ClonedGitRepo for RemoteClonedGitRepo {
         Ok(contents)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn write_file(&self, repo_path: &str, contents: &[u8]) -> anyhow::Result<()> {
         let file_path = self.local_path.path().join(repo_path);
         let directory_path = file_path.parent().unwrap();

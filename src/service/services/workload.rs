@@ -14,7 +14,7 @@ pub struct WorkloadService {
 }
 
 impl WorkloadService {
-    #[tracing::instrument(name = "service::workload::create")]
+    #[tracing::instrument(name = "service::workload::create", skip_all)]
     pub async fn upsert(
         &self,
         workload: &Workload,
@@ -77,12 +77,12 @@ impl WorkloadService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::workload::get_by_id")]
+    #[tracing::instrument(name = "service::workload::get_by_id", skip_all)]
     pub async fn get_by_id(&self, workload_id: &str) -> anyhow::Result<Option<Workload>> {
         self.persistence.get_by_id(workload_id).await
     }
 
-    #[tracing::instrument(name = "service::workload::delete")]
+    #[tracing::instrument(name = "service::workload::delete", skip_all)]
     pub async fn delete(
         &self,
         workload_id: &str,
@@ -115,14 +115,14 @@ impl WorkloadService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::workload::list")]
+    #[tracing::instrument(name = "service::workload::list", skip_all)]
     pub async fn list(&self) -> anyhow::Result<Vec<Workload>> {
         let results = self.persistence.list().await?;
 
         Ok(results)
     }
 
-    #[tracing::instrument(name = "service::workload::get_by_template_id")]
+    #[tracing::instrument(name = "service::workload::get_by_template_id", skip_all)]
     pub async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Workload>> {
         self.persistence.get_by_template_id(template_id).await
     }
