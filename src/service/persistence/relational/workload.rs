@@ -13,7 +13,7 @@ pub struct WorkloadRelationalPersistence {
 
 #[async_trait]
 impl Persistence<Workload> for WorkloadRelationalPersistence {
-    #[tracing::instrument(name = "relational::workload::create")]
+    #[tracing::instrument(name = "relational::workload::create", skip_all)]
     async fn upsert(&self, workload: &Workload) -> anyhow::Result<u64> {
         /*
         pub id: String,
@@ -44,7 +44,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::workload::delete")]
+    #[tracing::instrument(name = "relational::workload::delete", skip_all)]
     async fn delete(&self, id: &str) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             // language=PostgreSQL
@@ -60,7 +60,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::workload::list")]
+    #[tracing::instrument(name = "relational::workload::list", skip_all)]
     async fn list(&self) -> anyhow::Result<Vec<Workload>> {
         let rows = sqlx::query_as!(
             Workload,
@@ -79,7 +79,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::workload::get_by_id")]
+    #[tracing::instrument(name = "relational::workload::get_by_id", skip_all)]
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Workload>> {
         let supply = sqlx::query_as!(Workload, "SELECT * FROM workloads WHERE id = $1", id)
             .fetch_optional(&*self.db)
@@ -91,7 +91,7 @@ impl Persistence<Workload> for WorkloadRelationalPersistence {
 
 #[async_trait]
 impl WorkloadPersistence for WorkloadRelationalPersistence {
-    #[tracing::instrument(name = "relational::workload::get_by_template_id")]
+    #[tracing::instrument(name = "relational::workload::get_by_template_id", skip_all)]
     async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Workload>> {
         let rows = sqlx::query_as!(
             Workload,

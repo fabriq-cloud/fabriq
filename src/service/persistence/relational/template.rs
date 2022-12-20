@@ -12,7 +12,7 @@ pub struct TemplateRelationalPersistence {
 
 #[async_trait]
 impl Persistence<Template> for TemplateRelationalPersistence {
-    #[tracing::instrument(name = "relational::template::create_many")]
+    #[tracing::instrument(name = "relational::template::create_many", skip_all)]
     async fn upsert(&self, template: &Template) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             r#"
@@ -36,7 +36,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::template::delete")]
+    #[tracing::instrument(name = "relational::template::delete", skip_all)]
     async fn delete(&self, id: &str) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             // language=PostgreSQL
@@ -52,7 +52,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::template::list")]
+    #[tracing::instrument(name = "relational::template::list", skip_all)]
     async fn list(&self) -> anyhow::Result<Vec<Template>> {
         let rows = sqlx::query_as!(
             Template,
@@ -71,7 +71,7 @@ impl Persistence<Template> for TemplateRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::template::get_by_id")]
+    #[tracing::instrument(name = "relational::template::get_by_id", skip_all)]
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Template>> {
         let supply = sqlx::query_as!(Template, "SELECT * FROM templates WHERE id = $1", id)
             .fetch_optional(&*self.db)

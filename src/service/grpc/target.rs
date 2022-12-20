@@ -20,7 +20,7 @@ impl GrpcTargetService {
 
 #[tonic::async_trait]
 impl TargetTrait for GrpcTargetService {
-    #[tracing::instrument(name = "grpc::target::upsert")]
+    #[tracing::instrument(name = "grpc::target::upsert", skip_all)]
     async fn upsert(
         &self,
         request: Request<TargetMessage>,
@@ -40,7 +40,7 @@ impl TargetTrait for GrpcTargetService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::target::delete")]
+    #[tracing::instrument(name = "grpc::target::delete", skip_all)]
     async fn delete(
         &self,
         request: Request<TargetIdRequest>,
@@ -65,7 +65,7 @@ impl TargetTrait for GrpcTargetService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::target::get_by_id")]
+    #[tracing::instrument(name = "grpc::target::get_by_id", skip_all)]
     async fn get_by_id(
         &self,
         request: Request<TargetIdRequest>,
@@ -97,7 +97,7 @@ impl TargetTrait for GrpcTargetService {
         Ok(Response::new(target_message))
     }
 
-    #[tracing::instrument(name = "grpc::target::list")]
+    #[tracing::instrument(name = "grpc::target::list", skip_all)]
     async fn list(
         &self,
         _request: Request<ListTargetsRequest>,

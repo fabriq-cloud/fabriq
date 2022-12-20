@@ -13,7 +13,7 @@ pub struct HostService {
 }
 
 impl HostService {
-    #[tracing::instrument(name = "service::host::create")]
+    #[tracing::instrument(name = "service::host::create", skip_all)]
     pub async fn upsert(
         &self,
         host: &Host,
@@ -40,17 +40,17 @@ impl HostService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::host::get_by_id")]
+    #[tracing::instrument(name = "service::host::get_by_id", skip_all)]
     pub async fn get_by_id(&self, host_id: &str) -> anyhow::Result<Option<Host>> {
         self.persistence.get_by_id(host_id).await
     }
 
-    #[tracing::instrument(name = "service::host::get_matching_target")]
+    #[tracing::instrument(name = "service::host::get_matching_target", skip_all)]
     pub async fn get_matching_target(&self, target: &Target) -> anyhow::Result<Vec<Host>> {
         self.persistence.get_matching_target(target).await
     }
 
-    #[tracing::instrument(name = "service::host::delete")]
+    #[tracing::instrument(name = "service::host::delete", skip_all)]
     pub async fn delete(
         &self,
         host_id: &str,
@@ -84,7 +84,7 @@ impl HostService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::host::list")]
+    #[tracing::instrument(name = "service::host::list", skip_all)]
     pub async fn list(&self) -> anyhow::Result<Vec<Host>> {
         let results = self.persistence.list().await?;
 

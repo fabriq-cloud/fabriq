@@ -13,7 +13,7 @@ pub struct ConfigRelationalPersistence {
 
 #[async_trait]
 impl Persistence<Config> for ConfigRelationalPersistence {
-    #[tracing::instrument(name = "relational::config::upsert")]
+    #[tracing::instrument(name = "relational::config::upsert", skip_all)]
     async fn upsert(&self, config: &Config) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             r#"
@@ -39,7 +39,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::config::delete")]
+    #[tracing::instrument(name = "relational::config::delete", skip_all)]
     async fn delete(&self, id: &str) -> anyhow::Result<u64> {
         let result = sqlx::query!(
             // language=PostgreSQL
@@ -55,7 +55,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
         Ok(result.rows_affected())
     }
 
-    #[tracing::instrument(name = "relational::config::list")]
+    #[tracing::instrument(name = "relational::config::list", skip_all)]
     async fn list(&self) -> anyhow::Result<Vec<Config>> {
         let rows = sqlx::query_as!(
             Config,
@@ -71,7 +71,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
         Ok(models)
     }
 
-    #[tracing::instrument(name = "relational::config::get_by_id")]
+    #[tracing::instrument(name = "relational::config::get_by_id", skip_all)]
     async fn get_by_id(&self, id: &str) -> anyhow::Result<Option<Config>> {
         let supply = sqlx::query_as!(Config, "SELECT * FROM configs WHERE id = $1", id)
             .fetch_optional(&*self.db)
@@ -82,7 +82,7 @@ impl Persistence<Config> for ConfigRelationalPersistence {
 }
 
 impl ConfigRelationalPersistence {
-    #[tracing::instrument(name = "relational::config::get_owning_model")]
+    #[tracing::instrument(name = "relational::config::get_owning_model", skip_all)]
     async fn get_owning_model(&self, owning_model: &str) -> anyhow::Result<Vec<Config>> {
         let rows = sqlx::query_as!(
             Config,
@@ -102,7 +102,7 @@ impl ConfigRelationalPersistence {
 
 #[async_trait]
 impl ConfigPersistence for ConfigRelationalPersistence {
-    #[tracing::instrument(name = "relational::config::get_by_deployment_id")]
+    #[tracing::instrument(name = "relational::config::get_by_deployment_id", skip_all)]
     async fn get_by_deployment_id(&self, query_deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         let query_owning_model =
             ConfigMessage::make_owning_model("deployment", query_deployment_id)?;
@@ -110,14 +110,14 @@ impl ConfigPersistence for ConfigRelationalPersistence {
         self.get_owning_model(&query_owning_model).await
     }
 
-    #[tracing::instrument(name = "relational::config::get_by_template_id")]
+    #[tracing::instrument(name = "relational::config::get_by_template_id", skip_all)]
     async fn get_by_template_id(&self, query_template_id: &str) -> anyhow::Result<Vec<Config>> {
         let query_owning_model = ConfigMessage::make_owning_model("template", query_template_id)?;
 
         self.get_owning_model(&query_owning_model).await
     }
 
-    #[tracing::instrument(name = "relational::config::get_by_workload_id")]
+    #[tracing::instrument(name = "relational::config::get_by_workload_id", skip_all)]
     async fn get_by_workload_id(&self, query_workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let query_owning_model = ConfigMessage::make_owning_model("workload", query_workload_id)?;
 

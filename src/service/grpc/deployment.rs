@@ -21,7 +21,7 @@ impl GrpcDeploymentService {
 
 #[tonic::async_trait]
 impl DeploymentTrait for GrpcDeploymentService {
-    #[tracing::instrument(name = "grpc::deployment::upsert")]
+    #[tracing::instrument(name = "grpc::deployment::upsert", skip_all)]
     async fn upsert(
         &self,
         request: Request<DeploymentMessage>,
@@ -44,7 +44,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::deployment::delete")]
+    #[tracing::instrument(name = "grpc::deployment::delete", skip_all)]
     async fn delete(
         &self,
         request: Request<DeploymentIdRequest>,
@@ -67,7 +67,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::deployment::get_by_id")]
+    #[tracing::instrument(name = "grpc::deployment::get_by_id", skip_all)]
     async fn get_by_id(
         &self,
         request: Request<DeploymentIdRequest>,
@@ -100,7 +100,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(deployment_message))
     }
 
-    #[tracing::instrument(name = "grpc::deployment::get_by_template_id")]
+    #[tracing::instrument(name = "grpc::deployment::get_by_template_id", skip_all)]
     async fn get_by_template_id(
         &self,
         request: Request<TemplateIdRequest>,
@@ -131,7 +131,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(response))
     }
 
-    #[tracing::instrument(name = "grpc::deployment::get_by_template_id")]
+    #[tracing::instrument(name = "grpc::deployment::get_by_template_id", skip_all)]
     async fn get_by_workload_id(
         &self,
         request: Request<WorkloadIdRequest>,
@@ -162,7 +162,7 @@ impl DeploymentTrait for GrpcDeploymentService {
         Ok(Response::new(response))
     }
 
-    #[tracing::instrument(name = "grpc::deployment::list")]
+    #[tracing::instrument(name = "grpc::deployment::list", skip_all)]
     async fn list(
         &self,
         _request: Request<ListDeploymentsRequest>,

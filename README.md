@@ -1,6 +1,6 @@
 # fabriq
 
-A developer experience and GitHub first engineering system.
+A code first engineering system.
 
 ## install CLI
 

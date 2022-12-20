@@ -128,7 +128,7 @@ impl GrpcConfigService {
 
 #[tonic::async_trait]
 impl ConfigTrait for GrpcConfigService {
-    #[tracing::instrument(name = "grpc::config::upsert")]
+    #[tracing::instrument(name = "grpc::config::upsert", skip_all)]
     async fn upsert(
         &self,
         request: Request<ConfigMessage>,
@@ -151,7 +151,7 @@ impl ConfigTrait for GrpcConfigService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::config::delete")]
+    #[tracing::instrument(name = "grpc::config::delete", skip_all)]
     async fn delete(
         &self,
         request: Request<ConfigIdRequest>,
@@ -195,7 +195,7 @@ impl ConfigTrait for GrpcConfigService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::config::query")]
+    #[tracing::instrument(name = "grpc::config::query", skip_all)]
     async fn query(
         &self,
         request: Request<QueryConfigRequest>,

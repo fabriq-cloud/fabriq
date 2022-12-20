@@ -20,7 +20,7 @@ impl GrpcTemplateService {
 
 #[tonic::async_trait]
 impl TemplateTrait for GrpcTemplateService {
-    #[tracing::instrument(name = "grpc::template::upsert")]
+    #[tracing::instrument(name = "grpc::template::upsert", skip_all)]
     async fn upsert(
         &self,
         request: Request<TemplateMessage>,
@@ -40,7 +40,7 @@ impl TemplateTrait for GrpcTemplateService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::target::delete")]
+    #[tracing::instrument(name = "grpc::target::delete", skip_all)]
     async fn delete(
         &self,
         request: Request<TemplateIdRequest>,
@@ -65,7 +65,7 @@ impl TemplateTrait for GrpcTemplateService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::target::get_by_id")]
+    #[tracing::instrument(name = "grpc::target::get_by_id", skip_all)]
     async fn get_by_id(
         &self,
         request: Request<TemplateIdRequest>,
@@ -97,7 +97,7 @@ impl TemplateTrait for GrpcTemplateService {
         Ok(Response::new(template_message))
     }
 
-    #[tracing::instrument(name = "grpc::target::list")]
+    #[tracing::instrument(name = "grpc::target::list", skip_all)]
     async fn list(
         &self,
         _request: Request<ListTemplatesRequest>,

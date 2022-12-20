@@ -22,7 +22,7 @@ impl GrpcAssignmentService {
 
 #[tonic::async_trait]
 impl AssignmentTrait for GrpcAssignmentService {
-    #[tracing::instrument(name = "grpc::assignment::upsert")]
+    #[tracing::instrument(name = "grpc::assignment::upsert", skip_all)]
     async fn upsert(
         &self,
         request: Request<AssignmentMessage>,
@@ -42,7 +42,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::assignment::delete")]
+    #[tracing::instrument(name = "grpc::assignment::delete", skip_all)]
     async fn delete(
         &self,
         request: Request<AssignmentIdRequest>,
@@ -67,7 +67,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         Ok(Response::new(operation_id))
     }
 
-    #[tracing::instrument(name = "grpc::assignment::get_by_deployment_id")]
+    #[tracing::instrument(name = "grpc::assignment::get_by_deployment_id", skip_all)]
     async fn get_by_deployment_id(
         &self,
         request: Request<DeploymentIdRequest>,
@@ -99,7 +99,7 @@ impl AssignmentTrait for GrpcAssignmentService {
         Ok(Response::new(response))
     }
 
-    #[tracing::instrument(name = "grpc::assignment::list")]
+    #[tracing::instrument(name = "grpc::assignment::list", skip_all)]
     async fn list(
         &self,
         _request: Request<ListAssignmentsRequest>,

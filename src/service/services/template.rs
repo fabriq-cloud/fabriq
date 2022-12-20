@@ -10,7 +10,7 @@ pub struct TemplateService {
 }
 
 impl TemplateService {
-    #[tracing::instrument(name = "service::template::create")]
+    #[tracing::instrument(name = "service::template::create", skip_all)]
     pub async fn upsert(
         &self,
         template: &Template,
@@ -37,12 +37,12 @@ impl TemplateService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::template::get_by_id")]
+    #[tracing::instrument(name = "service::template::get_by_id", skip_all)]
     pub async fn get_by_id(&self, template_id: &str) -> anyhow::Result<Option<Template>> {
         self.persistence.get_by_id(template_id).await
     }
 
-    #[tracing::instrument(name = "service::template::delete")]
+    #[tracing::instrument(name = "service::template::delete", skip_all)]
     pub async fn delete(
         &self,
         template_id: &str,
@@ -75,7 +75,7 @@ impl TemplateService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::template::list")]
+    #[tracing::instrument(name = "service::template::list", skip_all)]
     pub async fn list(&self) -> anyhow::Result<Vec<Template>> {
         let results = self.persistence.list().await?;
 

@@ -1,6 +1,6 @@
 use axum::response::Html;
 
-#[tracing::instrument(name = "http::health")]
+#[tracing::instrument(name = "http::health", skip_all)]
 pub async fn health() -> Html<&'static str> {
     Html("ok")
 }

@@ -15,7 +15,7 @@ pub struct ConfigService {
 }
 
 impl ConfigService {
-    #[tracing::instrument(name = "service::config::create")]
+    #[tracing::instrument(name = "service::config::create", skip_all)]
     pub async fn upsert(
         &self,
         config: &Config,
@@ -39,31 +39,31 @@ impl ConfigService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::config::get_by_deployment_id")]
+    #[tracing::instrument(name = "service::config::get_by_deployment_id", skip_all)]
     pub async fn get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         let deployment_config = self.persistence.get_by_deployment_id(deployment_id).await?;
 
         Ok(deployment_config)
     }
 
-    #[tracing::instrument(name = "service::config::get_by_id")]
+    #[tracing::instrument(name = "service::config::get_by_id", skip_all)]
     pub async fn get_by_id(&self, config_id: &str) -> anyhow::Result<Option<Config>> {
         self.persistence.get_by_id(config_id).await
     }
 
-    #[tracing::instrument(name = "service::config::get_by_template_id")]
+    #[tracing::instrument(name = "service::config::get_by_template_id", skip_all)]
     pub async fn get_by_template_id(&self, template_id: &str) -> anyhow::Result<Vec<Config>> {
         self.persistence.get_by_template_id(template_id).await
     }
 
-    #[tracing::instrument(name = "service::config::get_by_workload_id")]
+    #[tracing::instrument(name = "service::config::get_by_workload_id", skip_all)]
     pub async fn get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         let workload_config = self.persistence.get_by_workload_id(workload_id).await?;
 
         Ok(workload_config)
     }
 
-    #[tracing::instrument(name = "service::config::delete")]
+    #[tracing::instrument(name = "service::config::delete", skip_all)]
     pub async fn delete(
         &self,
         config_id: &str,
@@ -113,13 +113,13 @@ impl ConfigService {
         Ok(operation_id)
     }
 
-    #[tracing::instrument(name = "service::config::query")]
+    #[tracing::instrument(name = "service::config::query", skip_all)]
     pub async fn query(
         &self,
         query: &QueryConfigRequest,
         deployment: Option<Deployment>,
         workload: Option<Workload>,
-        template_id: &str,
+        _template_id: &str,
     ) -> anyhow::Result<Vec<Config>> {
         let model_name = query.model_name.as_str();
         let mut config_set = HashMap::new();
@@ -174,12 +174,12 @@ impl ConfigService {
         Ok(config_set.values().cloned().collect())
     }
 
-    #[tracing::instrument(name = "service::config::get_by_deployment_id")]
+    #[tracing::instrument(name = "service::config::get_by_deployment_id", skip_all)]
     pub async fn _get_by_deployment_id(&self, deployment_id: &str) -> anyhow::Result<Vec<Config>> {
         self.persistence.get_by_deployment_id(deployment_id).await
     }
 
-    #[tracing::instrument(name = "service::config::get_by_workload_id")]
+    #[tracing::instrument(name = "service::config::get_by_workload_id", skip_all)]
     pub async fn _get_by_workload_id(&self, workload_id: &str) -> anyhow::Result<Vec<Config>> {
         self.persistence.get_by_workload_id(workload_id).await
     }

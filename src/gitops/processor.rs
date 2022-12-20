@@ -36,7 +36,7 @@ impl Debug for GitOpsProcessor {
 }
 
 impl GitOpsProcessor {
-    #[tracing::instrument(skip(self, event), fields(event_type = event.event_type))]
+    #[tracing::instrument(skip_all)]
     pub async fn process(&mut self, event: &Event) -> anyhow::Result<()> {
         let model_type = event.model_type;
 
@@ -73,7 +73,7 @@ impl GitOpsProcessor {
         }
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn process_assignment_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let assignment = get_current_or_previous_model::<AssignmentMessage>(event)?;
@@ -101,7 +101,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn process_config_event(&self, event: &Event) -> anyhow::Result<()> {
         // Created
         // Updated
@@ -151,7 +151,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn process_deployment_event(&mut self, event: &Event) -> anyhow::Result<()> {
         // Created, Updated: Render deployment in deployments directory.
         // Deleted: Remove deployment from deployments directory.
@@ -182,7 +182,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn process_host_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let host = get_current_or_previous_model::<HostMessage>(event)?;
@@ -207,7 +207,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn process_target_event(&mut self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let target = get_current_or_previous_model::<TargetMessage>(event)?;
@@ -232,7 +232,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn process_template_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let template = get_current_or_previous_model::<TemplateMessage>(event)?;
@@ -258,7 +258,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn process_workload_event(&self, event: &Event) -> anyhow::Result<()> {
         let event_type = event.event_type;
         let workload = get_current_or_previous_model::<WorkloadMessage>(event)?;
@@ -502,7 +502,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn render_assignment(
         &self,
         host_id: &str,
@@ -679,7 +679,7 @@ impl GitOpsProcessor {
         Ok(())
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn render_deployment_template(
         &self,
         configs: &[ConfigMessage],
