@@ -41,7 +41,7 @@ fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
         .with_trace_config(
             sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
                 opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                "fabriq-api",
+                "fabriq-gitops",
             )])),
         )
         .install_batch(opentelemetry::runtime::Tokio)
@@ -157,7 +157,12 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("event loop fetched {} events", events.len());
 
         for event in events.iter() {
-            tracing::info!("event loop processing event {:?}", event);
+            tracing::info!(
+                "event loop processing event id {} with type {} and model {}",
+                event.id,
+                event.event_type,
+                event.model_type
+            );
             match gitops_processor.process(event).await {
                 Ok(_) => {
                     tracing::info!("gitops processor: processed event successfully");
