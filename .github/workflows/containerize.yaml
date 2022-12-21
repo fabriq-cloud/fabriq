@@ -123,11 +123,14 @@ jobs:
         run: |
           # Short name for current branch. For PRs, use target branch (base ref)
           GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          GIT_HASH=$(git rev-parse --short "$GITHUB_SHA")
 
           chmod +x fabriq
 
           # FABRIQ_GITHUB_TOKEN is a PAT for a principal that is a member of the team for underlying workload.
           ./fabriq login ${{ secrets.FABRIQ_GITHUB_TOKEN }}
 
+          ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH version $GIT_HASH
           ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH image ${{ steps.api_meta.outputs.tags }}
+          ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH version $GIT_HASH
           ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH image ${{ steps.gitops_meta.outputs.tags }}

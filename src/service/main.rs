@@ -82,6 +82,9 @@ fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
     let opentelemetry_endpoint =
         Url::parse(&opentelemetry_endpoint).expect("OTEL_ENDPOINT is not a valid url");
 
+    let service_name = env::var("SERVICE_NAME").unwrap_or_else(|_| "fabriq-api".to_string());
+    let service_version = env::var("SERVICE_VERSION").unwrap_or_else(|_| "unknown".to_string());
+
     let tracer = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
@@ -89,12 +92,16 @@ fn init_tracer() -> anyhow::Result<sdktrace::Tracer> {
                 .tonic()
                 .with_endpoint(opentelemetry_endpoint),
         )
-        .with_trace_config(
-            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
+        .with_trace_config(sdktrace::config().with_resource(Resource::new(vec![
+            KeyValue::new(
                 opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                "fabriq-api",
-            )])),
-        )
+                service_name,
+            ),
+            KeyValue::new(
+                opentelemetry_semantic_conventions::resource::SERVICE_VERSION,
+                service_version,
+            ),
+        ])))
         .install_batch(opentelemetry::runtime::Tokio)
         .expect("init tracer failed");
 

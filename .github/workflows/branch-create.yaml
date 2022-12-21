@@ -14,6 +14,7 @@ jobs:
       - name: Create api and gitops deployment for this branch
         run: |
           echo "create deployment for branch ${{ github.event.ref }}"
+          GIT_HASH=$(git rev-parse --short "$GITHUB_SHA")
 
           chmod +x fabriq
 
@@ -21,4 +22,6 @@ jobs:
           ./fabriq login ${{ secrets.FABRIQ_GITHUB_TOKEN  }}
 
           ./fabriq deployment create ${{ github.event.ref }} --target westus3 --team ${{ github.repository }} --workload api --hosts 1
+          ./fabriq config create --deployment ${{ github.repository }}/api/$GIT_BRANCH version $GIT_HASH
           ./fabriq deployment create ${{ github.event.ref }} --target westus3 --team ${{ github.repository }} --workload gitops --hosts 1
+          ./fabriq config create --deployment ${{ github.repository }}/gitops/$GIT_BRANCH version $GIT_HASH
